@@ -16,7 +16,7 @@ bool SerialPort::openPort()
 {
 	if (comPortHandle != INVALID_HANDLE_VALUE) return false;
 	comPortHandle = CreateFileA(portFileName, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
-	return true;
+	return this->isOpen();
 }
 
 void SerialPort::closePort()
@@ -28,7 +28,7 @@ void SerialPort::closePort()
 
 bool SerialPort::isOpen()
 {
-	return comPortHandle == INVALID_HANDLE_VALUE;
+	return comPortHandle != INVALID_HANDLE_VALUE;
 }
 
 void SerialPort::setBaud(int baud)

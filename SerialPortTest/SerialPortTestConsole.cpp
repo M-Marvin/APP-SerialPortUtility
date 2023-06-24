@@ -16,13 +16,15 @@ int main()
     port.openPort();
     port.setTimeouts(500, 500);
     port.setBaud(9600);
+
+    if (port.isOpen()) std::cout << "TETESTETT\r\n";
     
     port.writeBytes("control up 0\r", 13);
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     port.writeBytes("control stop 0\r", 15);
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     port.writeBytes("control down 0\r", 15);
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     port.writeBytes("control stop 0\r", 15);
 
     char readBuffer[256];

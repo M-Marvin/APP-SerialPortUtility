@@ -13,6 +13,8 @@ public class Test {
 		port.setBaud(9600);
 		port.setTimeouts(500, 500);
 		
+		System.out.println(port.isOpen());
+		
 		port.writeString("control up 0\r");
 		System.out.println(port.readStringBurst());
 		//Thread.sleep(4000);
