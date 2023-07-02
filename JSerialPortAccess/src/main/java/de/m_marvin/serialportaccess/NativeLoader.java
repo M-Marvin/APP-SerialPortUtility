@@ -76,6 +76,10 @@ public class NativeLoader {
 			System.err.println("NativeLoader: Could not open config file!");
 		}
 		
+		if (nativeFile == null) {
+			System.err.println("NativeLoader: No natives for the current architecture available!");
+		}
+		
 		return nativeFile;
 	}
 	
