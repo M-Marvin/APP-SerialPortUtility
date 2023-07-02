@@ -98,7 +98,7 @@
       <EnableUAC>false</EnableUAC>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(SolutionDir)$(Configuration)\SerialPortAccess.dll $(SolutionDir)JSerialPortAccess\src\main\resources\natives\win32\serialportaccess.dll</Command>
+      <Command>copy $(SolutionDir)$(Configuration)\SerialPortAccess.dll $(SolutionDir)JSerialPortAccess\src\main\resources\natives\serialportaccess_x86.dll</Command>
       <Message>Copy dll in java workspace</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -122,7 +122,7 @@
       <EnableUAC>false</EnableUAC>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(SolutionDir)$(Configuration)\SerialPortAccess.dll $(SolutionDir)JSerialPortAccess\src\main\resources\natives\win32\serialportaccess.dll</Command>
+      <Command>copy $(SolutionDir)$(Configuration)\SerialPortAccess.dll $(SolutionDir)JSerialPortAccess\src\main\resources\natives\serialportaccess_x86.dll</Command>
       <Message>Copy dll in java workspace</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -142,7 +142,7 @@
       <EnableUAC>false</EnableUAC>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(SolutionDir)$(Platform)\$(Configuration)\SerialPortAccess.dll $(SolutionDir)JSerialPortAccess\src\main\resources\natives\win64\serialportaccess_x64.dll</Command>
+      <Command>copy $(SolutionDir)$(Platform)\$(Configuration)\SerialPortAccess.dll $(SolutionDir)JSerialPortAccess\src\main\resources\natives\serialportaccess_x64.dll</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -165,7 +165,7 @@
       <EnableUAC>false</EnableUAC>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(SolutionDir)$(Platform)\$(Configuration)\SerialPortAccess.dll $(SolutionDir)JSerialPortAccess\src\main\resources\natives\win64\serialportaccess_x64.dll</Command>
+      <Command>copy $(SolutionDir)$(Platform)\$(Configuration)\SerialPortAccess.dll $(SolutionDir)JSerialPortAccess\src\main\resources\natives\serialportaccess_x64.dll</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

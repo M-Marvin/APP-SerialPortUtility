@@ -4,6 +4,13 @@ public class Test {
 	
 	public static void main(String... args) throws InterruptedException {
 		
+		Test test = new Test();
+		test.run();
+		
+	}
+	
+	public void run() {
+		
 		SerialPort port;
 		
 		System.out.println("TEST");

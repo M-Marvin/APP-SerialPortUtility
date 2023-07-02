@@ -1,20 +1,12 @@
 package de.m_marvin.serialportaccess;
 
-import java.io.FileNotFoundException;
-
 public class SerialPort {
 
 	private static boolean libLoaded = false;
 	
 	static {
-		try {
-			if (NativeExtractor.extractNativeLibs()) {
-				System.load(NativeExtractor.findNative("serialportaccess"));
-				libLoaded = true;
-			}
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
+		NativeLoader.setTempLibFolder(System.getProperty("java.io.tmpdir") + "/jserialportaccess");
+		NativeLoader.loadNative("serialportaccess");
 	}
 	
 	public static boolean loadedSuccessfully() {
