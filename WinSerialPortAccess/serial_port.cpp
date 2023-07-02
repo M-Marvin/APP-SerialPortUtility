@@ -1,5 +1,4 @@
 
-#include "pch.h"
 #include "serial_port.h"
 #include <thread>
 #include <chrono>
