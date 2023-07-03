@@ -15,9 +15,36 @@ bool SerialPort::openPort()
 	if (comPortHandle >= 0) return false;
 	comPortHandle = open(portFileName, O_RDWR);
 	if (!isOpen()) {
-		printf("Error %i from serial port: %s\n", comPortHandle, strerror(comPortHandle));
+		printf("Error %i from openPort: %s\n", errno, strerror(errno));
 		return false;
 	}
+
+	if (tcgetattr(comPortHandle, &comPortState) != 0) {
+		printf("Error %i from openPortCfg: %s\n", errno, strerror(errno));
+		return true;
+	}
+
+	// Default serial prot configuration from https://blog.mbedded.ninja/programming/operating-systems/linux/linux-serial-ports-using-c-cpp/
+	comPortState.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
+	comPortState.c_cflag &= ~CSTOPB; // Clear stop field, only one stop bit used in communication (most common)
+	comPortState.c_cflag &= ~CSIZE; // Clear all the size bits, then use one of the statements below
+	comPortState.c_cflag |= CS8; // 8 bits per byte (most common)
+	comPortState.c_cflag &= ~CRTSCTS; // Disable RTS/CTS hardware flow control (most common)
+	comPortState.c_cflag |= CREAD | CLOCAL; // Turn on READ & ignore ctrl lines (CLOCAL = 1)
+	comPortState.c_lflag &= ~ICANON;
+	comPortState.c_lflag &= ~ECHO; // Disable echo
+	comPortState.c_lflag &= ~ECHOE; // Disable erasure
+	comPortState.c_lflag &= ~ECHONL; // Disable new-line echo
+	comPortState.c_lflag &= ~ISIG; // Disable interpretation of INTR, QUIT and SUSP
+	comPortState.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off s/w flow ctrl
+	comPortState.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL); // Disable any special handling of received bytes
+	comPortState.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
+	comPortState.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
+
+	if (tcsetattr(comPortHandle, TCSANOW, &comPortState) != 0) {
+		printf("Error %i from openPortCfg: %s\n", errno, strerror(errno));
+	}
+
 	return true;
 }
 
@@ -36,9 +63,8 @@ bool SerialPort::isOpen()
 void SerialPort::setBaud(int baud)
 {
 	if (comPortHandle < 0) return;
-	int errorN = 0;
-	if ((errorN = tcgetattr(comPortHandle, &comPortState)) != 0) {
-		printf("Error %i from serial port: %s\n", errno, strerror(errno));
+	if (tcgetattr(comPortHandle, &comPortState) != 0) {
+		printf("Error %i from setBaud: %s\n", errno, strerror(errno));
 		return;
 	}
 
@@ -68,17 +94,16 @@ void SerialPort::setBaud(int baud)
 
 	cfsetspeed(&comPortState, baudSelection);
 
-	if ((errorN = tcsetattr(comPortHandle, TCSANOW, &comPortState)) != 0) {
-		printf("Error %i from serial port: %s\n", errno, strerror(errno));
+	if (tcsetattr(comPortHandle, TCSANOW, &comPortState) != 0) {
+		printf("Error %i from setBaud: %s\n", errno, strerror(errno));
 	}
 }
 
 int SerialPort::getBaud()
 {
 	if (comPortHandle < 0) return -1;
-	int errorN = 0;
-	if ((errorN = tcgetattr(comPortHandle, &comPortState)) != 0) {
-		printf("Error %i from serial port: %s\n", errno, strerror(errno));
+	if (tcgetattr(comPortHandle, &comPortState)!= 0) {
+		printf("Error %i from getBaud: %s\n", errno, strerror(errno));
 		return -1;
 	}
 
@@ -112,24 +137,24 @@ int SerialPort::getBaud()
 void SerialPort::setTimeouts(int readTimeout, int writeTimeout)
 {
 	if (comPortHandle < 0) return;
-	int errorN = 0;
-	if ((errorN = tcgetattr(comPortHandle, &comPortState)) != 0) {
-		printf("Error %i from serial port: %s\n", errno, strerror(errno));
+	if (tcgetattr(comPortHandle, &comPortState) != 0) {
+		printf("Error %i from setTimeouts: %s\n", errno, strerror(errno));
 	}
 
 	comPortState.c_cc[VMIN] = 0;
 	comPortState.c_cc[VTIME] = (unsigned char) (readTimeout / 100); // Convert ms in ds
 
-	if ((errorN = tcsetattr(comPortHandle, TCSANOW, &comPortState)) != 0) {
-		printf("Error %i from serial port: %s\n", errno, strerror(errno));
+	if (tcsetattr(comPortHandle, TCSANOW, &comPortState) != 0) {
+		printf("Error %i from setTimeouts: %s\n", errno, strerror(errno));
 	}
 }
 
 unsigned long SerialPort::readBytes(char* buffer, unsigned long bufferCapacity)
 {
 	if (comPortHandle < 0) return -1;
-	unsigned long receivedBytes = read(comPortHandle, &buffer, bufferCapacity);
+	unsigned long receivedBytes = read(comPortHandle, buffer, bufferCapacity);
 	return receivedBytes;
+	return -1;
 }
 
 unsigned long SerialPort::readBytesBurst(char* buffer, unsigned long bufferCapacity, long long receptionLoopDelay)
