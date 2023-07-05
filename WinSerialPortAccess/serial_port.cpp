@@ -2,6 +2,7 @@
 #include "serial_port.h"
 #include <thread>
 #include <chrono>
+#include <stdio.h>
 
 SerialPort::SerialPort(const char* portFile)
 {
@@ -15,7 +16,43 @@ bool SerialPort::openPort()
 {
 	if (comPortHandle != INVALID_HANDLE_VALUE) return false;
 	comPortHandle = CreateFileA(portFileName, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
-	return this->isOpen();
+
+	if (isOpen()) {
+		GetCommState(comPortHandle, &comPortState);
+
+		// Default port settings extracted after use with PuTTY
+		comPortState.fBinary = 1;
+		comPortState.fParity = 0;
+		comPortState.fOutxCtsFlow = 0;
+		comPortState.fOutxDsrFlow = 0;
+		comPortState.fDtrControl = 1;
+		comPortState.fDsrSensitivity = 0;
+		comPortState.fTXContinueOnXoff = 0;
+		comPortState.fOutX = 1;
+		comPortState.fInX = 1;
+		comPortState.fErrorChar = 0;
+		comPortState.fNull = 0;
+		comPortState.fRtsControl = 1;
+		comPortState.fAbortOnError = 0;
+		comPortState.fDummy2 = 0;
+		comPortState.wReserved = 0;
+		comPortState.XonLim = 2048;
+		comPortState.XoffLim = 512;
+		comPortState.ByteSize = 8;
+		comPortState.Parity = 0;
+		comPortState.StopBits = 0;
+		comPortState.XonChar = 17;
+		comPortState.XoffChar = 19;
+		comPortState.ErrorChar = 0;
+		comPortState.EofChar = 0;
+		comPortState.EvtChar = 0;
+		comPortState.wReserved1 = 0;
+
+		SetCommState(comPortHandle, &comPortState);
+		return true;
+	}
+
+	return false;
 }
 
 void SerialPort::closePort()

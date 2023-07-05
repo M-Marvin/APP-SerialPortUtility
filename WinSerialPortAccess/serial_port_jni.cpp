@@ -1,4 +1,5 @@
 
+#include <string.h>
 #include <malloc.h>
 #include <de_m_marvin_serialportaccess_SerialPort.h>
 #include "serial_port.h"
@@ -58,7 +59,11 @@ JNIEXPORT jstring JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readD
 	if (readBuffer == 0) return 0;
 	memset(readBuffer, 0, bufferCapacity);
 	unsigned long readBytes = port->readBytes(readBuffer, (unsigned long) bufferCapacity);
-	if (readBytes > 0) return env->NewStringUTF(readBuffer);
+	if (readBytes > 0) {
+		jstring js =  env->NewStringUTF(readBuffer);
+		free(readBuffer);
+		return js;
+	}
 	free(readBuffer);
 	return 0;
 }
@@ -74,8 +79,10 @@ JNIEXPORT jbyteArray JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1re
 	{
 		jbyteArray byteArr = env->NewByteArray(readBytes);
 		env->SetByteArrayRegion(byteArr, 0, readBytes, (jbyte*)readBuffer);
+		free(readBuffer);
 		return byteArr;
 	}
+	free(readBuffer);
 	return 0;
 }
 
@@ -86,7 +93,11 @@ JNIEXPORT jstring JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readD
 	if (readBuffer == 0) return 0;
 	memset(readBuffer, 0, bufferCapacity);
 	unsigned long readBytes = port->readBytesBurst(readBuffer, (unsigned long) bufferCapacity, (long long) receptionLoopDelay);
-	if (readBytes > 0) return env->NewStringUTF(readBuffer);
+	if (readBytes > 0) {
+		jstring js =  env->NewStringUTF(readBuffer);
+		free(readBuffer);
+		return js;
+	}
 	free(readBuffer);
 	return 0;
 }
@@ -102,23 +113,25 @@ JNIEXPORT jbyteArray JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1re
 	{
 		jbyteArray byteArr = env->NewByteArray(readBytes);
 		env->SetByteArrayRegion(byteArr, 0, readBytes, (jbyte*)readBuffer);
+		free(readBuffer);
 		return byteArr;
 	}
+	free(readBuffer);
 	return 0;
 }
 
-JNIEXPORT void JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1writeDataS(JNIEnv* env, jclass clazz, jlong handle, jstring data)
+JNIEXPORT jint JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1writeDataS(JNIEnv* env, jclass clazz, jlong handle, jstring data)
 {
 	SerialPort* port = (SerialPort*)handle;
 	const char* writeBuffer = env->GetStringUTFChars(data, 0);
 	unsigned long bufferLength = env->GetStringUTFLength(data);
-	port->writeBytes(writeBuffer, bufferLength);
+	return port->writeBytes(writeBuffer, bufferLength);
 }
 
-JNIEXPORT void JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1writeDataB(JNIEnv* env, jclass clazz, jlong handle, jbyteArray data)
+JNIEXPORT jint JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1writeDataB(JNIEnv* env, jclass clazz, jlong handle, jbyteArray data)
 {
 	SerialPort* port = (SerialPort*)handle;
 	const char* writeBuffer = (char*)env->GetByteArrayElements(data, 0);
 	unsigned long bufferLength = env->GetArrayLength(data);
-	port->writeBytes(writeBuffer, bufferLength);
+	return port->writeBytes(writeBuffer, bufferLength);
 }

@@ -13,20 +13,24 @@ public class Test {
 		
 		SerialPort port;
 		
-		port = new SerialPort("/dev/ttyS3");
+		port = new SerialPort("COM4");
 		if (!port.openPort()) System.err.println("Failed!");
 		
 		port.setBaud(9600);
 		port.setTimeouts(500, 500);
 		
+		port.getBaud();
+		
 		System.out.println(port.isOpen());
 		
 		int i = 0;
-		while (i++ < 5)  {
+		while (i++ < 100)  {
 
-			port.writeString("config dump 0 \r");
+			int written = port.writeString("config dump 0 \r");
 			System.out.println(port.readStringBurst());
 			System.out.println("-----");
+			
+			System.out.println(port.isOpen() + " " + written);
 			
 			Thread.sleep(1000);
 		}

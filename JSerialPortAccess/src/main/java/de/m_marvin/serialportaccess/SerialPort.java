@@ -28,8 +28,8 @@ public class SerialPort {
 	protected static native byte[] n_readDataB(long handle, int bufferCapacity);
 	protected static native String n_readDataBurstS(long handle, int bufferCapacity, long receptionLoopDelay);
 	protected static native byte[] n_readDataBurstB(long handle, int bufferCapacity, long receptionLoopDelay);
-	protected static native void n_writeDataS(long handle, String data);
-	protected static native void n_writeDataB(long handle, byte[] data);
+	protected static native int n_writeDataS(long handle, String data);
+	protected static native int n_writeDataB(long handle, byte[] data);
 	
 	private final long handle;
 	
@@ -97,12 +97,16 @@ public class SerialPort {
 		return readDataBurst(DEFAULT_BUFFER_SIZE, DEFAULT_LOOP_DELAY);
 	}
 	
-	public void writeString(String data) {
-		n_writeDataS(handle, data);
+	public int writeString(String data) {
+		int writtenBytes = n_writeDataS(handle, data);
+		if (writtenBytes == 0 && !data.isEmpty()) closePort(); // Connection has been lost, close port to make isOpen() respond correctly
+		return writtenBytes;
 	}
 	
-	public void writeData(byte[] data) {
-		n_writeDataB(handle, data);
+	public int writeData(byte[] data) {
+		int writtenBytes = n_writeDataB(handle, data);
+		if (writtenBytes == 0 && data.length > 0) closePort(); // Connection has been lost, close port to make isOpen() respond correctly
+		return writtenBytes;
 	}
 	
 }
