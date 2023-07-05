@@ -2,6 +2,7 @@ package de.m_marvin.serialportaccess;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -99,6 +100,8 @@ public class NativeLoader {
 			os.write(is.readAllBytes());
 			is.close();
 			os.close();
+		} catch (FileNotFoundException e) {
+			System.out.println("Could not extract native " + targetFileName + ", maybe it already exists and is used by an another process!");
 		} catch (IOException e) {
 			System.err.println("NativeLoader: Failed to extract native " + nativeLocation + " to " + targetLocation + "!");
 			e.printStackTrace();
@@ -118,6 +121,7 @@ public class NativeLoader {
 			libMap.put(nativeName, tempLocation);
 			
 			extractNative(nativeFilePath, tempLibFolder, fileName);
+						
 		}
 		
 		return libMap.get(nativeName).toString();
