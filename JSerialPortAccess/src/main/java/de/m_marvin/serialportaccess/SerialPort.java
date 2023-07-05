@@ -6,6 +6,7 @@ public class SerialPort {
 	
 	static {
 		NativeLoader.setTempLibFolder(System.getProperty("java.io.tmpdir") + "/jserialportaccess");
+		NativeLoader.setLibLoadConfig("/libload_serialportaccess.cfg");
 		NativeLoader.loadNative("serialportaccess");
 	}
 	
