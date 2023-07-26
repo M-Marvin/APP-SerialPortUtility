@@ -10,3 +10,6 @@ Currently supported architectures/operating systems:
 
 Currently it does only provide simple serial port communication, but more features are implemented if required by my projects.
 Planed are auto-detection of specific devices, list of available ports and some other utility stuff.
+
+NOTE:
+The releases contains only the java-ready .jar lib, but the natives for use in C/C++ projects can be extracted from them.
