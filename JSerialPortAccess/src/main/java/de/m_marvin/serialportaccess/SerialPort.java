@@ -1,17 +1,11 @@
 package de.m_marvin.serialportaccess;
 
 public class SerialPort {
-
-	private static boolean libLoaded = false;
 	
 	static {
 		NativeLoader.setTempLibFolder(System.getProperty("java.io.tmpdir") + "/jserialportaccess");
 		NativeLoader.setLibLoadConfig("/libload_serialportaccess.cfg");
 		NativeLoader.loadNative("serialportaccess");
-	}
-	
-	public static boolean loadedSuccessfully() {
-		return libLoaded;
 	}
 	
 	public static final int DEFAULT_BUFFER_SIZE = 256;
