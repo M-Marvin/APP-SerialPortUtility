@@ -157,17 +157,21 @@ unsigned long SerialPort::readBytes(char* buffer, unsigned long bufferCapacity)
 	return -1;
 }
 
-unsigned long SerialPort::readBytesBurst(char* buffer, unsigned long bufferCapacity, long long receptionLoopDelay)
+unsigned long SerialPort::readBytesConsecutive(char* buffer, unsigned long bufferCapacity, long long consecutiveDelay, long long receptionWaitTimeout)
 {
 	if (comPortHandle < 0) return -1;
 	unsigned long receivedBytes;
-	while ((receivedBytes = readBytes(buffer, bufferCapacity)) == 0);
+	long long waitStart = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+	while ((receivedBytes = readBytes(buffer, bufferCapacity)) == 0) {
+		long long time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+		if (time - waitStart > receptionWaitTimeout) return 0;
+	}
 	while (receivedBytes < bufferCapacity)
 	{
 		unsigned int lastReceived = readBytes(buffer + receivedBytes, bufferCapacity - receivedBytes);
 		if (lastReceived == 0) break;
 		receivedBytes += lastReceived;
-		std::this_thread::sleep_for(std::chrono::milliseconds(receptionLoopDelay));
+		std::this_thread::sleep_for(std::chrono::milliseconds(consecutiveDelay));
 	}
 	return receivedBytes;
 }

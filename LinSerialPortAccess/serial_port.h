@@ -29,7 +29,7 @@ public:
 	void closePort();
 	bool isOpen();
 	unsigned long readBytes(char* buffer, unsigned long bufferCapacity);
-	unsigned long readBytesBurst(char* buffer, unsigned long bufferCapacity, long long receptionLoopDelay);
+	unsigned long readBytesConsecutive(char* buffer, unsigned long bufferCapacity, long long consecutiveDelay, long long receptionWaitTimeout);
 	unsigned long writeBytes(const char* buffer, unsigned long bufferLength);
 
 };
