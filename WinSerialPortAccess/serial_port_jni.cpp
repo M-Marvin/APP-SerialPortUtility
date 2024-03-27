@@ -86,13 +86,13 @@ JNIEXPORT jbyteArray JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1re
 	return 0;
 }
 
-JNIEXPORT jstring JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readDataBurstS(JNIEnv* env, jclass clazz, jlong handle, jint bufferCapacity, jlong receptionLoopDelay)
+JNIEXPORT jstring JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readDataConsecutiveS(JNIEnv* env, jclass clazz, jlong handle, jint bufferCapacity, jlong consecutiveDelay, jlong receptionWaitTimeout)
 {
 	SerialPort* port = (SerialPort*)handle;
 	char* readBuffer = (char*)malloc(bufferCapacity);
 	if (readBuffer == 0) return 0;
 	memset(readBuffer, 0, bufferCapacity);
-	unsigned long readBytes = port->readBytesBurst(readBuffer, (unsigned long) bufferCapacity, (long long) receptionLoopDelay);
+	unsigned long readBytes = port->readBytesConsecutive(readBuffer, (unsigned long) bufferCapacity, (long long) consecutiveDelay, (long long) receptionWaitTimeout);
 	if (readBytes > 0) {
 		jstring js =  env->NewStringUTF(readBuffer);
 		free(readBuffer);
@@ -102,13 +102,13 @@ JNIEXPORT jstring JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readD
 	return 0;
 }
 
-JNIEXPORT jbyteArray JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readDataB(JNIEnv* env, jclass clazz, jlong handle, jint bufferCapacity, jlong receptionLoopDelay)
+JNIEXPORT jbyteArray JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readDataConsecutiveB(JNIEnv* env, jclass clazz, jlong handle, jint bufferCapacity, jlong consecutiveDelay, jlong receptionWaitTimeout)
 {
 	SerialPort* port = (SerialPort*)handle;
 	char* readBuffer = (char*)malloc(bufferCapacity);
 	if (readBuffer == 0) return 0;
 	memset(readBuffer, 0, bufferCapacity);
-	unsigned long readBytes = port->readBytesBurst(readBuffer, (unsigned long) bufferCapacity, (long long) receptionLoopDelay);
+	unsigned long readBytes = port->readBytesConsecutive(readBuffer, (unsigned long) bufferCapacity, (long long) consecutiveDelay, (long long) receptionWaitTimeout);
 	if (readBytes > 0)
 	{
 		jbyteArray byteArr = env->NewByteArray(readBytes);

@@ -20,7 +20,7 @@ public:
 	__declspec(dllexport) void closePort();
 	__declspec(dllexport) bool isOpen();
 	__declspec(dllexport) unsigned long readBytes(char* buffer, unsigned long bufferCapacity);
-	__declspec(dllexport) unsigned long readBytesBurst(char* buffer, unsigned long bufferCapacity, long long receptionLoopDelay);
+	__declspec(dllexport) unsigned long readBytesConsecutive(char* buffer, unsigned long bufferCapacity, long long consecutiveDelay, long long receptionWaitTimeout);
 	__declspec(dllexport) unsigned long writeBytes(const char* buffer, unsigned long bufferLength);
 	
 };
