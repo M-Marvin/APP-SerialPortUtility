@@ -45,6 +45,5 @@ public class SerialPortOutputStream extends OutputStream {
 	@Override
 	public void close() throws IOException {
 		this.serialPort.closePort();
-		this.serialPort.dispose();
 	}
 }

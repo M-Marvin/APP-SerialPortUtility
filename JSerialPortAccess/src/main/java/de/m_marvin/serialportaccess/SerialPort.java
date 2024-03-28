@@ -9,7 +9,7 @@ public class SerialPort {
 	}
 	
 	public static final int DEFAULT_BUFFER_SIZE = 256;
-	public static final long DEFAULT_LOOP_DELAY = 100;
+	public static final long DEFAULT_CONSECUTIVE_LOOP_DELAY = 100;
 	public static final long DEFAULT_CONSECUTIVE_RECEPTION_TIMEOUT = 1000;
 	
 	protected static native long n_createSerialPort(String portFile);
@@ -126,7 +126,7 @@ public class SerialPort {
 	 * @return The String value of the bytes or null if nothing could be read
 	 */
 	public String readStringConsecutive() {
-		return readStringConsecutive(DEFAULT_BUFFER_SIZE, DEFAULT_LOOP_DELAY, DEFAULT_CONSECUTIVE_RECEPTION_TIMEOUT);
+		return readStringConsecutive(DEFAULT_BUFFER_SIZE, DEFAULT_CONSECUTIVE_LOOP_DELAY, DEFAULT_CONSECUTIVE_RECEPTION_TIMEOUT);
 	}
 
 	/**
@@ -149,7 +149,7 @@ public class SerialPort {
 	 * @return An byte array containing the read bytes or null if nothing could be read (length of array = number of bytes read)
 	 */
 	public byte[] readDataConsecutive() {
-		return readDataConsecutive(DEFAULT_BUFFER_SIZE, DEFAULT_LOOP_DELAY, DEFAULT_CONSECUTIVE_RECEPTION_TIMEOUT);
+		return readDataConsecutive(DEFAULT_BUFFER_SIZE, DEFAULT_CONSECUTIVE_LOOP_DELAY, DEFAULT_CONSECUTIVE_RECEPTION_TIMEOUT);
 	}
 	
 	/**
@@ -175,7 +175,6 @@ public class SerialPort {
 	}
 	
 	public SerialPortInputStream getInputStream(int bufferSize) {
-		if (!this.isOpen()) throw new IllegalStateException("cant get input stream from port that is not yet opened!");
 		return new SerialPortInputStream(this, bufferSize);
 	}
 	
@@ -184,7 +183,6 @@ public class SerialPort {
 	}
 	
 	public SerialPortOutputStream getOutputStream(int bufferSize) {
-		if (!this.isOpen()) throw new IllegalStateException("cant get output stream from port that is not yet opened!");
 		return new SerialPortOutputStream(null, bufferSize);
 	}
 	
