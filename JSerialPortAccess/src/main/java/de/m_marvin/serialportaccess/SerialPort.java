@@ -28,9 +28,16 @@ public class SerialPort {
 	protected static native int n_writeDataB(long handle, byte[] data);
 	
 	private final long handle;
+	private final String portName;
 	
 	public SerialPort(String portFile) {
+		this.portName = portFile;
 		this.handle = n_createSerialPort(portFile);
+	}
+	
+	@Override
+	public String toString() {
+		return this.portName;
 	}
 	
 	public void dispose() {
@@ -165,6 +172,24 @@ public class SerialPort {
 		int writtenBytes = n_writeDataB(handle, data);
 		if (writtenBytes == 0 && data.length > 0) closePort(); // Connection has been lost, close port to make isOpen() respond correctly
 		return writtenBytes;
+	}
+	
+	public SerialPortInputStream getInputStream(int bufferSize) {
+		if (!this.isOpen()) throw new IllegalStateException("cant get input stream from port that is not yet opened!");
+		return new SerialPortInputStream(this, bufferSize);
+	}
+	
+	public SerialPortInputStream getInputStream() {
+		return getInputStream(DEFAULT_BUFFER_SIZE);
+	}
+	
+	public SerialPortOutputStream getOutputStream(int bufferSize) {
+		if (!this.isOpen()) throw new IllegalStateException("cant get output stream from port that is not yet opened!");
+		return new SerialPortOutputStream(null, bufferSize);
+	}
+	
+	public SerialPortOutputStream getOutputStream() {
+		return getOutputStream(DEFAULT_BUFFER_SIZE);
 	}
 	
 }
