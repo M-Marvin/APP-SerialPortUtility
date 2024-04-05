@@ -6,7 +6,9 @@
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/WinSerialPortAccess"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/SerialPortAccess"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/WinSerialPortAccess/Release"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/SerialPortAccess/Release_amd64"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="serialportaccess_x64" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
@@ -39,6 +41,9 @@
 									<listOptionValue builtIn="false" value="&quot;C:\Program Files\Java\jdk-18.0.2\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;C:\Program Files\Java\jdk-18.0.2\include\win32&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/JSerialPortAccess/build/generated/sources/headers/java/main}&quot;"/>
+								</option>
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.cpp.compiler.option.preprocessor.def.1369820838" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" useByScannerDiscovery="false" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="PLATFORM_WIN"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.205541930" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>

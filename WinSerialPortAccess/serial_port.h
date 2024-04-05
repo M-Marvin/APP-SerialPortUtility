@@ -1,27 +1,30 @@
 #pragma once
 
-#include <windows.h>
+#ifdef PLATFORM_WIN
+#define LIB_EXPORT __declspec(dllexport)
+#define LIB_IMPORT __declspec(dllimport)
+#endif
+
+struct SerialPortImplData;
 
 class SerialPort
 {
 
-protected:
-	DCB comPortState;
-	COMMTIMEOUTS comPortTimeouts;
-	HANDLE comPortHandle;
-	const char* portFileName;
-	
 public:
-	__declspec(dllexport) SerialPort(const char* portFile);
-	__declspec(dllexport) void setBaud(int baud);
-	__declspec(dllexport) int getBaud();
-	__declspec(dllexport) void setTimeouts(int readTimeout, int writeTimeout);
-	__declspec(dllexport) bool openPort();
-	__declspec(dllexport) void closePort();
-	__declspec(dllexport) bool isOpen();
-	__declspec(dllexport) unsigned long readBytes(char* buffer, unsigned long bufferCapacity);
-	__declspec(dllexport) unsigned long readBytesConsecutive(char* buffer, unsigned long bufferCapacity, long long consecutiveDelay, long long receptionWaitTimeout);
-	__declspec(dllexport) unsigned long writeBytes(const char* buffer, unsigned long bufferLength);
+	LIB_EXPORT SerialPort(const char* portFile);
+	LIB_EXPORT ~SerialPort();
+	LIB_EXPORT void setBaud(int baud);
+	LIB_EXPORT int getBaud();
+	LIB_EXPORT void setTimeouts(int readTimeout, int writeTimeout);
+	LIB_EXPORT bool openPort();
+	LIB_EXPORT void closePort();
+	LIB_EXPORT bool isOpen();
+	LIB_EXPORT unsigned long readBytes(char* buffer, unsigned long bufferCapacity);
+	LIB_EXPORT unsigned long readBytesConsecutive(char* buffer, unsigned long bufferCapacity, long long consecutiveDelay, long long receptionWaitTimeout);
+	LIB_EXPORT unsigned long writeBytes(const char* buffer, unsigned long bufferLength);
+
+private:
+	SerialPortImplData* implData;
 	
 };
 

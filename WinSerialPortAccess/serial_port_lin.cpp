@@ -1,9 +1,21 @@
+#ifdef PLATFORM_LINUX
 
 #include "serial_port.h"
 #include <thread>
 #include <chrono>
 #include <stdio.h>
 #include <string.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <termios.h>
+#include <unistd.h>
+
+struct SerialPortAccessImplData {
+	struct termios comPortState;
+	int comPortHandle;
+	const char* portFileName;
+};
+
 SerialPort::SerialPort(const char* portFile)
 {
 	this->portFileName = portFile;
@@ -182,3 +194,5 @@ unsigned long SerialPort::writeBytes(const char* buffer, unsigned long bufferLen
 	unsigned long writtenBytes = write(comPortHandle, buffer, bufferLength);
 	return writtenBytes;
 }
+
+#endif
