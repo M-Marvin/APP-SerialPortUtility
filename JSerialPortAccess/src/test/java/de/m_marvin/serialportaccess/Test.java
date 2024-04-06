@@ -21,6 +21,17 @@ public class Test {
 		port.setBaud(9600);
 		port.setTimeouts(500, 500);
 		
+		// TODO crash when no connection to port ?
+		int transmitted = port.writeData(new byte[] {'A', 'a', 'b'});
+		System.out.println(port.isOpen());
+		byte[] received = port.readDataConsecutive(3, 500, 1000);
+		System.out.println("Transmitted " + transmitted);
+		System.out.println("Received " + received.length);
+		
+		for (int i = 0; i < received.length; i ++) {
+			System.out.println((char) received[i]);
+		}
+		
 		port.getBaud();
 		
 		System.out.println("IS PORT OPEN: " + port.isOpen());

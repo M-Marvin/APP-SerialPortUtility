@@ -164,15 +164,14 @@ void SerialPort::setTimeouts(int readTimeout, int writeTimeout)
 
 unsigned long SerialPort::readBytes(char* buffer, unsigned long bufferCapacity)
 {
-	if (this->implData->comPortHandle < 0) return -1;
+	if (this->implData->comPortHandle < 0) return 0;
 	unsigned long receivedBytes = read(this->implData->comPortHandle, buffer, bufferCapacity);
 	return receivedBytes;
-	return -1;
 }
 
 unsigned long SerialPort::readBytesConsecutive(char* buffer, unsigned long bufferCapacity, long long consecutiveDelay, long long receptionWaitTimeout)
 {
-	if (this->implData->comPortHandle < 0) return -1;
+	if (this->implData->comPortHandle < 0) return 0;
 	unsigned long receivedBytes;
 	long long waitStart = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 	while ((receivedBytes = readBytes(buffer, bufferCapacity)) == 0) {
@@ -191,7 +190,7 @@ unsigned long SerialPort::readBytesConsecutive(char* buffer, unsigned long buffe
 
 unsigned long SerialPort::writeBytes(const char* buffer, unsigned long bufferLength)
 {
-	if (this->implData->comPortHandle < 0) return -1;
+	if (this->implData->comPortHandle < 0) return 0;
 	unsigned long writtenBytes = write(this->implData->comPortHandle, buffer, bufferLength);
 	return writtenBytes;
 }

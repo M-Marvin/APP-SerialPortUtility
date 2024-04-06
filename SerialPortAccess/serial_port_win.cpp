@@ -106,7 +106,7 @@ void SerialPort::setTimeouts(int readTimeout, int writeTimeout)
 
 unsigned long SerialPort::readBytes(char* buffer, unsigned long bufferCapacity)
 {
-	if (this->implData->comPortHandle == INVALID_HANDLE_VALUE) return -1;
+	if (this->implData->comPortHandle == INVALID_HANDLE_VALUE) return 0;
 	unsigned long receivedBytes = 0;
 	if (!ReadFile(this->implData->comPortHandle, buffer, bufferCapacity, &receivedBytes, NULL)) return -1;
 	return receivedBytes;
@@ -114,7 +114,7 @@ unsigned long SerialPort::readBytes(char* buffer, unsigned long bufferCapacity)
 
 unsigned long SerialPort::readBytesConsecutive(char* buffer, unsigned long bufferCapacity, long long consecutiveDelay, long long receptionWaitTimeout)
 {
-	if (this->implData->comPortHandle == INVALID_HANDLE_VALUE) return -1;
+	if (this->implData->comPortHandle == INVALID_HANDLE_VALUE) return 0;
 	unsigned long receivedBytes;
 	long long waitStart = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 	while ((receivedBytes = readBytes(buffer, bufferCapacity)) == 0) {
@@ -133,7 +133,7 @@ unsigned long SerialPort::readBytesConsecutive(char* buffer, unsigned long buffe
 
 unsigned long SerialPort::writeBytes(const char* buffer, unsigned long bufferLength)
 {
-	if (this->implData->comPortHandle == INVALID_HANDLE_VALUE) return -1;
+	if (this->implData->comPortHandle == INVALID_HANDLE_VALUE) return 0;
 	unsigned long writtenBytes;
 	WriteFile(this->implData->comPortHandle, buffer, bufferLength, &writtenBytes, NULL);
 	return writtenBytes;
