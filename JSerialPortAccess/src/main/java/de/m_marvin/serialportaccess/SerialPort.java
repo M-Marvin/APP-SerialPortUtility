@@ -183,7 +183,7 @@ public class SerialPort {
 	}
 	
 	public SerialPortOutputStream getOutputStream(int bufferSize) {
-		return new SerialPortOutputStream(null, bufferSize);
+		return new SerialPortOutputStream(this, bufferSize);
 	}
 	
 	public SerialPortOutputStream getOutputStream() {
