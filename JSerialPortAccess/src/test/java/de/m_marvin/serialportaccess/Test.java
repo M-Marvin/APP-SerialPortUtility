@@ -24,7 +24,7 @@ public class Test {
 		// TODO crash when no connection to port ?
 		int transmitted = port.writeData(new byte[] {'A', 'a', 'b'});
 		System.out.println(port.isOpen());
-		byte[] received = port.readDataConsecutive(3, 500, 1000);
+		byte[] received = port.readDataConsecutive(256, 100, 1000);
 		System.out.println("Transmitted " + transmitted);
 		System.out.println("Received " + received.length);
 		
