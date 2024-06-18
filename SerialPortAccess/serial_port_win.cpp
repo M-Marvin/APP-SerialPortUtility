@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <windows.h>
 
+// FIXME Update with code from ADB Project
+
 struct SerialPortImplData {
 	DCB comPortState;
 	COMMTIMEOUTS comPortTimeouts;
