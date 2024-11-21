@@ -110,7 +110,7 @@ public class SerialPort {
 	 * If after receptionWaitTimeout milliseconds no bytes could be received, null is returned.
 	 * Returns the read bytes as string, or null if no bytes could be read.
 	 * @param bufferSize The max bytes that can be read in on go
-	 * @param receptionLoopDelay The number of milliseconds to wait between each read operation
+	 * @param consecutiveDelay The number of milliseconds to wait between each read operation
 	 * @param receptionWaitTimeout The number of milliseconds to wait for the first byte
 	 * @return The String value of the bytes or null if nothing could be read
 	 */
