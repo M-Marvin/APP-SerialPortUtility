@@ -93,7 +93,7 @@ void SerialPort::setBaud(int baud)
 
 int SerialPort::getBaud()
 {
-	if (this->implData->comPortHandle == INVALID_HANDLE_VALUE) return -1;
+	if (this->implData->comPortHandle == INVALID_HANDLE_VALUE) return 0;
 	GetCommState(this->implData->comPortHandle, &this->implData->comPortState);
 	return this->implData->comPortState.BaudRate;
 }
@@ -110,7 +110,7 @@ unsigned long SerialPort::readBytes(char* buffer, unsigned long bufferCapacity)
 {
 	if (this->implData->comPortHandle == INVALID_HANDLE_VALUE) return 0;
 	unsigned long receivedBytes = 0;
-	if (!ReadFile(this->implData->comPortHandle, buffer, bufferCapacity, &receivedBytes, NULL)) return -1;
+	if (!ReadFile(this->implData->comPortHandle, buffer, bufferCapacity, &receivedBytes, NULL)) return 0;
 	return receivedBytes;
 }
 

@@ -114,10 +114,10 @@ void SerialPort::setBaud(int baud)
 
 int SerialPort::getBaud()
 {
-	if (this->implData->comPortHandle < 0) return -1;
+	if (this->implData->comPortHandle < 0) return 0;
 	if (tcgetattr(this->implData->comPortHandle, &this->implData->comPortState)!= 0) {
 		printf("Error %i from getBaud: %s\n", errno, strerror(errno));
-		return -1;
+		return 0;
 	}
 
 	int baud;
@@ -139,7 +139,7 @@ int SerialPort::getBaud()
 	case B19200: baud = 19200; break;
 	case B38400: baud = 38400; break;
 	default: {
-			baud = -1;
+			baud = 0;
 			printf("Baud set to an unknown value!");
 		}
 	}

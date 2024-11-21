@@ -109,6 +109,9 @@ public class Test {
 			return -1;
 		}
 		
+		System.out.println("try read port");
+		port.readData();
+		
 		System.out.println("--- COMPLETED, NO ERRORS ---");
 		
 		return 1;
