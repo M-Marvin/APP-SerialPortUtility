@@ -1,70 +1,117 @@
 package de.m_marvin.serialportaccess;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+
 public class Test {
 	
-	public static void main(String... args) throws InterruptedException {
-		
-		Test test = new Test();
-		test.run();
-		
+	public static void main(String... args) throws InterruptedException, IOException {
+		System.exit(run());
 	}
 	
-	public void run() throws InterruptedException {
+	public static int run() throws InterruptedException, IOException {
 		
-		SerialPort port;
+		BufferedReader cli = new BufferedReader(new InputStreamReader(System.in));
 		
-		port = new SerialPort("COM5");
+		System.out.print("Enter loopback port for testing: ");
+		String portName = cli.readLine();
+		
+		System.out.println("--- " + portName + " ---");
+		
+		System.out.println("create SerialPort classes.");
+		SerialPort port = new SerialPort(portName);
+		SerialPort port2 = new SerialPort(portName);
+
+		System.out.println("check is open");
+		if (port.isOpen()) {
+			System.err.println("failed, should return false!");
+			return -1;
+		}
+		
+		System.out.println("open port");
 		if (!port.openPort()) {
-			System.err.println("Failed to open port, following commands should immediatly return error-values!");
+			System.err.println("failed, either port not available or lib not functional!");
+			return -1;
 		}
 		
+		System.out.println("open port again");
+		if (port.openPort()) {
+			System.err.println("failed, should return false since port already open!");
+			return -1;
+		}
+
+		System.out.println("open port again with other instance");
+		if (port2.openPort()) {
+			System.err.println("failed, should return false since different port instance!");
+			return -1;
+		}
+		
+		System.out.println("check is open");
+		if (!port.isOpen()) {
+			System.err.println("failed, should return true!");
+			return -1;
+		}
+		
+		System.out.println("try open port again");
+		if (port.openPort()) {
+			System.err.println("failed, this should not work!");
+			return -1;
+		}
+		
+		System.out.println("configure port baud");
 		port.setBaud(9600);
+
+		System.out.println("configure port timeouts");
 		port.setTimeouts(500, 500);
+
+		System.out.println("write test data");
+		String data = "1234567890987654321\nABCDEFGHIJKLMNOPQRSTUVWXYZ\n";
+		port.writeString(data);
+		Thread.sleep(1000);
 		
-		// TODO crash when no connection to port ?
-		int transmitted = port.writeData(new byte[] {'A', 'a', 'b'});
-		System.out.println(port.isOpen());
-		byte[] received = port.readDataConsecutive(256, 100, 1000);
-		System.out.println("Transmitted " + transmitted);
-		System.out.println("Received " + received.length);
-		
-		for (int i = 0; i < received.length; i ++) {
-			System.out.println((char) received[i]);
+		System.out.println("read back data");
+		String readBack = port.readString();
+		if (!readBack.equals(data)) {
+			System.out.println("missmatch:\nsend:\t" + data + "\nread:\t" + readBack);
 		}
 		
-		port.getBaud();
+		System.out.println("send test data");
+		port.writeString(data);
+		Thread.sleep(1000);
 		
-		System.out.println("IS PORT OPEN: " + port.isOpen());
+		System.out.println("read back consecutive data");
+		String readBack2 = port.readString();
+		if (!readBack2.equals(data)) {
+			System.out.println("missmatch:\nsend:\t" + data + "\nread:\t" + readBack2);
+		}
 		
+		System.out.println("make streams");
+		InputStream in = port.getInputStream();
+		OutputStream out = port.getOutputStream();
+
+		System.out.println("send test data");
+		out.write(data.getBytes());
+		Thread.sleep(1000);
 		
-		System.out.println("TEST CONSECUTIVE TIMEOUT: 2 Seconds");
-		System.out.println("READ RETURNED: " + port.readStringConsecutive(256, 100, 2000));
-		System.out.println("TIMED OUT");
+		System.out.println("read back data");
+		String readBack3 = new String(in.readNBytes(data.length()));
+		if (!readBack3.equals(data)) {
+			System.out.println("missmatch:\nsend:\t" + data + "\nread:\t" + readBack3);
+		}
 		
-//		int i = 0;
-//		while (i++ < 100)  {
-//
-//			int written = port.writeString("config dump 0 \r");
-//			System.out.println(port.readString());
-//			System.out.println("-----");
-//			
-//			System.out.println(port.isOpen() + " " + written);
-//			
-//			Thread.sleep(100);
-//		}
-		
-//		port.writeString("control stop 0\r");
-//		System.out.println(port.readStringBurst());
-//		//Thread.sleep(4000);
-//		port.writeString("control down 0\r");
-//		System.out.println(port.readStringBurst());
-//		//Thread.sleep(4000);
-//		port.writeString("control stop 0\r");
-//		System.out.println(port.readStringBurst());
-		
+		System.out.println("close port");
 		port.closePort();
-		port.dispose();
-		System.out.println("END");
+		if (port.isOpen()) {
+			System.err.println("failed, this should be close the port!");
+			return -1;
+		}
+		
+		System.out.println("--- COMPLETED, NO ERRORS ---");
+		
+		return 1;
 		
 	}
 	

@@ -52,14 +52,14 @@ int main(int argc, const char** argv) {
 	port = new SerialPort(portName);
 
 	if (!port->openPort()) {
-		printf("failed to open to port!\n");
+		printf("failed to open port!\n");
 		return -1;
 	}
 
 	port->setBaud(baud);
 	port->setTimeouts(100, 100);
 
-	printf("\n");
+	printf("== command not send until enter is typed ==\n");
 
 	/* loop start */
 
@@ -86,7 +86,7 @@ int main(int argc, const char** argv) {
 
 	// TODO stop command ?
 
-	shouldTerminate = false;
+	shouldTerminate = true;
 	receptionThread.join();
 	transmitionThread.join();
 
