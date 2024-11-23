@@ -57,11 +57,10 @@ public class SerialPortInputStream extends InputStream {
 			if (this.buffer == null || this.bufferPtr == this.buffer.length) {
 				if (!this.serialPort.isOpen()) throw new IOException("lost connection on serial port " + this.serialPort.toString());
 				this.buffer = this.serialPort.readDataConsecutive(this.bufferSize, this.consecutiveDelay, this.receptionTimeout);
-				if (this.buffer != null && this.buffer.length > 0) {
+				if (this.buffer != null && this.buffer.length > 0)
 					this.bufferPtr = 0;
-				} else {
+				else
 					return false;
-				}
 			}
 			return true;
 		} else {
@@ -71,7 +70,7 @@ public class SerialPortInputStream extends InputStream {
 				if (this.buffer != null && this.buffer.length > 0)
 					this.bufferPtr = 0;
 				else
-					try { Thread.sleep(100); } catch (InterruptedException e) {}
+					return false;
 			}
 			return true;
 		}
