@@ -5,6 +5,8 @@
  *      Author: marvi
  */
 
+#include "soeserver.h"
+
 #include <stdio.h>
 #include <iostream>
 #include <string.h>
@@ -14,15 +16,14 @@
 #include <vector>
 #include <mutex>
 #include <algorithm>
-#include "serial_over_ethernet.h"
+#include "soeimpl.h"
 
 #define DEFAULT_SOE_PORT 26
 
 using namespace std;
 
 Socket listenSocket;
-mutex handlersm;
-vector<thread*> handlers = vector<thread*>();
+vector<SOEClient*> clients = vector<SOEClient*>();
 
 int main(int argn, const char** argv) {
 
@@ -57,25 +58,14 @@ int main(int argn, const char** argv) {
 		return -1;
 	}
 
-	// Wait for incoming requests until termination is requested (usually never)
-	while (listenSocket.isOpen()) {
-
-		// Accept incoming connections
-		Socket* clientSocket = new Socket();
-		if (!listenSocket.accept(*clientSocket)) {
-			delete clientSocket;
-			continue;
-		}
-
-		// Start new client handler
-		startNewHandler(clientSocket);
-
-	}
+	handleClientReception();
 
 	// Close server port
 	listenSocket.close();
 
-	while (handlers.size() > 0);
+	// Wait for all clients to terminate
+	while (clients.size() > 0)
+		cleanupClosedClients();
 
 	// Cleanup and exit
 	InetCleanup();
@@ -89,38 +79,36 @@ void shutdown() {
 	listenSocket.close();
 }
 
-void startNewHandler(Socket* socket) {
-	handlersm.lock();
-	thread* handlerThread = new thread([handlerThread, socket]() -> void {
-		clientHandle(*socket);
-		socket->close();
-		delete socket;
-		handlersm.lock();
-		handlers.erase(remove(handlers.begin(), handlers.end(), handlerThread));
-		handlersm.unlock();
+void cleanupClosedClients() {
+
+	// Cleanup and set to NULL all close/inactive clients
+	for_each(clients.begin(), clients.end(), [](SOEClient* &client) -> void {
+		if (!client->isActive()) {
+			delete client;
+			client = 0;
+		}
 	});
-	handlers.push_back(handlerThread);
-	handlersm.unlock();
+
+	// Delete all NULL entries from the list of clients
+	clients.erase(remove(clients.begin(), clients.end(), (SOEClient*) 0), clients.end());
+
 }
 
-void clientHandle(Socket &socket) {
-	char receptionBuffer[256];
-	while (socket.isOpen()) {
+void handleClientReception() {
+	while (listenSocket.isOpen()) {
 
-		memset(receptionBuffer, 0, 256);
-
-		unsigned int received = 0;
-		if (!socket.receive(receptionBuffer, 256, &received)) {
-			printf("failed to receive data from client socket!\n");
-			break;
+		// Accept incoming connections
+		Socket* clientSocket = new Socket();
+		if (!listenSocket.accept(*clientSocket)) {
+			delete clientSocket;
+			continue;
 		}
 
-		if (!socket.isOpen()) break;
+		cleanupClosedClients();
 
-		printf("received: %s\n", receptionBuffer);
-
-		// ECHO BACK TEST
-		socket.send(receptionBuffer, received);
+		// Start new client handler
+		SOEClient* client = new SOEClient(*clientSocket);
+		clients.push_back(client);
 
 	}
 }
