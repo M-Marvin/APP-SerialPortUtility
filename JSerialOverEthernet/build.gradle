@@ -1,0 +1,41 @@
+
+apply plugin: 'java-library'
+apply plugin: 'maven-publish'
+
+version = '1.0'
+
+// Add additional content to the manifest
+tasks.named('jar') {
+    manifest {
+        attributes('Implementation-Title': project.name,
+                   'Implementation-Version': version,
+                   'Author': 'M_Marvin')
+    }
+}
+
+java {
+	sourceCompatibility = "1.17"
+	targetCompatibility = "1.17"
+    withSourcesJar()
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/m-marvin/library-serialportaccess")
+            credentials {
+                username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+                password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+    publications {
+        maven(MavenPublication) {
+            groupId = 'de.m_marvin.serialportaccess'
+        	artifactId = "jserialoverethernet"
+        	
+			from components.java
+        }
+    }
+}

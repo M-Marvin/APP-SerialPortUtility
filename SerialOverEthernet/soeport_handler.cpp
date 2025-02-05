@@ -28,19 +28,30 @@ SOEPort::SOEPort(SOEClient* client, SerialPort &port, const char* portName) {
 	this->thread_tx = thread([this]() -> void {
 		handlePortTX();
 	});
+	this->thread_rx = thread([this]() -> void {
+		handlePortRX();
+	});
 }
 
 SOEPort::~SOEPort() {
 	this->port->closePort();
 	this->tx_waitm.unlock();
 	this->thread_tx.join();
+	this->thread_rx.join();
 	delete this->port;
+}
+
+bool SOEPort::isOpen() {
+	return this->port->isOpen();
 }
 
 bool SOEPort::send(unsigned int txid, const char* buffer, size_t length) {
 
 	// Do not insert any data if this port is shutting down
 	if (!this->port->isOpen()) return false;
+
+	// Ignore packages which txid is "in the past"
+	if (txid < this->next_txid && this->next_txid - txid < 0x7FFFFFFF) return false;
 
 	// Copy payload bytes and insert in tx stack at txid
 	char* stackBuffer = new char[length];
@@ -53,6 +64,18 @@ bool SOEPort::send(unsigned int txid, const char* buffer, size_t length) {
 	this->tx_waitm.unlock();
 
 	return true;
+
+}
+
+bool SOEPort::read(unsigned int* rxid, const char** buffer, size_t* length) {
+
+	// Nothing to send if port is closed
+	if (!this->port->isOpen()) return false;
+
+	// Check if payload available
+	if (this->rx_stack.size() == 0) return false;
+
+
 
 }
 
@@ -95,4 +118,36 @@ void SOEPort::handlePortTX() {
 		delete[] entry->second.second;
 	}
 	this->tx_stack.clear();
+}
+
+void SOEPort::handlePortRX() {
+	char* payload = new char[SERIAL_RX_BUF];
+	while (this->port->isOpen() && this->client->isActive()) {
+
+		// Wait for more payload
+		size_t received = this->port->readBytes(payload, SERIAL_RX_BUF);
+
+		// Continue if nothing was received
+		if (received == 0) continue;
+
+		// Put payload on reception stack
+		this->rx_stackm.lock();
+		this->rx_stack[this->next_rxid++] = pair(received, payload);
+		this->rx_stackm.unlock();
+
+		// Allocate buffer for next payload
+		payload = new char[SERIAL_RX_BUF];
+
+		printf("DEBUG: rx stack count: %llu len: %llu\n", this->rx_stack.size(), received);
+
+	}
+
+	// Delete payload buffer
+	delete[] payload;
+
+	// Delete rx stack
+	for (auto entry = this->rx_stack.begin(); entry != this->rx_stack.end(); entry++) {
+		delete[] entry->second.second;
+	}
+	this->rx_stack.clear();
 }

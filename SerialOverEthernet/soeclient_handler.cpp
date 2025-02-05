@@ -14,17 +14,6 @@
 
 using namespace std;
 
-#define INET_RX_BUF 1024
-
-#define OPC_ERROR 0x0
-#define OPC_OPEN 0x1
-#define OPC_OPENED 0x2
-#define OPC_CLOSE 0x3
-#define OPC_CLOSED 0x4
-#define OPC_STREAM 0x5
-#define OPC_TX_CONFIRM 0x6
-#define OPC_RX_CONFIRM 0x7
-
 // Initializes a new client handler for the supplied network socket
 SOEClient::SOEClient(Socket &socket) {
 	this->socket = &socket;
@@ -35,6 +24,7 @@ SOEClient::SOEClient(Socket &socket) {
 
 	this->op_code = -1;
 	this->pckg_len = 0;
+	this->pckg_buf = 0;
 }
 
 // Shuts down the client handler and frees all resources (including ports opened by the client)
@@ -197,6 +187,7 @@ void SOEClient::handleClientRX() {
 					delete port;
 					break;
 				}
+				port->setTimeouts(SERIAL_RX_TIMEOUT, SERIAL_TX_TIMEOUT);
 				SOEPort* portHandler = new SOEPort(this, *port, portName);
 				this->ports[string(portName)] = portHandler;
 
@@ -226,7 +217,7 @@ void SOEClient::handleClientRX() {
 
 				// Check port name length
 				if (portStrLen > this->pckg_recv) {
-					sendError(NULL, "received invalid OPEN payload");
+					sendError(NULL, "received invalid CLOSE payload");
 					break;
 				}
 
@@ -236,16 +227,16 @@ void SOEClient::handleClientRX() {
 
 				// Attempt to close port
 				string sPortName = string(portName);
-				SOEPort* portHandler = this->ports[sPortName];
-				if (portHandler != 0) {
+				try {
+					SOEPort* portHandler = this->ports.at(sPortName);
 					delete portHandler;
 					this->ports.erase(sPortName);
-				} else {
+				} catch (out_of_range &e) {
 					sendError(portName, "port not claimed");
 					break;
 				}
 
-				printf("close port: %s\n", portName);
+				printf("DEBUG: close port: %s\n", portName);
 
 				// Confirm that the port has been closed
 				if (!sendClaimStatus(false, portName)) {
@@ -294,11 +285,9 @@ void SOEClient::handleClientRX() {
 					break;
 				}
 
-				// Put remaining payload on transmission stack
-				const char* payload = this->pckg_buf + 6 + portStrLen;
-				size_t payloadLen = this->pckg_recv - 6 - portStrLen;
-				if (!portHandler->send(txid, payload, payloadLen)) {
-					sendError(portName, "port no longer available");
+				// Check if port was closed unexpectedly
+				if (!portHandler->isOpen()) {
+					sendError(portName, "port is already closed");
 
 					// Close port
 					delete portHandler;
@@ -308,12 +297,18 @@ void SOEClient::handleClientRX() {
 					break;
 				}
 
-				printf("queued payload: %s [%d] %llu\n", portName, txid, payloadLen);
+				// Put remaining payload on transmission stack
+				const char* payload = this->pckg_buf + 6 + portStrLen;
+				size_t payloadLen = this->pckg_recv - 6 - portStrLen;
+				if (!portHandler->send(txid, payload, payloadLen)) {
+					sendError(portName, "invalid transmission data");
+					break;
+				}
 
+				printf("DEBUG: queued payload: %s [%d] %llu\n", portName, txid, payloadLen);
 				// TX CONFIRM is send after the data is transfered from the stack to the serial port!
 				break;
 			}
-
 			default:
 				sendError(NULL, "received invalid control frame");
 			}
@@ -338,7 +333,7 @@ void SOEClient::handleClientRX() {
 
 	// Free payload buffer
 	if (this->pckg_buf != 0) {
-		delete this->pckg_buf; // free(this->pckg_buf);
+		delete[] this->pckg_buf; // free(this->pckg_buf);
 		this->pckg_buf = 0;
 	}
 
