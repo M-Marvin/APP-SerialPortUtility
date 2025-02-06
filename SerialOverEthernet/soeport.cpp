@@ -7,9 +7,11 @@
 
 #include <corecrt.h>
 #include <serial_port.h>
+#include <cstdio>
 #include <cwchar>
 #include <map>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <utility>
@@ -22,9 +24,7 @@ SOEPort::SOEPort(SOEClient* client, SerialPort &port, const char* portName) {
 	this->portName = string(portName);
 	this->client = client;
 	this->port = &port;
-	this->tx_stack = map<unsigned int, pair<size_t, char*>>();
-	this->tx_waitm.lock();
-	this->next_txid = 0;
+
 	this->thread_tx = thread([this]() -> void {
 		handlePortTX();
 	});
@@ -35,7 +35,8 @@ SOEPort::SOEPort(SOEClient* client, SerialPort &port, const char* portName) {
 
 SOEPort::~SOEPort() {
 	this->port->closePort();
-	this->tx_waitm.unlock();
+	{ unique_lock<mutex> lock(this->tx_waitm); } // TODO do we need this ?
+	this->tx_waitc.notify_all();
 	this->thread_tx.join();
 	this->thread_rx.join();
 	delete this->port;
@@ -56,12 +57,14 @@ bool SOEPort::send(unsigned int txid, const char* buffer, size_t length) {
 	// Copy payload bytes and insert in tx stack at txid
 	char* stackBuffer = new char[length];
 	memcpy(stackBuffer, buffer, length);
-	this->tx_stackm.lock();
-	this->tx_stack[txid] = pair(length, stackBuffer);
-	this->tx_stackm.unlock();
+	{
+		lock_guard<mutex> lock(this->tx_stackm);
+		this->tx_stack[txid] = pair<size_t, char*>(length, stackBuffer);
+	}
 
 	// Notify about new data
-	this->tx_waitm.unlock();
+	{ unique_lock<mutex> lock(this->tx_waitm); }
+	this->tx_waitc.notify_all();
 
 	return true;
 
@@ -72,19 +75,45 @@ bool SOEPort::read(unsigned int* rxid, const char** buffer, size_t* length) {
 	// Nothing to send if port is closed
 	if (!this->port->isOpen()) return false;
 
-	// Check if payload available
-	if (this->rx_stack.size() == 0) return false;
+	// Abort if no data available
+	if (this->first_rxid == this->next_rxid) return false;
 
+	// Get element from rx stack
+	*rxid = this->first_rxid;
+	try {
+		pair<size_t, char*> stackEntry = this->rx_stack.at(*rxid);
+		*buffer = stackEntry.second;
+		*length = stackEntry.first;
+		this->first_rxid++;
+		return true;
+	} catch (out_of_range &e) {
+		return false;
+	}
 
+}
+
+void SOEPort::confirmReception(unsigned int rxid) {
+
+	// Delete entry from payload stack
+	lock_guard<mutex> lock(this->rx_stackm);
+	if (this->rx_stack.find(rxid) != this->rx_stack.end()) {
+		this->rx_stack.erase(rxid);
+	}
 
 }
 
 void SOEPort::handlePortTX() {
+	// Init tx variables
+	this->tx_stack = map<unsigned int, pair<size_t, char*>>();
+	this->next_txid = 0;
+
+	// Start tx loop
 	while (this->port->isOpen() && this->client->isActive()) {
 
 		// If not available, wait for more data
 		if (this->tx_stack.find(this->next_txid) == this->tx_stack.end()) {
-			this->tx_waitm.lock();
+			unique_lock<mutex> lock(this->tx_waitm);
+			this->tx_waitc.wait(lock);
 			continue;
 		}
 
@@ -92,10 +121,11 @@ void SOEPort::handlePortTX() {
 		pair<size_t, char*> stackEntry = this->tx_stack.at(this->next_txid);
 
 		// Remove entry from tx stack and increment last txid
-		this->tx_stackm.lock();
-		this->tx_stack.erase(next_txid);
-		this->next_txid++;
-		this->tx_stackm.unlock();
+		{
+			lock_guard<mutex> lock(this->tx_stackm);
+			this->tx_stack.erase(next_txid);
+			this->next_txid++;
+		}
 
 		// Transmit and delete data over serial
 		unsigned long transmited = this->port->writeBytes(stackEntry.second, stackEntry.first);
@@ -121,6 +151,12 @@ void SOEPort::handlePortTX() {
 }
 
 void SOEPort::handlePortRX() {
+	// Init rx variables
+	this->first_rxid = 0;
+	this->next_rxid = 0;
+	this->rx_stack = map<unsigned int, pair<size_t, char*>>();
+
+	// Start rx loop
 	char* payload = new char[SERIAL_RX_BUF];
 	while (this->port->isOpen() && this->client->isActive()) {
 
@@ -131,14 +167,20 @@ void SOEPort::handlePortRX() {
 		if (received == 0) continue;
 
 		// Put payload on reception stack
-		this->rx_stackm.lock();
-		this->rx_stack[this->next_rxid++] = pair(received, payload);
-		this->rx_stackm.unlock();
+		{
+			lock_guard<mutex> lock(this->rx_stackm);
+			this->rx_stack[this->next_rxid++] = pair<size_t, char*>(received, payload);
+		}
 
 		// Allocate buffer for next payload
 		payload = new char[SERIAL_RX_BUF];
 
+#ifdef DEBUG_PRINTS
 		printf("DEBUG: rx stack count: %llu len: %llu\n", this->rx_stack.size(), received);
+#endif
+
+		// Notify client TX thread that new data is available
+		this->client->notifySerialData();
 
 	}
 

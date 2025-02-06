@@ -21,16 +21,18 @@ SOEClient::SOEClient(Socket &socket) {
 	this->thread_rx = thread([this]() -> void {
 		this->handleClientRX();
 	});
-
-	this->op_code = -1;
-	this->pckg_len = 0;
-	this->pckg_buf = 0;
+	this->thread_tx = thread([this]() -> void {
+		this->handleClientTX();
+	});
 }
 
 // Shuts down the client handler and frees all resources (including ports opened by the client)
 SOEClient::~SOEClient() {
 	this->socket->close();
+	{ unique_lock<mutex> lock(this->tx_waitm); }
+	this->tx_waitc.notify_all();
 	this->thread_rx.join();
+	this->thread_tx.join();
 	delete this->socket;
 }
 
@@ -39,8 +41,59 @@ bool SOEClient::isActive() {
 	return this->socket->isOpen();
 }
 
+void SOEClient::handleClientTX() {
+
+	// Start tx loop
+	while (this->socket->isOpen()) {
+
+		bool dataAvailable = false;
+		for (auto entry = this->ports.begin(); entry != this->ports.end(); entry++) {
+
+			// Request data from stack
+			unsigned int rxid = 0;
+			const char* payload = 0;
+			size_t length = 0;
+			if (!entry->second->read(&rxid, &payload, &length))
+				continue;
+
+			// Send payload stream frame
+			if (!sendStream(entry->first.c_str(), rxid, payload, length)) {
+				sendError(entry->first.c_str(), "failed to transmit STREAM frame, close port");
+
+				// Close port
+				delete entry->second;
+				this->ports.erase(entry->first);
+				sendClaimStatus(false, entry->first.c_str());
+			}
+
+			dataAvailable = true;
+		}
+
+		// If no data available, wait for more
+		if (!dataAvailable) {
+			unique_lock<mutex> lock(this->tx_waitm);
+			this->tx_waitc.wait(lock);
+		}
+
+	}
+
+}
+
+void SOEClient::notifySerialData() {
+	{ unique_lock<mutex> lock(this->tx_waitm); }
+	this->tx_waitc.notify_all();
+}
+
 // Handles the incoming network requests
 void SOEClient::handleClientRX() {
+
+	// Setup rx variables
+	this->op_code = -1;
+	this->pckg_buf = 0;
+	this->pckg_len = 0;
+	this->pckg_recv = 0;
+
+	// Start rx loop
 	char rxbuf[INET_RX_BUF];
 	unsigned int received = 0;
 	while (this->socket->isOpen()) {
@@ -53,8 +106,6 @@ void SOEClient::handleClientRX() {
 
 		// Exit if the socket was closed
 		if (!socket->isOpen()) break;
-
-		printf("DEBUG: received: %d\n", received);
 
 		// If no frame is currently being received, start new frame
 		if (this->op_code == -1) {
@@ -84,8 +135,6 @@ void SOEClient::handleClientRX() {
 				this->pckg_len |= (rxbuf[1] & 0xFF) << 24;
 			}
 
-			printf("DEBUG: frame start: opc %d len %u\n", this->op_code, this->pckg_len);
-
 			// Allocate buffer for payload
 			this->pckg_buf = new char[this->pckg_len]; //(char*) malloc(this->pckg_len);
 			if (this->pckg_buf == 0) {
@@ -104,8 +153,6 @@ void SOEClient::handleClientRX() {
 			// Copy received payload
 			memcpy(this->pckg_buf, rxbuf + (this->pckg_len > 30 ? 5 : 1), rempcklen);
 			this->pckg_recv = rempcklen;
-
-			printf("DEBUG: D %u - %u\n", received, rempcklen + headerLen);
 
 			// Data of next frame remaining, move to front and process later
 			unsigned int reminder = received - rempcklen - headerLen;
@@ -145,8 +192,6 @@ void SOEClient::handleClientRX() {
 
 		// Check if all payload was received
 		if (this->pckg_recv >= this->pckg_len) {
-
-			printf("DEBUG: received payload: %u\n", this->pckg_recv);
 
 			switch (this->op_code) {
 			case OPC_OPEN: {
@@ -191,8 +236,6 @@ void SOEClient::handleClientRX() {
 				SOEPort* portHandler = new SOEPort(this, *port, portName);
 				this->ports[string(portName)] = portHandler;
 
-				printf("DEBUG: open port: %d %s\n", portBaud, portName);
-
 				// Confirm that the port has been opened, close port if this fails, to avoid unused open ports
 				if (!sendClaimStatus(true, portName)) {
 					sendError(portName, "failed to complete OPENED confirmation, close port");
@@ -236,8 +279,6 @@ void SOEClient::handleClientRX() {
 					break;
 				}
 
-				printf("DEBUG: close port: %s\n", portName);
-
 				// Confirm that the port has been closed
 				if (!sendClaimStatus(false, portName)) {
 					// If the error report fails too ... don't care at this point ...
@@ -261,7 +302,7 @@ void SOEClient::handleClientRX() {
 
 				// Check port name length
 				if (portStrLen > this->pckg_recv) {
-					sendError(NULL, "received invalid OPEN payload");
+					sendError(NULL, "received invalid STREAM payload");
 					break;
 				}
 
@@ -305,8 +346,59 @@ void SOEClient::handleClientRX() {
 					break;
 				}
 
-				printf("DEBUG: queued payload: %s [%d] %llu\n", portName, txid, payloadLen);
+#ifdef DEBUG_PRINTS
+				printf("DEBUG: queued payload: %s [tx %d] %llu\n", portName, txid, payloadLen);
+#endif
+
 				// TX CONFIRM is send after the data is transfered from the stack to the serial port!
+				break;
+			}
+			case OPC_RX_CONFIRM: {
+
+				// Check payload length
+				if (this->pckg_len < 6) {
+					sendError(NULL, "received incomplete RX_CONFIRM control frame");
+					break;
+				}
+
+				// Decode port name length
+				unsigned short portStrLen =
+						(this->pckg_buf[0] & 0xFF) << 8 |
+						(this->pckg_buf[1] & 0xFF) << 0;
+
+				// Check port name length
+				if (portStrLen > this->pckg_recv) {
+					sendError(NULL, "received invalid RX_CONFIRM payload");
+					break;
+				}
+
+				// Decode port name string
+				char portName[portStrLen + 1] = {0};
+				memcpy(portName, this->pckg_buf + 2, portStrLen);
+
+				// Decode transmission id
+				unsigned int rxid =
+						(this->pckg_buf[2 + portStrLen] & 0xFF) << 24 |
+						(this->pckg_buf[3 + portStrLen] & 0xFF) << 16 |
+						(this->pckg_buf[4 + portStrLen] & 0xFF) << 8 |
+						(this->pckg_buf[5 + portStrLen] & 0xFF) << 0;
+
+				// Attempt to get port
+				SOEPort* portHandler = 0;
+				try {
+					portHandler = this->ports.at(string(portName));
+				} catch (const std::out_of_range& e) {
+					sendError(portName, "port not claimed");
+					break;
+				}
+
+				// Confirm reception
+				portHandler->confirmReception(rxid);
+
+#ifdef DEBUG_PRINTS
+				printf("DEBUG: rx confirm: %s [rx %d]\n", portName, rxid);
+#endif
+
 				break;
 			}
 			default:
@@ -427,6 +519,12 @@ bool SOEClient::sendClaimStatus(bool claimed, const char* portName) {
 	buffer[1] = (portLen >> 0) & 0xFF;
 	memcpy(buffer + 2, portName, portLen);
 
+	if (claimed) {
+		printf("opened port: %s\n", portName);
+ 	} else {
+ 		printf("closed port: %s\n", portName);
+ 	}
+
 	// Transmit payload in OPENED or ERROR frame
 	return sendFrame(claimed ? OPC_OPENED : OPC_CLOSED, buffer, payloadLen);
 
@@ -458,5 +556,37 @@ bool SOEClient::sendTransmissionConfirm(const char* portName, unsigned int txid)
 
 	// Transmit payload in OPENED or ERROR frame
 	return sendFrame(OPC_TX_CONFIRM, buffer, payloadLen);
+
+}
+
+// Send payload stream frame
+bool SOEClient::sendStream(const char* portName, unsigned int rxid, const char* payload, size_t length) {
+
+	if (!this->socket->isOpen()) return false;
+
+	// Get port name length
+	unsigned int portLen = strlen(portName);
+	if (portLen > 0xFFFF) portLen = 0xFFFF;
+
+	// Allocate payload buffer
+	unsigned int payloadLen = 6 + portLen + length;
+	char buffer[payloadLen] = {0};
+
+	// Encode port name
+	buffer[0] = (portLen >> 8) & 0xFF;
+	buffer[1] = (portLen >> 0) & 0xFF;
+	memcpy(buffer + 2, portName, portLen);
+
+	// Encode rxid
+	buffer[2 + portLen] = (rxid >> 24) & 0xFF;
+	buffer[3 + portLen] = (rxid >> 16) & 0xFF;
+	buffer[4 + portLen] = (rxid >> 8) & 0xFF;
+	buffer[5 + portLen] = (rxid >> 0) & 0xFF;
+
+	// Copy payload in buffer
+	memcpy(buffer + 6 + portLen, payload, length);
+
+	// Transmit payload in STREAM frame
+	return sendFrame(OPC_STREAM, buffer, payloadLen);
 
 }

@@ -82,12 +82,12 @@ void shutdown() {
 void cleanupClosedClients() {
 
 	// Cleanup and set to NULL all close/inactive clients
-	for_each(clients.begin(), clients.end(), [](SOEClient* &client) -> void {
-		if (!client->isActive()) {
-			delete client;
-			client = 0;
+	for (auto client = clients.begin(); client != clients.end(); client ++) {
+		if (!(*client)->isActive()) {
+			delete (*client);
+			(*client) = 0;
 		}
-	});
+	}
 
 	// Delete all NULL entries from the list of clients
 	clients.erase(remove(clients.begin(), clients.end(), (SOEClient*) 0), clients.end());
@@ -100,9 +100,11 @@ void handleClientReception() {
 		// Accept incoming connections
 		Socket* clientSocket = new Socket();
 		if (!listenSocket.accept(*clientSocket)) {
+			printf("DEBUG: connect failed!\n");
 			delete clientSocket;
 			continue;
 		}
+		printf("DEBUG: new connection!\n");
 
 		cleanupClosedClients();
 
