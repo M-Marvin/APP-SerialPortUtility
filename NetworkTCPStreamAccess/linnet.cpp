@@ -1,40 +1,21 @@
-#ifdef PLATFORM_WINDOWS
+#ifdef PLATFORM_LINUX
 
 #include <stdio.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
 #include "network.h"
 
 bool InetInit() {
-
-	WSADATA wsaData;
-
-	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (result != 0) {
-		printf("WinSock2 startup failed: %d\n", result);
-		return false;
-	}
-
 	return true;
-
 }
 
-void InetCleanup() {
-
-	WSACleanup();
-
-}
-
-void printerror(const char* format, int error) {
-	char *s = NULL;
-	FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-			NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&s, 0, NULL);
-	printf(format, s);
-	LocalFree(s);
-}
+void InetCleanup() {}
 
 struct SocketImplData {
-	SOCKET handle;
+
 };
 
 Socket::Socket() {
@@ -50,11 +31,57 @@ Socket::~Socket() {
 	delete this->implData;
 }
 
+//int main(int argc, char *argv[])
+//{
+//     int sockfd, newsockfd, portno;
+//     socklen_t clilen;
+//     char buffer[256];
+//     struct sockaddr_in serv_addr, cli_addr;
+//     int n;
+//     if (argc < 2) {
+//         fprintf(stderr,"ERROR, no port provided\n");
+//         exit(1);
+//     }
+//     sockfd = socket(AF_INET, SOCK_STREAM, 0);
+//     if (sockfd < 0)
+//        error("ERROR opening socket");
+//     bzero((char *) &serv_addr, sizeof(serv_addr));
+//     portno = atoi(argv[1]);
+//     serv_addr.sin_family = AF_INET;
+//     serv_addr.sin_addr.s_addr = INADDR_ANY;
+//     serv_addr.sin_port = htons(portno);
+//     if (bind(sockfd, (struct sockaddr *) &serv_addr,
+//              sizeof(serv_addr)) < 0)
+//              error("ERROR on binding");
+//     listen(sockfd,5);
+//     clilen = sizeof(cli_addr);
+//     newsockfd = accept(sockfd,
+//                 (struct sockaddr *) &cli_addr,
+//                 &clilen);
+//     if (newsockfd < 0)
+//          error("ERROR on accept");
+//     bzero(buffer,256);
+//     n = read(newsockfd,buffer,255);
+//     if (n < 0) error("ERROR reading from socket");
+//     printf("Here is the message: %s\n",buffer);
+//     n = write(newsockfd,"I got your message",18);
+//     if (n < 0) error("ERROR writing to socket");
+//     close(newsockfd);
+//     close(sockfd);
+//     return 0;
+//}
+
 bool Socket::listen(unsigned int port) {
 	if (this->stype != UNBOUND) {
 		printf("tried to call listen() on already bound socket!\n");
 		return false;
 	}
+
+	// https://www.linuxhowtos.org/C_C++/socket.htm
+
+	socket(AF_INET, SOCK_STREAM, 0);
+
+
 
 	struct addrinfo *adrinf = NULL, *ptr = NULL, hints;
 	ZeroMemory(&hints, sizeof(hints));
@@ -171,6 +198,14 @@ bool Socket::connect(const char* host, unsigned int port) {
 		this->implData->handle = ::socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
 		if (this->implData->handle == INVALID_SOCKET) {
 			printerror("socket() failed: %s\n", WSAGetLastError());
+			continue;
+		}
+
+		result = ::bind(this->implData->handle, ptr->ai_addr, ptr->ai_addrlen);
+		if (result == SOCKET_ERROR) {
+			printerror("bind() failed: %s\n", WSAGetLastError());
+			::closesocket(this->implData->handle);
+			this->implData->handle = INVALID_SOCKET;
 			continue;
 		}
 

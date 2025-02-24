@@ -5,6 +5,8 @@
  *      Author: marvi
  */
 
+#ifdef SIDE_SERVER
+
 #include "soeserver.h"
 
 #include <stdio.h>
@@ -18,12 +20,10 @@
 #include <algorithm>
 #include "soeimpl.h"
 
-#define DEFAULT_SOE_PORT 26
-
 using namespace std;
 
 Socket listenSocket;
-vector<SOEClient*> clients = vector<SOEClient*>();
+vector<SOESocketHandler*> clients = vector<SOESocketHandler*>();
 
 int main(int argn, const char** argv) {
 
@@ -86,11 +86,12 @@ void cleanupClosedClients() {
 		if (!(*client)->isActive()) {
 			delete (*client);
 			(*client) = 0;
+			printf("DEBUG: connection closed!\n");
 		}
 	}
 
 	// Delete all NULL entries from the list of clients
-	clients.erase(remove(clients.begin(), clients.end(), (SOEClient*) 0), clients.end());
+	clients.erase(remove(clients.begin(), clients.end(), (SOESocketHandler*) 0), clients.end());
 
 }
 
@@ -109,8 +110,10 @@ void handleClientReception() {
 		cleanupClosedClients();
 
 		// Start new client handler
-		SOEClient* client = new SOEClient(*clientSocket);
+		SOESocketHandler* client = new SOESocketHandler(*clientSocket);
 		clients.push_back(client);
 
 	}
 }
+
+#endif

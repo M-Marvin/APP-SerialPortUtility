@@ -8,8 +8,6 @@
 #ifndef SOESERVER_H_
 #define SOESERVER_H_
 
-#include <network.h>
-
 void shutdown();
 void cleanupClosedClients();
 void handleClientReception();
