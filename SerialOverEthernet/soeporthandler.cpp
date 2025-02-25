@@ -56,14 +56,12 @@ bool SOEPortHandler::send(unsigned int txid, const char* buffer, unsigned long l
 	if (!this->port->isOpen()) return false;
 
 	// Ignore packages which txid is "in the past"
-	printf("txid in: %u txid next: %u \n", txid, this->next_txid);
 	if (txid < this->next_txid && this->next_txid - txid < 0x7FFFFFFF) {
-		printf("ERROR 2 txid in: %u txid next: %u \n", txid, this->next_txid);
 		return false;
 	}
 
 	// If tx stack has reached limit, abort operation, only make an exception if this is the next package that should be send
-	if (this->tx_stack.size() >= RX_STACK_LIMIT && txid != this->next_txid) return false;
+	if (this->tx_stack.size() >= SERIAL_RX_STACK_LIMIT && txid != this->next_txid) return false;
 
 	// Copy payload bytes and insert in tx stack at txid
 	char* stackBuffer = new char[length];
@@ -88,32 +86,30 @@ bool SOEPortHandler::read(unsigned int* rxid, const char** buffer, unsigned long
 	if (!this->port->isOpen()) return false;
 
 	// If rx stack at limit, reset rxid to last cached package to resend everything
-	if (this->rx_stack.size() >= RX_STACK_LIMIT && this->next_transmit_rxid == this->next_free_rxid) {
+	if (this->rx_stack.size() >= SERIAL_RX_STACK_LIMIT && this->next_transmit_rxid == this->next_free_rxid) {
 		if (this->is_repeating) {
 			this->is_repeating = false;
 			return false;
 		}
 
-		printf("REPEAT\n");
 		this->next_transmit_rxid = this->last_transmitted_rxid;
 		this->is_repeating = true;
 	}
 
-	// Abort if no data available
-	if (this->next_transmit_rxid == this->next_free_rxid) return false;
-
 	// Get element from rx stack
-	*rxid = this->next_transmit_rxid;
 	try {
-		pair<unsigned long, char*> stackEntry = this->rx_stack.at(*rxid);
+		lock_guard<mutex> lock(this->rx_stackm);
+		pair<unsigned long, char*> stackEntry = this->rx_stack.at(this->next_transmit_rxid);
+		if (stackEntry.first == 0) return false; // No more data
+		*rxid = this->next_transmit_rxid++;
 		*buffer = stackEntry.second;
 		*length = stackEntry.first;
-		this->next_transmit_rxid++;
+		if (this->next_free_rxid < this->next_transmit_rxid)
+			this->next_free_rxid = this->next_transmit_rxid;
 
-		printf("rxid out: %u \n", *rxid);
 		return true;
 	} catch (out_of_range &e) {
-		return false;
+		return false; // No more data
 	}
 
 }
@@ -125,6 +121,7 @@ void SOEPortHandler::confirmTransmission(unsigned int rxid) {
 
 	// Remove all packages before and including rxid
 	for (unsigned int i = this->last_transmitted_rxid; i != rxid + 1; i++) {
+		delete[] this->rx_stack[i].second;
 		this->rx_stack.erase(i);
 
 #ifdef DEBUG_PRINTS
@@ -194,55 +191,52 @@ void SOEPortHandler::handlePortTX() {
 }
 
 void SOEPortHandler::handlePortRX() {
+
 	// Init rx variables
-	this->next_transmit_rxid = 0;
 	this->next_free_rxid = 0;
+	this->next_transmit_rxid = 0;
 	this->last_transmitted_rxid = 0;
+	this->is_repeating = false;
 	this->rx_stack = map<unsigned int, pair<unsigned long, char*>>();
 
 	// Start rx loop
-	char* payload = new char[SERIAL_RX_BUF];
 	while (this->port->isOpen() && this->client->isActive()) {
 
-		// Wait for more payload
-		unsigned long received = this->port->readBytes(payload, SERIAL_RX_BUF);
-		//unsigned long received = this->port->readBytesConsecutive(payload, SERIAL_RX_BUF, SERIAL_CONSEC_DELAY, SERIAL_RX_TIMEOUT);
-
-		// Continue if nothing was received
-		if (received == 0) continue;
-
-		// Put payload on reception stack
+		// Try read payload from serial, append on next free rx stack entry
 		{
 			unique_lock<mutex> lock(this->rx_stackm);
+			pair<unsigned long, char*>& stackEntry = this->rx_stack[this->next_free_rxid];
 
-			// If rx stack exceeds buffer limit, hold reception ! THIS WILL CAUSE DATA LOSS, BUT THIS MEANS THERE IS SOMETHING WRONG WITH THE REMOTE LINK
-			if (this->rx_stack.size() >= RX_STACK_LIMIT && this->port->isOpen() && this->client->isActive()) {
-
+			// If entry if full, allocate new one, unles stack reached limit, then hold reception
+			if (stackEntry.first >= SERIAL_RX_ENTRY_LEN) {
+				if (this->rx_stack.size() >= SERIAL_RX_STACK_LIMIT) {
 #ifdef DEBUG_PRINTS
-				printf("DEBUG: %s rx stack limit reached, reception hold: %llu entries\n", this->portName.c_str(), this->rx_stack.size());
+					printf("DEBUG: %s rx stack limit reached, reception hold: %llu entries\n", this->portName.c_str(), this->rx_stack.size());
 #endif
-
-				this->rx_waitc.wait(lock, [this]() { return this->rx_stack.size() < RX_STACK_LIMIT || !(this->port->isOpen() && this->client->isActive()); });
+					this->rx_waitc.wait(lock, [this]() { return this->rx_stack.size() < SERIAL_RX_STACK_LIMIT || !(this->port->isOpen() && this->client->isActive()); });
+				}
+				stackEntry = this->rx_stack[++this->next_free_rxid];
 			}
 
-			// TODO better system: try add to last stack until the networking thread anounces that it is being transmitted, only then allocate new entry
-			this->rx_stack[this->next_free_rxid++] = pair<unsigned long, char*>(received, payload);
-		}
+			// If newly created entry, initialize first
+			if (stackEntry.second == 0) {
+				stackEntry.second = new char[SERIAL_RX_ENTRY_LEN] {0};
+			}
 
-		// Allocate buffer for next payload
-		payload = new char[SERIAL_RX_BUF];
+			unsigned long received = this->port->readBytes(stackEntry.second + stackEntry.first, SERIAL_RX_ENTRY_LEN - stackEntry.first);
 
 #ifdef DEBUG_PRINTS
-		printf("DEBUG: serial -> %s rx stack: [rx %u] size %llu len: %lu\n", this->portName.c_str(), this->next_free_rxid - 1, this->rx_stack.size(), received);
+			if (received != 0) printf("DEBUG: serial -> %s rx stack: [rx %u] size %llu len: %lu + %lu\n", this->portName.c_str(), this->next_free_rxid, this->rx_stack.size(), stackEntry.first, received);
 #endif
+
+			stackEntry.first += received;
+
+		}
 
 		// Notify client TX thread that new data is available
 		this->client->notifySerialData();
 
 	}
-
-	// Delete payload buffer
-	delete[] payload;
 
 	// Delete rx stack
 	for (auto entry = this->rx_stack.begin(); entry != this->rx_stack.end(); entry++) {

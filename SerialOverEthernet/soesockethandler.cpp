@@ -103,14 +103,15 @@ void SOESocketHandler::handleClientRX() {
 	this->pckg_buf = 0;
 	this->pckg_len = 0;
 	this->pckg_recv = 0;
-
-	// Start rx loop
 	char rxbuf[INET_RX_BUF];
 	unsigned int received = 0;
+
+	// Start rx loop
 	while (this->socket->isOpen()) {
 
-		// If no more data remaining, wait for new data from the network
+		// If no more data remaining from previous read, skip read now and process this data first
 		if (received == 0) {
+			// If no frame has started yet, ensure to read enough for the frame start header
 			if (this->op_code == -1) {
 				do {
 					unsigned int rxlen = 0;
@@ -120,6 +121,7 @@ void SOESocketHandler::handleClientRX() {
 					}
 					received += rxlen;
 				} while (received < FRAME_HEADER_LEN);
+			// Otherwise just read what is there and let the package handler decide if its enough to process
 			} else {
 				unsigned int missing = this->pckg_len - this->pckg_recv;
 				if (INET_RX_BUF < missing) missing = INET_RX_BUF;
@@ -130,17 +132,13 @@ void SOESocketHandler::handleClientRX() {
 			}
 		}
 
-		// Exit if the socket was closed
-		if (!socket->isOpen()) break;
-
-		// If no frame is currently being received, start new frame
+		// If no frame has started yet, start new frame
 		if (this->op_code == -1) {
 
 			// Decode op code
 			this->op_code = rxbuf[0];
 
 			// Decode payload length field
-			this->pckg_len = 0;
 			this->pckg_len = 0;
 			this->pckg_len |= (rxbuf[4] & 0xFF) << 0;
 			this->pckg_len |= (rxbuf[3] & 0xFF) << 8;
@@ -190,7 +188,7 @@ void SOESocketHandler::handleClientRX() {
 
 		}
 
-		// Check if all payload was received
+		// Check if all payload for current frame was received, then process
 		if (this->pckg_recv >= this->pckg_len) {
 
 			switch (this->op_code) {
@@ -216,7 +214,7 @@ void SOESocketHandler::handleClientRX() {
 						(this->pckg_buf[5] & 0xFF) << 0;
 
 				// Check port name length
-				if (portStrLen > this->pckg_recv - 2) {
+				if (portStrLen > this->pckg_recv - 6) {
 					sendError(NULL, "received invalid OPEN payload");
 					break;
 				}
@@ -307,7 +305,7 @@ void SOESocketHandler::handleClientRX() {
 						(this->pckg_buf[1] & 0xFF) << 0;
 
 				// Check port name length
-				if (portStrLen > this->pckg_recv - 2) {
+				if (portStrLen > this->pckg_recv - 6) {
 					sendError(NULL, "received invalid STREAM payload");
 					break;
 				}
@@ -383,7 +381,7 @@ void SOESocketHandler::handleClientRX() {
 						(this->pckg_buf[1] & 0xFF) << 0;
 
 				// Check port name length
-				if (portStrLen > this->pckg_recv - 2) {
+				if (portStrLen > this->pckg_recv - 6) {
 					sendError(NULL, "received invalid TX_CONFIRM payload");
 					break;
 				}
@@ -419,7 +417,7 @@ void SOESocketHandler::handleClientRX() {
 						(this->pckg_buf[1] & 0xFF) << 0;
 
 				// Check port name length
-				if (portStrLen > this->pckg_recv - 2) {
+				if (portStrLen > this->pckg_recv - 6) {
 					sendError(NULL, "received invalid TX_CONFIRM payload");
 					break;
 				}

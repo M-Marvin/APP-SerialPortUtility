@@ -10,16 +10,17 @@
 
 class Socket;
 
+//#define DEBUG_PRINTS
+
 #define DEFAULT_SOE_PORT 26
 
-#define INET_RX_BUF 1024 			// Buffer for incoming network payload (individual stack entries)
-#define SERIAL_RX_BUF 1024 			// Buffer for incoming serial payload (individual stack entries)
+#define INET_RX_BUF 1032 			// Buffer for incoming network payload (individual stack entries + package header)
+#define INET_TX_REP_INTERVAL 4000	// Interval in which the tx thread checks the rx stacks for data, even if he was not notified about new data, this also determines the "repeat sequence" interval
+#define SERIAL_RX_ENTRY_LEN 1024 	// Buffer for incoming serial payload (individual stack entries)
+#define SERIAL_RX_STACK_LIMIT 64	// Limit for the reception stack, serial reception will hold if this limit is exceeded, and data loss will occur, tx stack on the other end will automatically have the same size, although it can exceed the limit slightly under specific conditions
 #define SERIAL_RX_TIMEOUT 0 		// Time to wait for requested amount of bytes (SERIAL_RX_BUF) before returning with less if nothing more was received
 #define SERIAL_TX_TIMEOUT 1000 		// Time to wait for transmitting serial data before returning with the number of bytes that have been transmitted
-#define SERIAL_TX_REP_INTERVAL 1000 // Time to wait for next serial transmission attempt when a serial transmission returned with zero bytes transmitted
-
-#define RX_STACK_LIMIT 16			// Limit for the reception stack, serial reception will hold if this limit is exceeded, and data loss will occur
-#define INET_TX_REP_INTERVAL 4000	// Interval in which the tx thread checks the rx stacks for data, even if he was not notified about new data, this also determines the "repeat sequnce" interval
+#define SERIAL_TX_REP_INTERVAL 4000 // Time to wait for next serial transmission attempt when a serial transmission returned with zero bytes transmitted
 
 /* The control frame operation codes */
 #define OPC_ERROR 0x0
@@ -184,18 +185,18 @@ private:
 	SerialPort* port;
 
 	thread thread_tx;
-	unsigned int next_txid;								// Next txid that the serial port will try to transmitt
-	mutex tx_stackm;									// Mutex for synchronizing access to transmission stack and condition variable
-	condition_variable tx_waitc;						// TX hold variable, transmission will hold here if the tx stack runs out
+	unsigned int next_txid;									// Next txid that the serial port will try to transmitt
+	mutex tx_stackm;										// Mutex for synchronizing access to transmission stack and condition variable
+	condition_variable tx_waitc;							// TX hold variable, transmission will hold here if the tx stack runs out
 	map<unsigned int, pair<unsigned long, char*>> tx_stack;	// The serial transmission stack, holding network received data to transmitt over serial
 
 	thread thread_rx;
-	unsigned int next_free_rxid;						// Next rxid to use for packages read from serial
-	unsigned int next_transmit_rxid;					// Next not yet transmitted rxid to return when reading for network transmission
-	unsigned int last_transmitted_rxid;					// Oldest rxid in the stack (might be empty in the stack) which's transmission has not yet been confirmed by the other end
-	bool is_repeating;									// Flag set while repeating cached packages, used to prevent endless repetition loop
-	mutex rx_stackm;									// Mutex for synchronizing access to reception stack and condition variable
-	condition_variable rx_waitc;						// RX hold condition variable, reception will hold and wait for this if the reception stack size exceeds the limit
+	unsigned int next_free_rxid;							// Next rxid to use for packages read from serial
+	unsigned int next_transmit_rxid;						// Next not yet transmitted rxid to return when requesting data for network transmission
+	unsigned int last_transmitted_rxid;						// Oldest rxid in the stack which's transmission has not yet been confirmed by the other end
+	bool is_repeating;										// Flag set while repeating cached packages, used to prevent endless repetition loop
+	mutex rx_stackm;										// Mutex for synchronizing access to reception stack and condition variable
+	condition_variable rx_waitc;							// RX hold condition variable, reception will hold and wait for this if the reception stack size exceeds the limit
 	map<unsigned int, pair<unsigned long, char*>> rx_stack;	// The serial reception stack, holding serial received and network transmitted but not yet serial transmitted packages
 
 };
@@ -318,22 +319,22 @@ private:
 	map<string, SOEPortHandler*> ports;
 
 	thread thread_rx;
-	char op_code;
-	char* pckg_buf;
-	unsigned int pckg_len;
-	unsigned int pckg_recv;
+	char op_code;							// OPC of the current frame
+	char* pckg_buf;							// Buffer holding the payload of the current frame
+	unsigned int pckg_len;					// Number of bytes of the current frames payload
+	unsigned int pckg_recv;					// Number of bytes already received for the current frames payload
 
 	thread thread_tx;
-	mutex tx_waitm;
-	condition_variable tx_waitc;
+	mutex tx_waitm;							// Mutex to protect condition variable
+	condition_variable tx_waitc;			// Condition variable, the tx thread whil wait here for new data to transmit over network
 
 #ifdef SIDE_CLIENT
 	map<string, string> remote2localPort;
 
-	char* remote_port_name;								// Name of the remote port of the current open/close sequence
-	bool remote_port_status;								// Status for the pending open/close sequence, set before condition variable is released
-	mutex remote_port_waitm;								// Mutex protecting condition variable
-	condition_variable remote_port_waitc;					// Condition variable for pending port open/close sequences, waits for OPC_OPENED or OPC_CLOSED
+	char* remote_port_name;					// Name of the remote port of the current open/close sequence
+	bool remote_port_status;				// Status for the pending open/close sequence, set before condition variable is released
+	mutex remote_port_waitm;				// Mutex protecting condition variable
+	condition_variable remote_port_waitc;	// Condition variable for pending port open/close sequences, waits for OPC_OPENED or OPC_CLOSED
 #endif
 
 };
