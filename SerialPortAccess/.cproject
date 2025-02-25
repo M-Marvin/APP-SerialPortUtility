@@ -9,7 +9,7 @@
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/SerialPortAccess"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/WinSerialPortAccess/Release"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/SerialPortAccess/Release_amd64"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="serialportaccess_x64" srcPrefixMapping="" srcRootPath=""/>
+						<entry flags="RESOLVED" kind="libraryFile" name="E:\GitHub\LIBRARY-SerialPortAccess/bin64/serialportaccess_x64" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -20,7 +20,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="dll" artifactName="serialportaccess_x64" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.mingw.so.release.216607787" name="Release_amd64" optionalBuildProperties="" parent="cdt.managedbuild.config.gnu.mingw.so.release" postannouncebuildStep="Copy compiled lib into java project native folder" postbuildStep="cmd /c copy /y ${PWD}\*.dll ${PWD}\..\..\JSerialPortAccess\src\main\resources\natives">
+				<configuration artifactExtension="dll" artifactName="${WorkspaceDirPath}/bin64/serialportaccess_x64" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.mingw.so.release.216607787" name="Release_amd64" optionalBuildProperties="" parent="cdt.managedbuild.config.gnu.mingw.so.release" postannouncebuildStep="Copy compiled lib into java project native folder" postbuildStep="cmd /c copy /y ${PWD}\*.dll ${PWD}\..\..\JSerialPortAccess\src\main\resources\natives">
 					<folderInfo id="cdt.managedbuild.config.gnu.mingw.so.release.216607787." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.mingw.so.release.1878011252" name="MinGW GCC" superClass="cdt.managedbuild.toolchain.gnu.mingw.so.release">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.mingw.so.release.20364469" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.mingw.so.release"/>
@@ -144,7 +144,7 @@
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/WinSerialPortAccess/Release_arm32"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/WinSerialPortAccess/Release_arm32_lin"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/SerialPortAccess/Release_arm32_lin"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="serialportaccess_linux_arm32" srcPrefixMapping="" srcRootPath=""/>
+						<entry flags="RESOLVED" kind="libraryFile" name="E:\GitHub\LIBRARY-SerialPortAccess/bin32/serialportaccess_linux_arm32" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -157,7 +157,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="so" artifactName="serialportaccess_linux_arm32" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" errorParsers="org.eclipse.cdt.core.GASErrorParser;org.eclipse.cdt.core.GmakeErrorParser;org.eclipse.cdt.core.GLDErrorParser;org.eclipse.cdt.core.CWDLocator;org.eclipse.cdt.core.GCCErrorParser" id="cdt.managedbuild.config.gnu.mingw.so.release.216607787.523146813.644959298.1939830069" name="Release_arm32_lin" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.enablement=null,org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.image=null,org.eclipse.cdt.docker.launcher.containerbuild.property.connection=null" parent="cdt.managedbuild.config.gnu.mingw.so.release" postannouncebuildStep="Copy compiled lib into java project native folder" postbuildStep="cmd /c copy /y ${PWD}\\*.so ${PWD}\..\..\JSerialPortAccess\src\main\resources\natives">
+				<configuration artifactExtension="so" artifactName="${WorkspaceDirPath}/bin32/serialportaccess_linux_arm32" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" errorParsers="org.eclipse.cdt.core.GASErrorParser;org.eclipse.cdt.core.GmakeErrorParser;org.eclipse.cdt.core.GLDErrorParser;org.eclipse.cdt.core.CWDLocator;org.eclipse.cdt.core.GCCErrorParser" id="cdt.managedbuild.config.gnu.mingw.so.release.216607787.523146813.644959298.1939830069" name="Release_arm32_lin" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.enablement=null,org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.image=null,org.eclipse.cdt.docker.launcher.containerbuild.property.connection=null" parent="cdt.managedbuild.config.gnu.mingw.so.release" postannouncebuildStep="Copy compiled lib into java project native folder" postbuildStep="cmd /c copy /y ${PWD}\\*.so ${PWD}\..\..\JSerialPortAccess\src\main\resources\natives">
 					<folderInfo id="cdt.managedbuild.config.gnu.mingw.so.release.216607787.523146813.644959298.1939830069." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.cross.base.1172242495" name="Cross GCC">
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.988175291" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" value="arm-none-eabi-" valueType="string"/>
@@ -203,7 +203,7 @@
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/SerialPortAccess"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/SerialPortAccess/Release_amd64_lin"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="serialportaccess_linux_x64" srcPrefixMapping="" srcRootPath=""/>
+						<entry flags="RESOLVED" kind="libraryFile" name="E:\GitHub\LIBRARY-SerialPortAccess/bin64/serialportaccess_linux_x64" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -216,7 +216,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="so" artifactName="serialportaccess_linux_x64" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" errorParsers="org.eclipse.cdt.core.GASErrorParser;org.eclipse.cdt.core.GmakeErrorParser;org.eclipse.cdt.core.GLDErrorParser;org.eclipse.cdt.core.CWDLocator;org.eclipse.cdt.core.GCCErrorParser" id="cdt.managedbuild.config.gnu.mingw.so.release.216607787.523146813.644959298.927743689" name="Release_amd64_lin" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.enablement=null,org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.image=null,org.eclipse.cdt.docker.launcher.containerbuild.property.connection=null" parent="cdt.managedbuild.config.gnu.mingw.so.release" postannouncebuildStep="Copy compiled lib into java project native folder" postbuildStep="cmd /c copy /y ${PWD}\\*.so ${PWD}\..\..\JSerialPortAccess\src\main\resources\natives">
+				<configuration artifactExtension="so" artifactName="${WorkspaceDirPath}/bin64/serialportaccess_linux_x64" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="" errorParsers="org.eclipse.cdt.core.GASErrorParser;org.eclipse.cdt.core.GmakeErrorParser;org.eclipse.cdt.core.GLDErrorParser;org.eclipse.cdt.core.CWDLocator;org.eclipse.cdt.core.GCCErrorParser" id="cdt.managedbuild.config.gnu.mingw.so.release.216607787.523146813.644959298.927743689" name="Release_amd64_lin" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.enablement=null,org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.image=null,org.eclipse.cdt.docker.launcher.containerbuild.property.connection=null" parent="cdt.managedbuild.config.gnu.mingw.so.release" postannouncebuildStep="Copy compiled lib into java project native folder" postbuildStep="cmd /c copy /y ${PWD}\\*.so ${PWD}\..\..\JSerialPortAccess\src\main\resources\natives">
 					<folderInfo id="cdt.managedbuild.config.gnu.mingw.so.release.216607787.523146813.644959298.927743689." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.cross.base.88540413.831940460" name="Cross GCC">
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.837608885.688404972" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" value="arm-none-eabi-" valueType="string"/>

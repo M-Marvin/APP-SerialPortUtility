@@ -33,6 +33,10 @@ SOESocketHandler::~SOESocketHandler() {
 	this->tx_waitc.notify_all();
 	this->thread_rx.join();
 	this->thread_tx.join();
+#ifdef SIDE_CLIENT
+	if (this->remote_port_name != 0)
+		delete[] this->remote_port_name;
+#endif
 	delete this->socket;
 }
 
@@ -52,11 +56,9 @@ void SOESocketHandler::handleClientTX() {
 			// Request data from stack
 			unsigned int rxid = 0;
 			const char* payload = 0;
-			size_t length = 0;
+			unsigned long length = 0;
 			if (!entry->second->read(&rxid, &payload, &length))
 				continue;
-
-			// FIXME local port on client
 
 			// Send payload stream frame
 			if (!sendStream(entry->first.c_str(), rxid, payload, length)) {
@@ -81,7 +83,7 @@ void SOESocketHandler::handleClientTX() {
 		// If no data available, wait for more, but repeat periodically to detect rx stack overflows
 		if (!dataAvailable) {
 			unique_lock<mutex> lock(this->tx_waitm);
-			this->tx_waitc.wait_for(lock, std::chrono::milliseconds(INET_TX_REPETITION));
+			this->tx_waitc.wait_for(lock, std::chrono::milliseconds(INET_TX_REP_INTERVAL));
 		}
 
 	}
@@ -108,9 +110,24 @@ void SOESocketHandler::handleClientRX() {
 	while (this->socket->isOpen()) {
 
 		// If no more data remaining, wait for new data from the network
-		if (received == 0 && !this->socket->receive(rxbuf, INET_RX_BUF, &received)) {
-			printf("network socket was closed, shutdown connection\n");
-			break;
+		if (received == 0) {
+			if (this->op_code == -1) {
+				do {
+					unsigned int rxlen = 0;
+					if (!this->socket->receive(rxbuf + received, FRAME_HEADER_LEN - received, &rxlen)) {
+						printf("network socket was closed, shutdown connection\n");
+						goto rxend;
+					}
+					received += rxlen;
+				} while (received < FRAME_HEADER_LEN);
+			} else {
+				unsigned int missing = this->pckg_len - this->pckg_recv;
+				if (INET_RX_BUF < missing) missing = INET_RX_BUF;
+				if (!this->socket->receive(rxbuf, missing, &received)) {
+					printf("network socket was closed, shutdown connection\n");
+					goto rxend;
+				}
+			}
 		}
 
 		// Exit if the socket was closed
@@ -119,66 +136,42 @@ void SOESocketHandler::handleClientRX() {
 		// If no frame is currently being received, start new frame
 		if (this->op_code == -1) {
 
-			// Check for header size
-			if (received < 1) {
-				printf("FRAME ERROR: received incomplete SOE header!\n");
-				break;
-			}
+			// Decode op code
+			this->op_code = rxbuf[0];
 
-			// Decode header
-			this->op_code = rxbuf[0] & 0x7;
-			this->pckg_len = (rxbuf[0] & 0xF8) >> 3;
-			if (this->pckg_len == 31) {
-
-				// Check for additional header size
-				if (received < 5) {
-					printf("FRAME ERROR: received incomplete SOE header!\n");
-					break;
-				}
-
-				// Decode additional length field
-				this->pckg_len = 0;
-				this->pckg_len |= (rxbuf[4] & 0xFF) << 0;
-				this->pckg_len |= (rxbuf[3] & 0xFF) << 8;
-				this->pckg_len |= (rxbuf[2] & 0xFF) << 16;
-				this->pckg_len |= (rxbuf[1] & 0xFF) << 24;
-			}
+			// Decode payload length field
+			this->pckg_len = 0;
+			this->pckg_len = 0;
+			this->pckg_len |= (rxbuf[4] & 0xFF) << 0;
+			this->pckg_len |= (rxbuf[3] & 0xFF) << 8;
+			this->pckg_len |= (rxbuf[2] & 0xFF) << 16;
+			this->pckg_len |= (rxbuf[1] & 0xFF) << 24;
 
 			// Allocate buffer for payload
-			this->pckg_buf = new char[this->pckg_len]; //(char*) malloc(this->pckg_len);
+			this->pckg_buf = new char[this->pckg_len];
 			if (this->pckg_buf == 0) {
 				printf("FRAME ERROR: package to large, could not allocate!");
-				break;
+				goto rxend;
 			}
-
-			// Subtract header from remaining payload
-			unsigned int headerLen = (this->pckg_len > 30 ? 5 : 1);
 
 			// Calculate length to copy
 			unsigned int rempcklen = this->pckg_len;
-			if (rempcklen > received - headerLen)
-				rempcklen = received - headerLen;
+			if (rempcklen > received - FRAME_HEADER_LEN)
+				rempcklen = received - FRAME_HEADER_LEN;
 
 			// Copy received payload
-			memcpy(this->pckg_buf, rxbuf + (this->pckg_len > 30 ? 5 : 1), rempcklen);
+			memcpy(this->pckg_buf, rxbuf + FRAME_HEADER_LEN, rempcklen);
 			this->pckg_recv = rempcklen;
 
 			// Data of next frame remaining, move to front and process later
-			unsigned int reminder = received - rempcklen - headerLen;
+			unsigned int reminder = received - rempcklen - FRAME_HEADER_LEN;
 			if (reminder > 0) {
-				memcpy(rxbuf, rxbuf + rempcklen + headerLen, reminder);
+				memcpy(rxbuf, rxbuf + rempcklen + FRAME_HEADER_LEN, reminder);
 			}
 			received = reminder;
 
 		// Otherwise, add received data to current frame payload buffer
 		} else {
-
-			// Check payload length
-			unsigned int newLen = this->pckg_recv + received;
-			if (newLen > this->pckg_len || newLen < this->pckg_recv) {
-				printf("FRAME ERROR: payload length does not match header!\n");
-				break;
-			}
 
 			// Calculate length to copy
 			unsigned int rempcklen = this->pckg_len - this->pckg_recv;
@@ -191,11 +184,9 @@ void SOESocketHandler::handleClientRX() {
 			received -= rempcklen;
 
 			// Data of next frame remaining, move to front and process later
-			unsigned int reminder = received - rempcklen;
-			if (reminder > 0) {
-				memcpy(rxbuf, rxbuf + rempcklen, reminder);
+			if (received > 0) {
+				memcpy(rxbuf, rxbuf + rempcklen, received);
 			}
-			received = reminder;
 
 		}
 
@@ -236,12 +227,12 @@ void SOESocketHandler::handleClientRX() {
 
 				// Attempt to open port
 				SerialPort* port = new SerialPort(portName);
-				port->setBaud(portBaud);
 				if (!port->openPort()) {
 					sendError(portName, "failed to claim port");
 					delete port;
 					break;
 				}
+				port->setBaud(portBaud);
 				port->setTimeouts(SERIAL_RX_TIMEOUT, SERIAL_TX_TIMEOUT);
 				SOEPortHandler* portHandler = new SOEPortHandler(this, *port, portName);
 				this->ports[string(portName)] = portHandler;
@@ -372,10 +363,6 @@ void SOESocketHandler::handleClientRX() {
 				if (!portHandler->send(txid, payload, payloadLen)) {
 					printf("could not process package: [tx %u] %s\n", txid, portName);
 				}
-
-#ifdef DEBUG_PRINTS
-				printf("DEBUG: queued payload: %s [tx %u] %llu\n", portName, txid, payloadLen);
-#endif
 
 				sendConfirm(false, portName, txid);
 				break;
@@ -525,7 +512,7 @@ void SOESocketHandler::handleClientRX() {
 					printf("received error frame: %s : %s\n", portName, message);
 
 #ifdef SIDE_CLIENT
-					if (this->remote_port_name[0] != 0 && strcmp(this->remote_port_name, portName) == 0) {
+					if (this->remote_port_name != 0 && strcmp(this->remote_port_name, portName) == 0) {
 
 #ifdef DEBUG_PRINTS
 						printf("DEBUG: received error frame for remot port open/close sequence: %s\n", portName);
@@ -574,7 +561,7 @@ void SOESocketHandler::handleClientRX() {
 #endif
 
 				// Signal to current open/close sequence (if there is one)
-				{
+				if (this->remote_port_name != 0) {
 					unique_lock<mutex> lock(this->remote_port_waitm);
 					this->remote_port_status = strcmp(this->remote_port_name, portName) == 0;
 					this->remote_port_waitc.notify_all();
@@ -609,7 +596,7 @@ void SOESocketHandler::handleClientRX() {
 #ifdef SIDE_CLIENT
 
 				// If a open/close sequence is currently pending for this port
-				if (this->remote_port_name[0] != 0 && strcmp(this->remote_port_name, portName) == 0) {
+				if (this->remote_port_name != 0 && strcmp(this->remote_port_name, portName) == 0) {
 #ifdef DEBUG_PRINTS
 					printf("DEBUG: received close confirm for remote port: %s\n", portName);
 #endif
@@ -685,6 +672,8 @@ void SOESocketHandler::handleClientRX() {
 
 	}
 
+	rxend:
+
 	// Release all ports
 	for (auto entry = this->ports.begin(); entry != this->ports.end(); entry++) {
 		printf("auto close port: %s\n", entry->first.c_str());
@@ -706,17 +695,19 @@ void SOESocketHandler::handleClientRX() {
 
 #ifdef SIDE_CLIENT
 
-bool SOESocketHandler::openRemotePort(const char* remotePortName, unsigned int baud, const char* localPortName, unsigned long long timeoutms) {
+bool SOESocketHandler::openRemotePort(const char* remotePortName, unsigned int baud, const char* localPortName, unsigned int timeoutms) {
 
 	// Attempt and wait to for port open
 	cv_status status;
 	{
 		unique_lock<mutex> lock(this->remote_port_waitm);
 		this->remote_port_status = false;
-		strcpy_s(this->remote_port_name, REMOTE_PORT_NAME_BUF_LEN - 1, remotePortName);
+		this->remote_port_name = new char[strlen(remotePortName) + 1] {0};
+		strcpy(this->remote_port_name, remotePortName);
 		if (!sendOpenRequest(remotePortName, baud)) return false;
 		status = this->remote_port_waitc.wait_for(lock, std::chrono::milliseconds(timeoutms));
-		memset(this->remote_port_name, 0, REMOTE_PORT_NAME_BUF_LEN);
+		delete[] this->remote_port_name;
+		this->remote_port_name = 0;
 	}
 
 	// If no response, attempt close port
@@ -733,7 +724,6 @@ bool SOESocketHandler::openRemotePort(const char* remotePortName, unsigned int b
 
 	// Attempt to open port
 	SerialPort* port = new SerialPort(localPortName);
-	port->setBaud(baud);
 	if (!port->openPort()) {
 		printf("failed to claim local port %s, close remote port %s!\n", localPortName, remotePortName);
 		delete port;
@@ -743,6 +733,7 @@ bool SOESocketHandler::openRemotePort(const char* remotePortName, unsigned int b
 		}
 		return false;
 	}
+	port->setBaud(baud);
 	port->setTimeouts(SERIAL_RX_TIMEOUT, SERIAL_TX_TIMEOUT);
 	SOEPortHandler* portHandler = new SOEPortHandler(this, *port, localPortName);
 	this->ports[string(localPortName)] = portHandler;
@@ -752,17 +743,19 @@ bool SOESocketHandler::openRemotePort(const char* remotePortName, unsigned int b
 
 }
 
-bool SOESocketHandler::closeRemotePort(const char* remotePortName, unsigned long long timeoutms) {
+bool SOESocketHandler::closeRemotePort(const char* remotePortName, unsigned int timeoutms) {
 
 	// Attempt and wait for port close
 	cv_status status;
 	{
 		unique_lock<mutex> lock(this->remote_port_waitm);
 		this->remote_port_status = false;
-		strcpy_s(this->remote_port_name, REMOTE_PORT_NAME_BUF_LEN - 1, remotePortName);
+		this->remote_port_name = new char[strlen(remotePortName) + 1] {0};
+		strcpy(this->remote_port_name, remotePortName);
 		if (!sendCloseRequest(remotePortName)) return false;
 		status = this->remote_port_waitc.wait_for(lock, std::chrono::milliseconds(timeoutms));
-		memset(this->remote_port_name, 0, REMOTE_PORT_NAME_BUF_LEN);
+		delete[] this->remote_port_name;
+		this->remote_port_name = 0;
 	}
 
 	// If no response, failed
@@ -797,22 +790,19 @@ bool SOESocketHandler::sendFrame(char opc, const char* payload, unsigned int len
 
 	if (!this->socket->isOpen()) return false;
 
-	// Make frame start
-	char frameStart = (opc & 0x7) | (length > 30 ? 31 : length) << 3;
-	size_t frameLen = (length > 30 ? 5 : 1) + length;
-
-	// Make additonal package length
+	// Allocate frame buffer
+	size_t frameLen = FRAME_HEADER_LEN + length;
 	char buffer[frameLen] = {0};
-	buffer[0] = frameStart;
-	if (length > 30) {
-		buffer[4] = (length >> 0) & 0xFF;
-		buffer[3] = (length >> 8) & 0xFF;
-		buffer[2] = (length >> 16) & 0xFF;
-		buffer[1] = (length >> 24) & 0xFF;
-	}
+
+	// Assemble frame header
+	buffer[0] = opc;
+	buffer[4] = (length >> 0) & 0xFF;
+	buffer[3] = (length >> 8) & 0xFF;
+	buffer[2] = (length >> 16) & 0xFF;
+	buffer[1] = (length >> 24) & 0xFF;
 
 	// Copy payload
-	memcpy(buffer + (length > 30 ? 5 : 1), payload, length);
+	memcpy(buffer + FRAME_HEADER_LEN, payload, length);
 
 	// Transmit frame
 	if (!this->socket->send(buffer, frameLen)) {
@@ -830,11 +820,13 @@ void SOESocketHandler::sendError(const char* portName, const char* msg) {
 
 #ifdef SIDE_CLIENT
 	// On the client we usualy use the local port name, so we have to map it to the remote port name
-	string portNameS = string(portName);
-	for (const auto& kv : this->remote2localPort) {
-		if (kv.second == portNameS) {
-			portName = kv.first.c_str();
-			break;
+	if (portName != 0) {
+		string portNameS = string(portName);
+		for (const auto& kv : this->remote2localPort) {
+			if (kv.second == portNameS) {
+				portName = kv.first.c_str();
+				break;
+			}
 		}
 	}
 #endif
@@ -944,7 +936,7 @@ bool SOESocketHandler::sendConfirm(bool transmission, const char* portName, unsi
 }
 
 // Send payload stream frame
-bool SOESocketHandler::sendStream(const char* portName, unsigned int rxid, const char* payload, size_t length) {
+bool SOESocketHandler::sendStream(const char* portName, unsigned int rxid, const char* payload, unsigned long length) {
 
 	if (!this->socket->isOpen()) return false;
 

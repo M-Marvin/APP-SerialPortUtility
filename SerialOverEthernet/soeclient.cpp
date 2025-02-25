@@ -21,7 +21,7 @@
 void testConnect() {
 
 	Socket* socket = new Socket();
-	if (!socket->connect("192.168.178.125", DEFAULT_SOE_PORT)) {
+	if (!socket->connect("192.168.178.130", DEFAULT_SOE_PORT)) {
 		delete socket;
 		printf("failed to connect to server!\n");
 		return;
@@ -33,7 +33,7 @@ void testConnect() {
 
 	printf("created soe handler\n");
 
-	if (!soeHandler->openRemotePort("\\\\.\\COM4", 115200, "\\\\.\\COM8", 4000)) {
+	if (!soeHandler->openRemotePort("\\\\.\\COM6", 250000, "\\\\.\\COM10", 4000)) {
 		printf("failed to establish connection!\n");
 	} else {
 
@@ -56,6 +56,8 @@ int main(int argn, const char** argv) {
 
 	// Disable output caching
 	setvbuf(stdout, NULL, _IONBF, 0);
+
+	printf("client test\n");
 
 	// Parse arguments
 //	const char* serverAddress = 0;

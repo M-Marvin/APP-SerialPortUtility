@@ -14,14 +14,14 @@ class Socket;
 
 #define INET_RX_BUF 1024 			// Buffer for incoming network payload (individual stack entries)
 #define SERIAL_RX_BUF 1024 			// Buffer for incoming serial payload (individual stack entries)
-#define SERIAL_RX_TIMEOUT 100 		// Time to wait for requested ammount of bytest (SERIAL_RX_BUF) before returning with less if nothing more was received
-#define SERIAL_TX_TIMEOUT 1000 		// Time to wait for transmitting serial data before returning and throwing an error
-#define SERIAL_CONSEC_DELAY 100		// Max delay between serial reads until the current buffer put on the transmission stack
+#define SERIAL_RX_TIMEOUT 0 		// Time to wait for requested amount of bytes (SERIAL_RX_BUF) before returning with less if nothing more was received
+#define SERIAL_TX_TIMEOUT 1000 		// Time to wait for transmitting serial data before returning with the number of bytes that have been transmitted
+#define SERIAL_TX_REP_INTERVAL 1000 // Time to wait for next serial transmission attempt when a serial transmission returned with zero bytes transmitted
 
 #define RX_STACK_LIMIT 16			// Limit for the reception stack, serial reception will hold if this limit is exceeded, and data loss will occur
-#define TX_STACK_LIMIT 16			// Limit for the transmission stack, TODO
-#define INET_TX_REPETITION 4000		// Interval in which the tx thread checks the rx stacks for data, even if he was not notified about new data
+#define INET_TX_REP_INTERVAL 4000	// Interval in which the tx thread checks the rx stacks for data, even if he was not notified about new data, this also determines the "repeat sequnce" interval
 
+/* The control frame operation codes */
 #define OPC_ERROR 0x0
 #define OPC_OPEN 0x1
 #define OPC_OPENED 0x2
@@ -31,7 +31,8 @@ class Socket;
 #define OPC_TX_CONFIRM 0x6
 #define OPC_RX_CONFIRM 0x7
 
-#define REMOTE_PORT_NAME_BUF_LEN 1024
+/* Length of the control frame header (OPC (1) + payload len (4)) */
+#define FRAME_HEADER_LEN 5
 
 #include <network.h>
 #include <serial_port.h>
@@ -46,14 +47,21 @@ using namespace std;
 /**
  * SERIAL OVER ETHERNET PROTOCOL
  *
- * CLIENT OPEN PORT (initialed by the openRemotePort method)
+ * TERMS USED
+ * RX STACK	- the stack used to store payload that was RECEIVED over serial and has to be TRANSMITTED over network, consists of an RXID to payload map
+ * RXID		- the id of an payload that has to be transmitted over network, the id is used to detect lost packages and maintain correct order
+ * TX STACK	- the stack used to store payload that was RECEIVED over network and has to be TRANSMITTED over serial, consists of an TXID to payload map
+ * TXID		- the id of an payload that was received over network, the RXID will become the TXID on the other end of the network connection
+ *
+ *
+ * CLIENT OPEN PORT (initiated by the openRemotePort method)
  * 1. Client sends OPC_OPEN request
  * 2. Server attempts to open port, sends OPC_OPENED if succeeded otherwise OPC_ERROR with an error message
  * 3a. Client receives OPC_OPENED, connection was established, client will attempt to claim local virtual port, if this fails, an close sequence will be initiated (see below)
  * 3b. Client receives OPC_ERROR, connection was NOT established, port is STILL CLOSED on server
  * 3c. Client receives nothing, connection might be or might not be open, client will attempt to close port (see below)
  *
- * CLIENT CLOSE PORT (initialed by the closeRemotePort method)
+ * CLIENT CLOSE PORT (initiated by the closeRemotePort method)
  * 1. Client sends OPC_CLOSE request
  * 2. Server attempts to close the port, sends OPC_CLOSED if succeeded, otherwise (including if the port was already closed) OPC_ERROR with an error message
  * 3a. Client receives OPC_CLOSED, connection was closed, client will close local virtual port
@@ -62,21 +70,35 @@ using namespace std;
  * 	NOTE: If the close request was initiated from an timeout open request, an timeout on the close request might lead to an undefined state of the port on the server.
  * 	NOTE: Should this occur, the port will stay in the undefined state until an close or open attempt succeeds, or the network socket is closed, in which the server will force terminate all claimed ports.
  *
- * CLIENT STREAM DATA (initiated automatically by the port handlers)
+ * RECEIVE SERIAL (client and server port handlers)
+ * 1. Attempt to read data from serial port to fill up payload buffer, reading ends if for some time no data was received or if the payload buffer is full
+ * 2. The next free TXID is assigned to the payload, and the payload is put on the TX STACK
+ * -> Continues with STREAM DATA CLIENT <-> SERVER
+ *
+ * TRANSMIT SERIAL (client and server port handlers)
+ * -> Data comes in from STREAM DATA CLIENT <-> SERVER
+ * 1. Waits for incoming data on the RX STACK, polls (removes) the payload with "last RXID + 1" from the stack, hold if this package is missing
+ * 2. Attempts to transmitt the data over serial, if this failed it is atempted again in regular intervals, and a OPC_ERROR is send to the other end over network
+ *
+ * STREAM DATA CLIENT > SERVER (initiated by the serial port handlers)
  * 1. Client sends OPC_STREAM request, but keeps the send data in a buffer until OPC_TX_CONFIRM confirmation by the server
  * 2. Server puts the received data on the port's TX stack and sends and OPC_RX_CONFIRM frame (RX refers to the server data reception)
- * 	NOTE: If the txid is invalid (out of order) or the tx stack if full, the server will still respond with an OPC_CONFIRM, but will not process the data
+ * 	NOTE: If the transmission id is invalid (out of order) or the RX STACK if full, the server will still respond with an OPC_CONFIRM, but will not process the data
  * 3a. Client receives OPC_RX_CONFIRM, transmission to server successful, this is mostly for debugging purposes, and will have no actual effect on the transmissions
  * 3b. Client receives OPC_ERROR, the data could not be processed, the connection might or might not be closed, as such, further requests might fail
  * 	NOTE: If the port was closed in consequence of the error, an OPC_CLOSED will be send from the server, to notify the client about the new state of the port
+ * 	NOTE: Should the OPC_CLOSED be lost, the next requests to the port will fail again, resulting in a new OPC_CLOSED frame
  * 3c. Client receives nothing, a lost RX_CONFIRM has no affect on the connection, since its mostly for debugging purposes
- * 4. Server waits until the serial port could send the data, then sends an OPC_TX_CONFIRM frame. (TX refers to the port transmission)
- * 4a. Client receives OPC_TX_CONFIRM and removes the send data from its buffer, making space for reading new data from the serial port
+ * 4a. Server waits until the serial port could send the data, then sends an OPC_TX_CONFIRM frame. (TX refers to the port transmission)
+ * 4b. Server is unable to transmit data for various reasons, the TX STACK and as such the RX STACK on the client will continue to fill up until it hits the configured limit, in which case the serial flow control (if enabled) will be activated to prevent reception of further data on the serial port.
+ *  NOTE: Should the RX STACK fill up to the limit, an "re-send stack" sequence is initiated on the client in regular intervals, all packages on the TX STACK are re-transmitted to the server, in case the server side processing hangs because of missing data (lost package)
+ *  NOTE: As soon as the server continues to send data over its serial, and the RX STACK gets empty, the resulting OPC_TX_CONFIRM packages will clear the TX STACK on the client, and the flow control allows new data to be received over serial
+ * 5a. Client receives OPC_TX_CONFIRM and removes the send data from its buffer, making space for reading new data from the serial port
  * 5b. Client receives OPC_ERROR, connection is not closed but transmission of data on the serial port failed, server might close port if required, and notify the client with an OPC_CLOSED about the new port state
- * 5c. Client receives nothing, the package might be lost, if the client stops receiving OPC_TX_CONFIRM messages, an repetition of all packages still on the stack will be initiated, to attempt to resume normal operation
+ * 5c. Client receives nothing, the TX STACK on the client and the RX STACK on the server will continue to fill up, see 4b (NOTE) (same result)
  *
- * SERVER STREAM DATA
- * same behavior as in CLIENT STREAM DATA, but without OPC_OPENED implementation
+ * STREAM DATA CLIENT < SERVER (initiated by the serial port handlers)
+ * same as above, just with swapped roles of client and server
  *
  *
  * SERVER CONTROL FRAME BEHAVIORS:
@@ -89,9 +111,9 @@ using namespace std;
  *
  * CLIENT CONTROL FRAME BEHAVIORS:
  * same as above, only with three changes:
- * OPC_OPENED	-> signal success to current open remote port sequence if the port name matches, otherwise signal error
- * OPC_CLOSED	-> signal success to current close remote port sequence if the port name matches, otherwise signal error
- * OPC_ERROR	-> if the error's port name matches a currently pending open/close sequence, signal error
+ * OPC_OPENED	-> signal success to current pending open remote port sequence if the port name matches, otherwise ignore
+ * OPC_CLOSED	-> signal success to current close remote port sequence if the port name matches, otherwise close the local virtual remote port for the named remote port, since it has been closed on the server
+ * OPC_ERROR	-> if the error's port name matches a currently pending open/close sequence, signal error to that sequence, otherwise log it
  */
 
 class SOESocketHandler;
@@ -99,16 +121,62 @@ class SOESocketHandler;
 class SOEPortHandler {
 
 public:
+	/**
+	 * Creates a new serial port handler
+	 * @param client The socket handler for the client network connection
+	 * @param port The serial port to handle
+	 * @param portName The name of the serial port (used for identification in network packages)
+	 */
 	SOEPortHandler(SOESocketHandler* client, SerialPort &port, const char* portName);
+
+	/**
+	 * Closes the serial port, and cleans up all allocated buffer memory
+	 */
 	~SOEPortHandler();
 
+	/**
+	 * Checks if the serial port is still operational
+	 * @return true as long as the serial port is still open
+	 */
 	bool isOpen();
-	bool send(unsigned int txid, const char* buffer, size_t length);
-	bool read(unsigned int* rxid, const char** buffer, size_t* length);
+
+	/**
+	 * Puts new data on the ports TX STACK
+	 * Should the data have an invalid TXID, it is ignored and the function returns false
+	 * Should the port be closed, the function returns false
+	 * @param txid The TXID of the payload
+	 * @param buffer The payload buffer
+	 * @param length The length of the payload
+	 * @return true if the payload could be put on the TX STACK
+	 */
+	bool send(unsigned int txid, const char* buffer, unsigned long length);
+
+	/**
+	 * Attempts to get the next payload to transmit over network from the RX STACK.
+	 * If RX STACK reaches its limit and all data has already been requested at least once, this function will automatically start the repition sequence by returning all payloads frmo the begining.
+	 * If no more paylad is available (including after an repetition sequence) false is returned by this method at least once, before eventually staring a new repetition sequence.
+	 * @param rxid The RXID of the returned payload
+	 * @param buffer The buffer containing the payload
+	 * @param length The length of the payload
+	 * @return true if an payload was found and returned
+	 */
+	bool read(unsigned int* rxid, const char** buffer, unsigned long* length);
+
+	/**
+	 * Confirms that the payload with the given RXID was successfully transmitted on the other ends serial.
+	 * This function will remove this RXID from the RX STACK to make room for new payload.
+	 * @param rxid The RXID of the confirmed payload
+	 */
 	void confirmTransmission(unsigned int rxid);
 
 private:
+	/**
+	 * Handle serial transmission
+	 */
 	void handlePortTX();
+	/**
+	 * Handles serial reception
+	 */
 	void handlePortRX();
 
 	string portName;
@@ -119,42 +187,131 @@ private:
 	unsigned int next_txid;								// Next txid that the serial port will try to transmitt
 	mutex tx_stackm;									// Mutex for synchronizing access to transmission stack and condition variable
 	condition_variable tx_waitc;						// TX hold variable, transmission will hold here if the tx stack runs out
-	map<unsigned int, pair<size_t, char*>> tx_stack;	// The serial transmission stack, holding network received data to transmitt over serial
+	map<unsigned int, pair<unsigned long, char*>> tx_stack;	// The serial transmission stack, holding network received data to transmitt over serial
 
 	thread thread_rx;
 	unsigned int next_free_rxid;						// Next rxid to use for packages read from serial
 	unsigned int next_transmit_rxid;					// Next not yet transmitted rxid to return when reading for network transmission
 	unsigned int last_transmitted_rxid;					// Oldest rxid in the stack (might be empty in the stack) which's transmission has not yet been confirmed by the other end
+	bool is_repeating;									// Flag set while repeating cached packages, used to prevent endless repetition loop
 	mutex rx_stackm;									// Mutex for synchronizing access to reception stack and condition variable
 	condition_variable rx_waitc;						// RX hold condition variable, reception will hold and wait for this if the reception stack size exceeds the limit
-	map<unsigned int, pair<size_t, char*>> rx_stack;	// The serial reception stack, holding serial received and network transmitted but not yet serial transmitted packages
+	map<unsigned int, pair<unsigned long, char*>> rx_stack;	// The serial reception stack, holding serial received and network transmitted but not yet serial transmitted packages
 
 };
 
 class SOESocketHandler {
 
 public:
+	/**
+	 * Creates a new client network connection handler
+	 * @param socket The socket of the client-server connection
+	 */
 	SOESocketHandler(Socket &socket);
+
+	/**
+	 * Closes all ports and the socket and cleans all allocated buffer memory
+	 */
 	~SOESocketHandler();
 
 #ifdef SIDE_CLIENT
-	bool openRemotePort(const char* remotePortName, unsigned int baud, const char* localPortName, unsigned long long timeoutms);
-	bool closeRemotePort(const char* remotePortName, unsigned long long timeoutms);
+	/**
+	 * Attempts to claim the given port on the remote server and the given local port and connecting them over the serial over ethernet protocoll
+	 * @param remotePortName The remote port name to claim
+	 * @param baud The baud to configure for both, the remote and the local port
+	 * @param localPortName The local port name to claim
+	 * @param timeoutms The timeout for the remote port claim, if exceeded the connection will fail
+	 * @return true if the remote and local port could successfully be claimed and connected, false otherwise
+	 */
+	bool openRemotePort(const char* remotePortName, unsigned int baud, const char* localPortName, unsigned int timeoutms);
+
+	/**
+	 * Attempts to release the remote port and the corresponding local port.
+	 * @param remotePortName The remote port name to release
+	 * @param timeoutms Tge timeout for the remote port release, if exceeded, the release will fail
+	 * @return true if the remote and local port could be released successfully, false otherwise
+	 */
+	bool closeRemotePort(const char* remotePortName, unsigned int timeoutms);
 #endif
+	/**
+	 * Returns true if the network connection is still operational
+	 * @return true as long as the network socket is still open
+	 */
 	bool isActive();
+
+	/**
+	 * Called by the port handlers to notify that new data is available in one of the RX STACK's
+	 */
 	void notifySerialData();
+
+	/**
+	 * Sends an serial over ethernet frame to the other end.
+	 * @param opc The OPC of the frame
+	 * @param payload The payload of the frame
+	 * @param length The length of the payload
+	 * @return true if the data could be send successfully, false otherwise
+	 */
 	bool sendFrame(char opc, const char* payload, unsigned int length);
+
+	/**
+	 * Assembles and transmits an error frame with the given remote port name and error message.
+	 * @param portName The remote (server) port name to which this error refers (might be null)
+	 * @param msg The error message
+	 */
 	void sendError(const char* portName, const char* msg);
+
+	/**
+	 * Assembles and transmits an OPC_OPENED or OPC_CLOSED frame to the other end.
+	 * @param claimed If the port was opened (OPC_OPENED) or closed (OPC_CLOSED)
+	 * @param portName The name of the remote (server) port
+	 * @return true if the data could be send successfully, false otherwise
+	 */
 	bool sendClaimStatus(bool claimed, const char* portName);
+
+	/**
+	 * Assembles and transmits an OPC_RX_CONFIRM or OPC_TX_CONFIRM frame to the other end.
+	 * @param transmission If the refereed payload was only received (OPC_RX_CONFIRMED) or already transmitted over serial (OPC_TX_CONFIRM)
+	 * @param portName The name of the remote (server) port
+	 * @param txid The payloads TXID
+	 * @return true if the data could be send successfully, false otherwise
+	 */
 	bool sendConfirm(bool transmission, const char* portName, unsigned int txid);
-	bool sendStream(const char* portName, unsigned int rxid, const char* payload, size_t length);
+
+	/**
+	 * Assembles and transmits an OPC_STREAM frame to the other end.
+	 * @param portName The name of the remote (server) port
+	 * @param rxid The serial payload RXID
+	 * @param payload The serial payload buffer
+	 * @param length The serial payload length
+	 * @return true if the data could be send successfully, false otherwise
+	 */
+	bool sendStream(const char* portName, unsigned int rxid, const char* payload, unsigned long length);
+
 #ifdef SIDE_CLIENT
+	/**
+	 * Assembles and transmits an OPC_OPEN frame to the server.
+	 * @param portName The name of the remote port to open
+	 * @param baud The baud rate to configure
+	 * @return true if the data could be send successfully, false otherwise
+	 */
 	bool sendOpenRequest(const char* portName, unsigned int baud);
+
+	/**
+	 * Assembles and transmits an OPC_CLOSE frame to the server.
+	 * @param portName The name of the remote port to close
+	 * @return true if the data could be send successfully, false otherwise
+	 */
 	bool sendCloseRequest(const char* portName);
 #endif
 
 private:
+	/**
+	 * Handles network package reception
+	 */
 	void handleClientRX();
+	/**
+	 * Handles network package transmission
+	 */
 	void handleClientTX();
 
 	Socket* socket;
@@ -173,7 +330,7 @@ private:
 #ifdef SIDE_CLIENT
 	map<string, string> remote2localPort;
 
-	char remote_port_name[REMOTE_PORT_NAME_BUF_LEN] = {0};	// Name of the remote port of the current open/close sequence
+	char* remote_port_name;								// Name of the remote port of the current open/close sequence
 	bool remote_port_status;								// Status for the pending open/close sequence, set before condition variable is released
 	mutex remote_port_waitm;								// Mutex protecting condition variable
 	condition_variable remote_port_waitc;					// Condition variable for pending port open/close sequences, waits for OPC_OPENED or OPC_CLOSED

@@ -10,6 +10,8 @@
 #include <termios.h>
 #include <unistd.h>
 
+// FIXME update code
+
 struct SerialPortImplData {
 	struct termios comPortState;
 	int comPortHandle;

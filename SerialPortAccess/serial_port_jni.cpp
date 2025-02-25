@@ -5,6 +5,8 @@
 #include <de_m_marvin_serialportaccess_SerialPort.h>
 #include "serial_port.h"
 
+// FIXME update code (maybe ?)
+
 JNIEXPORT jlong JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1createSerialPort(JNIEnv* env, jclass clazz, jstring portName)
 {
 	SerialPort* port = new SerialPort(env->GetStringUTFChars(portName, 0));
