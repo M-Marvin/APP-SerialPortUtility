@@ -84,8 +84,6 @@ int main(int argc, const char** argv) {
 		if (transmitionLen == BUFFER_SIZE) transmitionCV.notify_one();
 	}
 
-	// TODO stop command ?
-
 	shouldTerminate = true;
 	receptionThread.join();
 	transmitionThread.join();

@@ -1,4 +1,0 @@
-
-cl virtualport.cpp /I "C:\Program Files (x86)\Windows Kits\10\Include\wdf\umdf\2.0" /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\shared" /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um" /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\km\crt" -entry DriverEntry /c
-
-cl virtualport.obj /link /LIBPATH:"C:\Program Files (x86)\Windows Kits\10\Lib\10.0.26100.0\um\x64" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\lib\x64" /LIBPATH:"C:\Program Files (x86)\Windows Kits\10\Lib\wdf\umdf\x64\2.0" /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\lib\spectre\x64" WdfDriverStubUm.lib ntdll.lib vcruntime.lib /DRIVER:WDM /SUBSYSTEM:NATIVE /ENTRY:DriverEntry

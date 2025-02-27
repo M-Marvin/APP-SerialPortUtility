@@ -10,7 +10,7 @@
 
 class Socket;
 
-#define DEBUG_PRINTS
+//#define DEBUG_PRINTS
 
 #define DEFAULT_SOE_PORT 26
 
@@ -78,7 +78,7 @@ using namespace std;
  * TRANSMIT SERIAL (client and server port handlers)
  * -> Data comes in from STREAM DATA CLIENT <-> SERVER
  * 1. Waits for incoming data on the RX STACK, polls (removes) the payload with "last RXID + 1" from the stack, hold if this package is missing
- * 2. Attempts to transmitt the data over serial, if this failed it is atempted again in regular intervals, and a OPC_ERROR is send to the other end over network
+ * 2. Attempts to transmit the data over serial, if this failed it is attempted again in regular intervals, and a OPC_ERROR is send to the other end over network
  *
  * STREAM DATA CLIENT > SERVER (initiated by the serial port handlers)
  * 1. Client sends OPC_STREAM request, but keeps the send data in a buffer until OPC_TX_CONFIRM confirmation by the server
