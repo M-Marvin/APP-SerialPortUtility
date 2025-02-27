@@ -65,7 +65,7 @@ bool SOEPortHandler::send(unsigned int txid, const char* buffer, unsigned long l
 	memcpy(stackBuffer, buffer, length);
 	{
 		lock_guard<mutex> lock(this->tx_stackm);
-		this->tx_stack[txid] = pair<unsigned long, std::unique_ptr<char>>(length, unique_ptr<char>(stackBuffer));
+		this->tx_stack[txid] = {length, unique_ptr<char>(stackBuffer)};
 
 #ifdef DEBUG_PRINTS
 		printf("DEBUG: serial <- [tx stack] <- |network| : [tx %u] size %llu len: %lu\n", txid, this->tx_stack.size(), length);
@@ -88,13 +88,13 @@ bool SOEPortHandler::read(unsigned int* rxid, const char** buffer, unsigned long
 	// Get element from rx stack and increment next free rxid to write data to
 	if (this->rx_stack.count(this->next_transmit_rxid)) {
 		rx_entry& stackEntry = this->rx_stack.at(this->next_transmit_rxid);
-		if (get<0>(stackEntry) > 0) {
+		if (stackEntry.length > 0) {
 			*rxid = this->next_transmit_rxid++;
-			*buffer = get<1>(stackEntry).get();
-			*length = get<0>(stackEntry);
+			*buffer = stackEntry.payload.get();
+			*length = stackEntry.length;
 
 			// Update time to resend the package in case reception is not confirmed first
-			get<2>(stackEntry) = chrono::steady_clock::now() + chrono::milliseconds(INET_TX_REP_INTERVAL);
+			stackEntry.time_to_resend = chrono::steady_clock::now() + chrono::milliseconds(INET_TX_REP_INTERVAL);
 
 			if (this->next_free_rxid < this->next_transmit_rxid)
 				this->next_free_rxid = this->next_transmit_rxid;
@@ -106,13 +106,13 @@ bool SOEPortHandler::read(unsigned int* rxid, const char** buffer, unsigned long
 	for (unsigned int id = this->last_transmitted_rxid; id < this->next_transmit_rxid; id++) {
 		if (this->rx_stack.count(id)) {
 			rx_entry& stackEntry = this->rx_stack.at(id);
-			if (get<3>(stackEntry) || get<2>(stackEntry) >= chrono::steady_clock::now()) continue;
+			if (stackEntry.rx_confirmed || stackEntry.time_to_resend >= chrono::steady_clock::now()) continue;
 			*rxid = id;
-			*buffer = get<1>(stackEntry).get();
-			*length = get<0>(stackEntry);
+			*buffer = stackEntry.payload.get();
+			*length = stackEntry.length;
 
 			// Update time to resend the package in case reception is not confirmed first
-			get<2>(stackEntry) = chrono::steady_clock::now() + chrono::milliseconds(INET_TX_REP_INTERVAL);
+			stackEntry.time_to_resend = chrono::steady_clock::now() + chrono::milliseconds(INET_TX_REP_INTERVAL);
 
 			return true;
 		}
@@ -132,10 +132,10 @@ void SOEPortHandler::confirmReception(unsigned int rxid) {
 		rx_entry& stackEntry = this->rx_stack.at(rxid);
 
 		// Mark package reception confirmed
-		get<3>(stackEntry) = true;
+		stackEntry.rx_confirmed = true;
 
 #ifdef DEBUG_PRINTS
-		printf("DEBUG: serial -> |rx stack| -> [network] -> serial : [rx %u] size %llu len: %lu\n", rxid, this->rx_stack.size(), get<0>(stackEntry));
+		printf("DEBUG: serial -> |rx stack| -> [network] -> serial : [rx %u] size %llu len: %lu\n", rxid, this->rx_stack.size(), stackEntry.length);
 #endif
 
 	} catch (std::out_of_range& e) {} // The entry did not exist, ignore
@@ -164,7 +164,7 @@ void SOEPortHandler::confirmTransmission(unsigned int rxid) {
 
 void SOEPortHandler::handlePortTX() {
 	// Init tx variables
-	this->tx_stack = map<unsigned int, pair<unsigned long, unique_ptr<char>>>();
+	this->tx_stack = map<unsigned int, tx_entry>();
 	this->next_txid = 0;
 
 	// Start tx loop
@@ -173,21 +173,22 @@ void SOEPortHandler::handlePortTX() {
 		// If not available, wait for more data
 		unique_lock<mutex> lock(this->tx_stackm);
 		if (!this->tx_stack.count(this->next_txid)) {
-			this->tx_waitc.wait(lock, [this] { return this->tx_stack.count(this->next_txid); });
+			this->tx_waitc.wait(lock, [this] { return this->tx_stack.count(this->next_txid) || !this->port->isOpen(); });
+			if (!this->port->isOpen()) continue;
 		}
 
 		// Get next element from tx stack
-		pair<unsigned long, unique_ptr<char>>* stackEntry = &this->tx_stack.at(this->next_txid);
+		tx_entry* stackEntry = &this->tx_stack.at(this->next_txid);
 		lock.unlock();
 
 #ifdef DEBUG_PRINTS
-		printf("DEBUG: [serial] <- |tx stack| <- network : [tx %u] size %llu len: %lu\n", this->next_txid, this->tx_stack.size(), stackEntry->first);
+		printf("DEBUG: [serial] <- |tx stack| <- network : [tx %u] size %llu len: %lu\n", this->next_txid, this->tx_stack.size(), stackEntry->length);
 #endif
 
 		// Transmit data over serial
 		unsigned long transmitted = 0;
-		while (transmitted < stackEntry->first) {
-			transmitted += this->port->writeBytes(stackEntry->second.get() + transmitted, stackEntry->first - transmitted);
+		while (transmitted < stackEntry->length) {
+			transmitted += this->port->writeBytes(stackEntry->payload.get() + transmitted, stackEntry->length - transmitted);
 		}
 
 		// Send transmission confirmation
@@ -225,7 +226,7 @@ void SOEPortHandler::handlePortRX() {
 			if (!this->rx_stack.count(this->next_free_rxid)) {
 				this->rx_stack[this->next_free_rxid] = {0UL, unique_ptr<char>(new char[SERIAL_RX_ENTRY_LEN] {0}), chrono::steady_clock::now(), false};
 			// Else, if the element has reached its limit, create new entry
-			} else if (get<0>(this->rx_stack[this->next_free_rxid]) >= SERIAL_RX_ENTRY_LEN) {
+			} else if (this->rx_stack[this->next_free_rxid].length >= SERIAL_RX_ENTRY_LEN) {
 				// If the RX STACK has reached its limit, hold reception
 				if (this->rx_stack.size() >= SERIAL_RX_STACK_LIMIT) {
 #ifdef DEBUG_PRINTS
@@ -238,11 +239,11 @@ void SOEPortHandler::handlePortRX() {
 
 			// Read from serial into free rx entry, append to existing data
 			rx_entry& stackEntry = this->rx_stack[this->next_free_rxid];
-			unsigned long received = this->port->readBytes(get<1>(stackEntry).get() + get<0>(stackEntry), SERIAL_RX_ENTRY_LEN - get<0>(stackEntry));
+			unsigned long received = this->port->readBytes(stackEntry.payload.get() + stackEntry.length, SERIAL_RX_ENTRY_LEN - stackEntry.length);
 #ifdef DEBUG_PRINTS
-			if (received != 0) printf("DEBUG: |serial| -> [rx stack] -> network -> serial : [rx %u] size %llu len: %lu + %lu\n", this->next_free_rxid, this->rx_stack.size(), get<0>(stackEntry), received);
+			if (received != 0) printf("DEBUG: |serial| -> [rx stack] -> network -> serial : [rx %u] size %llu len: %lu + %lu\n", this->next_free_rxid, this->rx_stack.size(), stackEntry.length, received);
 #endif
-			get<0>(stackEntry) += received;
+			stackEntry.length += received;
 
 		}
 

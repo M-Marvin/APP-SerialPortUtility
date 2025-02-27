@@ -11,32 +11,32 @@
 struct SerialPortImplData;
 
 typedef enum SerialPortParities {
-	SPC_PARITY_NONE,
-	SPC_PARITY_ODD,
-	SPC_PARITY_EVEN,
-	SPC_PARITY_MARK,
-	SPC_PARITY_SPACE,
-	SPC_PARITY_UNDEFINED
+	SPC_PARITY_NONE = 1,
+	SPC_PARITY_ODD = 2,
+	SPC_PARITY_EVEN = 3,
+	SPC_PARITY_MARK = 4,
+	SPC_PARITY_SPACE = 5,
+	SPC_PARITY_UNDEFINED = 0
 } SerialPortParity;
 
 enum SerialPortFlowControl {
-	SPC_FLOW_NONE,
-	SPC_FLOW_XON_XOFF,
-	SPC_FLOW_RTS_CTS,
-	SPC_FLOW_DSR_DTR,
-	SPC_FLOW_UNDEFINED
+	SPC_FLOW_NONE = 1,
+	SPC_FLOW_XON_XOFF = 2,
+	SPC_FLOW_RTS_CTS = 3,
+	SPC_FLOW_DSR_DTR = 4,
+	SPC_FLOW_UNDEFINED = 0
 };
 
 enum SerialPortStopBits {
-	SPC_STOPB_ONE,
-	SPC_STOPB_ONE_HALF,
-	SPC_STOPB_TWO,
-	SPC_STOPB_UNDEFINED
+	SPC_STOPB_ONE = 1,
+	SPC_STOPB_ONE_HALF = 2,
+	SPC_STOPB_TWO = 3,
+	SPC_STOPB_UNDEFINED = 0
 };
 
 typedef struct SerialPortConfiguration {
-	unsigned long baudRate;
-	unsigned short dataBits;
+	unsigned int baudRate;
+	unsigned char dataBits;
 	SerialPortStopBits stopBits;
 	SerialPortParity parity;
 	SerialPortFlowControl flowControl;

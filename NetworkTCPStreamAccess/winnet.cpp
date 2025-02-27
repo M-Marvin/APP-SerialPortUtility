@@ -81,7 +81,7 @@ bool INetAddress::fromstr(string& addressStr, unsigned int port) {
 	}
 }
 
-bool INetAddress::tostr(string& addressStr, unsigned int* port) {
+bool INetAddress::tostr(string& addressStr, unsigned int* port) const {
 	if (this->implData->addr.sockaddr.sa_family == AF_INET) {
 		char addrStr[INET_ADDRSTRLEN];
 		if (inet_ntop(AF_INET, &this->implData->addr.sockaddr4.sin_addr, addrStr, INET_ADDRSTRLEN) == 0) {

@@ -25,7 +25,7 @@ public:
 	~INetAddress();
 
 	bool fromstr(string& addressStr, unsigned int port);
-	bool tostr(string& addressStr, unsigned int* port);
+	bool tostr(string& addressStr, unsigned int* port) const;
 
 	INetAddress& operator=(const INetAddress& other);
 

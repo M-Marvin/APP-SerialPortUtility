@@ -32,6 +32,8 @@ class Socket;
 #define SOE_FRAME_HEADER_LEN 1										// The length of the SOE control frame header
 #define INET_RX_PCKG_LEN SERIAL_RX_ENTRY_LEN + SOE_FRAME_HEADER_LEN	// Buffer for incoming network payload (individual stack entries + package header)
 #define INET_TX_REP_INTERVAL 100									// Interval in which the tx thread checks the rx stacks for data, even if he was not notified about new data, these intervals are used to re-send lost packages
+#define INET_KEEP_ALIVE_TIMEOUT 10000								// Timeout for network connection, if no packages is received within this time, a lost connection is assumed
+#define INET_KEEP_ALIVE_INTERVAL 1000								// Timeout for receiving packages, before sending keep alive package (OPC_STREAM with length 0)
 
 #include <network.h>
 #include <serial_port.h>
@@ -190,7 +192,10 @@ private:
 	function<void(void)> new_data;
 	function<void(unsigned int)> tx_confirm;
 
-	typedef pair<unsigned long, unique_ptr<char>> tx_entry;
+	typedef struct {
+		unsigned long length;
+		unique_ptr<char> payload;
+	} tx_entry;
 
 	thread thread_tx;
 	unsigned int next_txid;					// Next txid that the serial port will try to transmitt
@@ -198,7 +203,12 @@ private:
 	condition_variable tx_waitc;			// TX hold variable, transmission will hold here if the tx stack runs out
 	map<unsigned int, tx_entry> tx_stack;	// The serial transmission stack, holding network received data to transmitt over serial
 
-	typedef tuple<unsigned long, unique_ptr<char>, chrono::time_point<chrono::steady_clock>, bool> rx_entry;
+	typedef struct  {
+		unsigned long length;
+		unique_ptr<char> payload;
+		chrono::time_point<chrono::steady_clock> time_to_resend;
+		bool rx_confirmed;
+	} rx_entry;
 
 	thread thread_rx;
 	unsigned int next_free_rxid;			// Next rxid to use for packages read from serial
@@ -234,7 +244,7 @@ public:
 	 * @param timeoutms The timeout for the remote port claim, if exceeded the connection will fail
 	 * @return true if the remote and local port could successfully be claimed and connected, false otherwise
 	 */
-	bool openRemotePort(const INetAddress& remoteAddress, const string& remotePortName, unsigned int baud, const string& localPortName, unsigned int timeoutms);
+	bool openRemotePort(const INetAddress& remoteAddress, const string& remotePortName, const SerialPortConfiguration config, const string& localPortName, unsigned int timeoutms);
 
 	/**
 	 * Attempts to release the remote port and the corresponding local port.
@@ -313,7 +323,7 @@ private:
 	 * @param baud The baud rate to configure
 	 * @return true if the data could be send successfully, false otherwise
 	 */
-	bool sendOpenRequest(const INetAddress& remoteAddress, const string& portName, unsigned int baud);
+	bool sendOpenRequest(const INetAddress& remoteAddress, const string& portName, const SerialPortConfiguration& config);
 
 	/**
 	 * Assembles and transmits an OPC_CLOSE frame to the server.
@@ -333,8 +343,16 @@ private:
 	 */
 	void handleClientTX();
 
+	typedef struct {
+		unique_ptr<SOEPortHandler> handler;
+		INetAddress remote_address;
+		chrono::time_point<chrono::steady_clock> point_of_timeout;
+		chrono::time_point<chrono::steady_clock> last_send;
+	} port_claim;
+
 	unique_ptr<Socket> socket;
-	map<string, pair<unique_ptr<SOEPortHandler>, INetAddress>> ports;
+	mutex portsm;
+	map<string, port_claim> ports;
 
 	thread thread_rx;
 	thread thread_tx;

@@ -43,7 +43,10 @@ void testConnect() {
 
 	printf("created soe handler\n");
 
-	if (!soeHandler->openRemotePort(remoteAddress, "\\\\.\\COM3", 250000, "\\\\.\\COM10", 4000)) {
+	SerialPortConfiguration config = DEFAULT_PORT_CONFIGURATION;
+	config.baudRate = 250000;
+
+	if (!soeHandler->openRemotePort(remoteAddress, "\\\\.\\COM3", config, "\\\\.\\COM10", 4000)) {
 		printf("failed to establish connection!\n");
 	} else {
 
