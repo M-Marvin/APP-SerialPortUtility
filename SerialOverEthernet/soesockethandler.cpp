@@ -55,7 +55,7 @@ void SOESocketHandler::handleClientTX() {
 	while (this->socket->isOpen()) {
 
 		bool immediateWork = false;
-		{	unique_lock<mutex> lock(this->portsm);
+		{	shared_lock<shared_timed_mutex> lock(this->portsm);
 
 			chrono::time_point<chrono::steady_clock> now = chrono::steady_clock::now();
 			for (auto entry = this->ports.begin(); entry != this->ports.end(); entry++) {
@@ -72,7 +72,8 @@ void SOESocketHandler::handleClientTX() {
 					printf("connection timed out, close port: %s %u : %s\n", address.c_str(), port, portName.c_str());
 
 					// Close port
-					this->ports.erase(entry--);
+					lock.unlock();
+					{ unique_lock<shared_timed_mutex> lock(this->portsm); this->ports.erase(entry--); }
 					if (!sendClaimStatus(remoteAddress, false, portName)) {
 						// If the error report fails too ... don't care at this point ...
 						sendError(remoteAddress, portName, "failed to transmit CLOSE notification");
@@ -104,7 +105,8 @@ void SOESocketHandler::handleClientTX() {
 					sendError(remoteAddress, portName.c_str(), "failed to transmit STREAM frame, close port");
 
 					// Close port
-					this->ports.erase(portName);
+					lock.unlock();
+					{ unique_lock<shared_timed_mutex> lock(this->portsm); this->ports.erase(portName); }
 					if (!sendClaimStatus(remoteAddress, false, portName.c_str())) {
 						// If the error report fails too ... don't care at this point ...
 						sendError(remoteAddress, portName, "failed to transmit CLOSE notification");
@@ -233,7 +235,7 @@ void SOESocketHandler::handleClientRX() {
 			});
 
 			{
-				unique_lock<mutex> lock(this->portsm);
+				unique_lock<shared_timed_mutex> lock(this->portsm);
 				this->ports[portName] = {
 						std::unique_ptr<SOEPortHandler>(portHandler),
 						remoteAddress,
@@ -245,8 +247,7 @@ void SOESocketHandler::handleClientRX() {
 			// Confirm that the port has been opened, close port if this fails, to avoid unused open ports
 			if (!sendClaimStatus(remoteAddress, true, portName)) {
 				sendError(remoteAddress, portName, "failed to complete OPENED confirmation, close port");
-				unique_lock<mutex> lock(this->portsm);
-				this->ports.erase(portName);
+				{ unique_lock<shared_timed_mutex> lock(this->portsm); this->ports.erase(portName); }
 			}
 
 			string address;
@@ -281,7 +282,7 @@ void SOESocketHandler::handleClientRX() {
 			// Attempt to close port
 			bool closed = false;
 			{
-				unique_lock<mutex> lock(this->portsm);
+				unique_lock<shared_timed_mutex> lock(this->portsm);
 				closed = this->ports.count(portName);
 				this->ports.erase(portName);
 			}
@@ -332,7 +333,7 @@ void SOESocketHandler::handleClientRX() {
 					(payload[5 + portStrLen] & 0xFF) << 0;
 
 			// Attempt to get port
-			unique_lock<mutex> lock(this->portsm);
+			shared_lock<shared_timed_mutex> lock(this->portsm);
 			port_claim* portClaim = 0;
 			try {
 #ifdef SIDE_CLIENT
@@ -352,7 +353,8 @@ void SOESocketHandler::handleClientRX() {
 				sendError(remoteAddress, portName, "port is already closed");
 
 				// Close port
-				this->ports.erase(portName);
+				lock.unlock();
+				{ unique_lock<shared_timed_mutex> lock(this->portsm); this->ports.erase(portName); }
 				if (!sendClaimStatus(remoteAddress, false, portName)) {
 					// If the error report fails too ... don't care at this point ...
 					sendError(remoteAddress, portName, "failed to transmit CLOSE notification");
@@ -413,7 +415,7 @@ void SOESocketHandler::handleClientRX() {
 					(payload[5 + portStrLen] & 0xFF) << 0;
 
 			// Attempt to get port
-			unique_lock<mutex> lock(this->portsm);
+			shared_lock<shared_timed_mutex> lock(this->portsm);
 			port_claim* portClaim = 0;
 			try {
 #ifdef SIDE_CLIENT
@@ -462,7 +464,7 @@ void SOESocketHandler::handleClientRX() {
 					(payload[5 + portStrLen] & 0xFF) << 0;
 
 			// Attempt to get port
-			unique_lock<mutex> lock(this->portsm);
+			shared_lock<shared_timed_mutex> lock(this->portsm);
 			port_claim* portClaim = 0;
 			try {
 #ifdef SIDE_CLIENT
@@ -474,7 +476,7 @@ void SOESocketHandler::handleClientRX() {
 #endif
 			} catch (const std::out_of_range& e) {
 #ifdef DEBUG_PRINTS
-			printf("DEBUG: received tx confirm for closed port: %s [rx %u]\n", portName.c_str(), rxid);
+				printf("DEBUG: received tx confirm for closed port: %s [rx %u]\n", portName.c_str(), rxid);
 #endif
 				break;
 			}
@@ -633,7 +635,7 @@ void SOESocketHandler::handleClientRX() {
 				// Attempt to get and close local port
 				{
 					// From the server we get the remote host name, so we need to map it to the local port
-					unique_lock<mutex> lock(this->portsm);
+					unique_lock<shared_timed_mutex> lock(this->portsm);
 					string localPortName = this->remote2localPort.at(portName);
 					this->ports.erase(localPortName);
 					this->remote2localPort.erase(portName);
@@ -649,7 +651,7 @@ void SOESocketHandler::handleClientRX() {
 #endif
 
 			// Attempt to get and close port
-			{ unique_lock<mutex> lock(this->portsm); this->ports.erase(portName); }
+			{ unique_lock<shared_timed_mutex> lock(this->portsm); this->ports.erase(portName); }
 			printf("closed port: %s\n", portName.c_str());
 
 #endif
@@ -666,7 +668,7 @@ void SOESocketHandler::handleClientRX() {
 	}
 
 	// Release all ports
-	unique_lock<mutex> lock(this->portsm);
+	unique_lock<shared_timed_mutex> lock(this->portsm);
 	for (auto entry = this->ports.cbegin(); entry != this->ports.cend(); entry++) {
 		printf("auto close port: %s\n", entry->first.c_str());
 	}
@@ -719,7 +721,7 @@ bool SOESocketHandler::openRemotePort(const INetAddress& remoteAddress, const st
 			this->sendError(remoteAddress, localPortName, "failed to transmit TX_CONFIRM");
 		}
 	});
-	unique_lock<mutex> lock(this->portsm);
+	unique_lock<shared_timed_mutex> lock(this->portsm);
 	this->ports[localPortName] = {std::unique_ptr<SOEPortHandler>(portHandler), remoteAddress, chrono::steady_clock::now() + chrono::milliseconds(INET_KEEP_ALIVE_TIMEOUT)};
 	this->remote2localPort[remotePortName] = localPortName;
 
@@ -750,11 +752,8 @@ bool SOESocketHandler::closeRemotePort(const INetAddress& remoteAddress, const s
 
 	// Attempt to find and close local port, if no port registered, skip this step
 	try {
-		unique_lock<mutex> lock(this->portsm);
+		unique_lock<shared_timed_mutex> lock(this->portsm);
 		string localPortName = this->remote2localPort.at(remotePortName);
-		this->ports.at(localPortName);
-
-		// Close port
 		this->ports.erase(localPortName);
 		this->remote2localPort.erase(remotePortName);
 

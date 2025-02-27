@@ -187,7 +187,7 @@ void SOEPortHandler::handlePortTX() {
 
 		// Transmit data over serial
 		unsigned long transmitted = 0;
-		while (transmitted < stackEntry->length) {
+		while (transmitted < stackEntry->length && this->port->isOpen()) {
 			transmitted += this->port->writeBytes(stackEntry->payload.get() + transmitted, stackEntry->length - transmitted);
 		}
 
@@ -239,6 +239,7 @@ void SOEPortHandler::handlePortRX() {
 
 			// Read from serial into free rx entry, append to existing data
 			rx_entry& stackEntry = this->rx_stack[this->next_free_rxid];
+			lock.unlock(); // ! Free the RX STACK to prent it being blocked while waiting for data
 			unsigned long received = this->port->readBytes(stackEntry.payload.get() + stackEntry.length, SERIAL_RX_ENTRY_LEN - stackEntry.length);
 #ifdef DEBUG_PRINTS
 			if (received != 0) printf("DEBUG: |serial| -> [rx stack] -> network -> serial : [rx %u] size %llu len: %lu + %lu\n", this->next_free_rxid, this->rx_stack.size(), stackEntry.length, received);

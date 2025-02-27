@@ -39,7 +39,7 @@ class Socket;
 #include <serial_port.h>
 #include <thread>
 #include <map>
-#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <condition_variable>
 #include <functional>
@@ -239,7 +239,7 @@ public:
 	 * Attempts to claim the given port on the remote server and the given local port and connecting them over the serial over ethernet protocoll
 	 * @param remoteAddress The network address to send control frames too
 	 * @param remotePortName The remote port name to claim
-	 * @param baud The baud to configure for both, the remote and the local port
+	 * @param config The serial port configuration (baud, dataBits, stopBits etc)
 	 * @param localPortName The local port name to claim
 	 * @param timeoutms The timeout for the remote port claim, if exceeded the connection will fail
 	 * @return true if the remote and local port could successfully be claimed and connected, false otherwise
@@ -351,7 +351,7 @@ private:
 	} port_claim;
 
 	unique_ptr<Socket> socket;
-	mutex portsm;
+	shared_timed_mutex portsm;
 	map<string, port_claim> ports;
 
 	thread thread_rx;
