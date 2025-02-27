@@ -18,28 +18,38 @@
 #include <algorithm>
 #include "soeimpl.h"
 
+#include <map>
+
 void testConnect() {
 
+	INetAddress localAddress = INetAddress();
+	string local = "0.0.0.0";
+	localAddress.fromstr(local, DEFAULT_SOE_PORT);
+
+	INetAddress remoteAddress = INetAddress();
+	string host = "192.168.178.59";
+	remoteAddress.fromstr(host, DEFAULT_SOE_PORT);
+
 	Socket* socket = new Socket();
-	if (!socket->connect("192.168.178.59", DEFAULT_SOE_PORT)) {
+	if (!socket->bind(localAddress)) {
 		delete socket;
-		printf("failed to connect to server!\n");
+		printf("failed to open socket!\n");
 		return;
 	}
 
 	printf("connected socket\n");
 
-	SOESocketHandler* soeHandler = new SOESocketHandler(*socket);
+	SOESocketHandler* soeHandler = new SOESocketHandler(socket);
 
 	printf("created soe handler\n");
 
-	if (!soeHandler->openRemotePort("\\\\.\\COM3", 250000, "\\\\.\\COM10", 4000)) {
+	if (!soeHandler->openRemotePort(remoteAddress, "\\\\.\\COM3", 250000, "\\\\.\\COM10", 4000)) {
 		printf("failed to establish connection!\n");
 	} else {
 
 		while (true) {}
 
-		if (!soeHandler->closeRemotePort("\\\\.\\COM10", 4000)) {
+		if (!soeHandler->closeRemotePort(remoteAddress, "\\\\.\\COM10", 4000)) {
 			printf("close connection failed!\n");
 		}
 

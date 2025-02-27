@@ -22,8 +22,8 @@
 
 using namespace std;
 
-Socket listenSocket;
-vector<SOESocketHandler*> clients = vector<SOESocketHandler*>();
+//Socket listenSocket;
+//vector<SOESocketHandler*> clients = vector<SOESocketHandler*>();
 
 int main(int argn, const char** argv) {
 
@@ -32,16 +32,19 @@ int main(int argn, const char** argv) {
 
 	// Default configuration
 	unsigned int port = DEFAULT_SOE_PORT;
+	string host = "0.0.0.0";
 
 	// Parse arguments
 	for (int i = 0; i < argn; i++) {
 		if (strcmp(argv[i], "-help") == 0) {
-			printf("soa (-port *soe-port-number*)");
+			printf("soa (-port *soe-port-number*) (-addr *soe-local-ip*)");
 			return 0;
 		} else if (strcmp(argv[i], "-port") == 0) {
 			if (i == argn - 1) return 1;
 			port = atoi(argv[i + 1]);
-			if (port == 0) return 1;
+		} else if (strcmp(argv[i], "-addr") == 0) {
+			if (i == argn - 1) return 1;
+			host = string(argv[i + 1]);
 		}
 	}
 
@@ -51,21 +54,31 @@ int main(int argn, const char** argv) {
 		return -1;
 	}
 
+	INetAddress localAddress = INetAddress();
+	if (!localAddress.fromstr(host, port)) {
+		return -1;
+	}
+
 	// Open server port
 	printf("open soa port: %d\n", port);
-	if (!listenSocket.listen(port)) {
+	Socket* socket = new Socket();
+	if (!socket->bind(localAddress)) {
 		printf("failed to claim port!\n");
 		return -1;
 	}
 
-	handleClientReception();
+	SOESocketHandler* handler = new SOESocketHandler(socket);
 
-	// Close server port
-	listenSocket.close();
+	while (true) {};
 
-	// Wait for all clients to terminate
-	while (clients.size() > 0)
-		cleanupClosedClients();
+	delete handler;
+
+//	// Close server port
+//	listenSocket.close();
+//
+//	// Wait for all clients to terminate
+//	while (clients.size() > 0)
+//		cleanupClosedClients();
 
 	// Cleanup and exit
 	InetCleanup();
@@ -74,46 +87,46 @@ int main(int argn, const char** argv) {
 
 }
 
-void shutdown() {
-	printf("soa shutdown requested ...\n");
-	listenSocket.close();
-}
-
-void cleanupClosedClients() {
-
-	// Cleanup and set to NULL all close/inactive clients
-	for (auto client = clients.begin(); client != clients.end(); client ++) {
-		if (!(*client)->isActive()) {
-			delete (*client);
-			(*client) = 0;
-			printf("DEBUG: connection closed!\n");
-		}
-	}
-
-	// Delete all NULL entries from the list of clients
-	clients.erase(remove(clients.begin(), clients.end(), (SOESocketHandler*) 0), clients.end());
-
-}
-
-void handleClientReception() {
-	while (listenSocket.isOpen()) {
-
-		// Accept incoming connections
-		Socket* clientSocket = new Socket();
-		if (!listenSocket.accept(*clientSocket)) {
-			printf("DEBUG: connect failed!\n");
-			delete clientSocket;
-			continue;
-		}
-		printf("DEBUG: new connection!\n");
-
-		cleanupClosedClients();
-
-		// Start new client handler
-		SOESocketHandler* client = new SOESocketHandler(*clientSocket);
-		clients.push_back(client);
-
-	}
-}
+//void shutdown() {
+//	printf("soa shutdown requested ...\n");
+//	listenSocket.close();
+//}
+//
+//void cleanupClosedClients() {
+//
+//	// Cleanup and set to NULL all close/inactive clients
+//	for (auto client = clients.begin(); client != clients.end(); client ++) {
+//		if (!(*client)->isActive()) {
+//			delete (*client);
+//			(*client) = 0;
+//			printf("DEBUG: connection closed!\n");
+//		}
+//	}
+//
+//	// Delete all NULL entries from the list of clients
+//	clients.erase(remove(clients.begin(), clients.end(), (SOESocketHandler*) 0), clients.end());
+//
+//}
+//
+//void handleClientReception() {
+//	while (listenSocket.isOpen()) {
+//
+////		// Accept incoming connections
+////		Socket* clientSocket = new Socket();
+////		if (!listenSocket.accept(*clientSocket)) {
+////			printf("DEBUG: connect failed!\n");
+////			delete clientSocket;
+////			continue;
+////		}
+////		printf("DEBUG: new connection!\n");
+////
+////		cleanupClosedClients();
+////
+////		// Start new client handler
+////		SOESocketHandler* client = new SOESocketHandler(clientSocket);
+////		clients.push_back(client);
+//
+//	}
+//}
 
 #endif

@@ -22,10 +22,10 @@
 
 using namespace std;
 
-SOEPortHandler::SOEPortHandler(SOESocketHandler* client, SerialPort &port, const char* portName) {
-	this->portName = string(portName);
-	this->client = client;
-	this->port = &port;
+SOEPortHandler::SOEPortHandler(SerialPort* port, function<void(void)> newDataCallback, function<void(unsigned int)> txConfirmCallback) {
+	this->port.reset(port);
+	this->new_data = newDataCallback;
+	this->tx_confirm = txConfirmCallback;
 
 	this->thread_tx = thread([this]() -> void {
 		handlePortTX();
@@ -37,13 +37,12 @@ SOEPortHandler::SOEPortHandler(SOESocketHandler* client, SerialPort &port, const
 
 SOEPortHandler::~SOEPortHandler() {
 	this->port->closePort();
-	{ unique_lock<mutex> lock(this->tx_stackm); } // TODO do we need this ?
+	{ unique_lock<mutex> lock(this->tx_stackm); }
 	this->tx_waitc.notify_all();
-	{ unique_lock<mutex> lock(this->rx_stackm); } // TODO do we need this ?
+	{ unique_lock<mutex> lock(this->rx_stackm); }
 	this->rx_waitc.notify_all();
 	this->thread_tx.join();
 	this->thread_rx.join();
-	delete this->port;
 }
 
 bool SOEPortHandler::isOpen() {
@@ -55,10 +54,8 @@ bool SOEPortHandler::send(unsigned int txid, const char* buffer, unsigned long l
 	// Do not insert any data if this port is shutting down
 	if (!this->port->isOpen()) return false;
 
-	// Ignore packages which txid is "in the past"
-	if (txid < this->next_txid && this->next_txid - txid < 0x7FFFFFFF) {
-		return false;
-	}
+	// Ignore packages which txid is "in the past", just confirm that it has already been received
+	if (txid < this->next_txid && this->next_txid - txid < 0x7FFFFFFF) return true;
 
 	// If tx stack has reached limit, abort operation, only make an exception if this is the next package that should be send
 	if (this->tx_stack.size() >= SERIAL_RX_STACK_LIMIT && txid != this->next_txid) return false;
@@ -68,13 +65,14 @@ bool SOEPortHandler::send(unsigned int txid, const char* buffer, unsigned long l
 	memcpy(stackBuffer, buffer, length);
 	{
 		lock_guard<mutex> lock(this->tx_stackm);
-		this->tx_stack[txid] = pair<unsigned long, char*>(length, stackBuffer);
-		this->tx_waitc.notify_all();
-	}
+		this->tx_stack[txid] = pair<unsigned long, std::unique_ptr<char>>(length, unique_ptr<char>(stackBuffer));
 
 #ifdef DEBUG_PRINTS
-		printf("DEBUG: network -> %s tx stack: [tx %u] size %llu len: %lu\n", this->portName.c_str(), txid, this->tx_stack.size(), length);
+		printf("DEBUG: serial <- [tx stack] <- |network| : [tx %u] size %llu len: %lu\n", txid, this->tx_stack.size(), length);
 #endif
+
+		this->tx_waitc.notify_all();
+	}
 
 	return true;
 
@@ -85,47 +83,75 @@ bool SOEPortHandler::read(unsigned int* rxid, const char** buffer, unsigned long
 	// Nothing to send if port is closed
 	if (!this->port->isOpen()) return false;
 
-	// If rx stack at limit, reset rxid to last cached package to resend everything
-	if (this->rx_stack.size() >= SERIAL_RX_STACK_LIMIT && this->next_transmit_rxid == this->next_free_rxid) {
-		if (this->is_repeating) {
-			this->is_repeating = false;
-			return false;
-		}
+	lock_guard<mutex> lock(this->rx_stackm);
 
-		this->next_transmit_rxid = this->last_transmitted_rxid;
-		this->is_repeating = true;
+	// Get element from rx stack and increment next free rxid to write data to
+	if (this->rx_stack.count(this->next_transmit_rxid)) {
+		rx_entry& stackEntry = this->rx_stack.at(this->next_transmit_rxid);
+		if (get<0>(stackEntry) > 0) {
+			*rxid = this->next_transmit_rxid++;
+			*buffer = get<1>(stackEntry).get();
+			*length = get<0>(stackEntry);
+
+			// Update time to resend the package in case reception is not confirmed first
+			get<2>(stackEntry) = chrono::steady_clock::now() + chrono::milliseconds(INET_TX_REP_INTERVAL);
+
+			if (this->next_free_rxid < this->next_transmit_rxid)
+				this->next_free_rxid = this->next_transmit_rxid;
+			return true;
+		}
 	}
 
-	// Get element from rx stack
+	// If currently no new data available, look for packages whichs reception might have failed
+	for (unsigned int id = this->last_transmitted_rxid; id < this->next_transmit_rxid; id++) {
+		if (this->rx_stack.count(id)) {
+			rx_entry& stackEntry = this->rx_stack.at(id);
+			if (get<3>(stackEntry) || get<2>(stackEntry) >= chrono::steady_clock::now()) continue;
+			*rxid = id;
+			*buffer = get<1>(stackEntry).get();
+			*length = get<0>(stackEntry);
+
+			// Update time to resend the package in case reception is not confirmed first
+			get<2>(stackEntry) = chrono::steady_clock::now() + chrono::milliseconds(INET_TX_REP_INTERVAL);
+
+			return true;
+		}
+	}
+	return false; // No more data
+
+}
+
+void SOEPortHandler::confirmReception(unsigned int rxid) {
+
+	// Receiving a recption confirmation for an package that was not yet transmitted makes no sense
+	if (rxid >= this->next_free_rxid) return;
+
+	// Get entry from stack and mark as received
 	try {
 		lock_guard<mutex> lock(this->rx_stackm);
-		pair<unsigned long, char*> stackEntry = this->rx_stack.at(this->next_transmit_rxid);
-		if (stackEntry.first == 0) return false; // No more data
-		*rxid = this->next_transmit_rxid++;
-		*buffer = stackEntry.second;
-		*length = stackEntry.first;
-		if (this->next_free_rxid < this->next_transmit_rxid)
-			this->next_free_rxid = this->next_transmit_rxid;
+		rx_entry& stackEntry = this->rx_stack.at(rxid);
 
-		return true;
-	} catch (out_of_range &e) {
-		return false; // No more data
-	}
+		// Mark package reception confirmed
+		get<3>(stackEntry) = true;
+
+#ifdef DEBUG_PRINTS
+		printf("DEBUG: serial -> |rx stack| -> [network] -> serial : [rx %u] size %llu len: %lu\n", rxid, this->rx_stack.size(), get<0>(stackEntry));
+#endif
+
+	} catch (std::out_of_range& e) {} // The entry did not exist, ignore
 
 }
 
 void SOEPortHandler::confirmTransmission(unsigned int rxid) {
 
-	// Delete entry from payload stack and release reception hold
 	lock_guard<mutex> lock(this->rx_stackm);
 
-	// Remove all packages before and including rxid
+	// Remove all packages before and including rxid, this ensures even packges whos tx confirm might be lost are cleared from the stack
 	for (unsigned int i = this->last_transmitted_rxid; i != rxid + 1; i++) {
-		delete[] this->rx_stack[i].second;
 		this->rx_stack.erase(i);
 
 #ifdef DEBUG_PRINTS
-		printf("DEBUG: network <- %s rx stack (tx confirm): [rx %u] size %llu\n", this->portName.c_str(), i, this->rx_stack.size());
+		printf("DEBUG: serial -> rx stack -> |network| -> [serial] : [rx %u] size %llu\n", i, this->rx_stack.size());
 #endif
 
 	}
@@ -138,21 +164,34 @@ void SOEPortHandler::confirmTransmission(unsigned int rxid) {
 
 void SOEPortHandler::handlePortTX() {
 	// Init tx variables
-	this->tx_stack = map<unsigned int, pair<unsigned long, char*>>();
+	this->tx_stack = map<unsigned int, pair<unsigned long, unique_ptr<char>>>();
 	this->next_txid = 0;
 
 	// Start tx loop
-	while (this->port->isOpen() && this->client->isActive()) {
+	while (this->port->isOpen()) {
 
 		// If not available, wait for more data
-		if (this->tx_stack.find(this->next_txid) == this->tx_stack.end()) {
-			unique_lock<mutex> lock(this->tx_stackm);
-			this->tx_waitc.wait(lock);
-			continue;
+		unique_lock<mutex> lock(this->tx_stackm);
+		if (!this->tx_stack.count(this->next_txid)) {
+			this->tx_waitc.wait(lock, [this] { return this->tx_stack.count(this->next_txid); });
 		}
 
 		// Get next element from tx stack
-		pair<unsigned long, char*> stackEntry = this->tx_stack.at(this->next_txid);
+		pair<unsigned long, unique_ptr<char>>* stackEntry = &this->tx_stack.at(this->next_txid);
+		lock.unlock();
+
+#ifdef DEBUG_PRINTS
+		printf("DEBUG: [serial] <- |tx stack| <- network : [tx %u] size %llu len: %lu\n", this->next_txid, this->tx_stack.size(), stackEntry->first);
+#endif
+
+		// Transmit data over serial
+		unsigned long transmitted = 0;
+		while (transmitted < stackEntry->first) {
+			transmitted += this->port->writeBytes(stackEntry->second.get() + transmitted, stackEntry->first - transmitted);
+		}
+
+		// Send transmission confirmation
+		this->tx_confirm(this->next_txid);
 
 		// Remove entry from tx stack and increment last txid
 		{
@@ -161,32 +200,9 @@ void SOEPortHandler::handlePortTX() {
 			this->next_txid++;
 		}
 
-#ifdef DEBUG_PRINTS
-		printf("DEBUG: serial <- %s tx stack: [tx %u] size %llu len: %lu\n", this->portName.c_str(), this->next_txid - 1, this->tx_stack.size(), stackEntry.first);
-#endif
-
-		// Transmit data over serial
-		unsigned long transmitted = 0;
-		while (transmitted < stackEntry.first) {
-			transmitted += this->port->writeBytes(stackEntry.second + transmitted, stackEntry.first - transmitted);
-			if (transmitted == 0) {
-				this->client->sendError(this->portName.c_str(), "failed to transmit payload on serial, no listener");
-				std::this_thread::sleep_for(std::chrono::milliseconds(SERIAL_TX_REP_INTERVAL));
-			}
-		}
-		delete[] stackEntry.second;
-
-		// Send transmission confirmation
-		if (!this->client->sendConfirm(true, this->portName.c_str(), this->next_txid - 1)) {
-			this->client->sendError(this->portName.c_str(), "failed to transmit TX_CONFIRM");
-		}
-
 	}
 
 	// Delete all remaining tx stack entries
-	for (auto entry = this->tx_stack.begin(); entry != this->tx_stack.end(); entry++) {
-		delete[] entry->second.second;
-	}
 	this->tx_stack.clear();
 }
 
@@ -196,51 +212,45 @@ void SOEPortHandler::handlePortRX() {
 	this->next_free_rxid = 0;
 	this->next_transmit_rxid = 0;
 	this->last_transmitted_rxid = 0;
-	this->is_repeating = false;
-	this->rx_stack = map<unsigned int, pair<unsigned long, char*>>();
+	this->rx_stack = map<unsigned int, rx_entry>();
 
 	// Start rx loop
-	while (this->port->isOpen() && this->client->isActive()) {
+	while (this->port->isOpen()) {
 
 		// Try read payload from serial, append on next free rx stack entry
 		{
 			unique_lock<mutex> lock(this->rx_stackm);
-			pair<unsigned long, char*>& stackEntry = this->rx_stack[this->next_free_rxid];
 
-			// If entry if full, allocate new one, unles stack reached limit, then hold reception
-			if (stackEntry.first >= SERIAL_RX_ENTRY_LEN) {
+			// If next free entry does not yet exist, create
+			if (!this->rx_stack.count(this->next_free_rxid)) {
+				this->rx_stack[this->next_free_rxid] = {0UL, unique_ptr<char>(new char[SERIAL_RX_ENTRY_LEN] {0}), chrono::steady_clock::now(), false};
+			// Else, if the element has reached its limit, create new entry
+			} else if (get<0>(this->rx_stack[this->next_free_rxid]) >= SERIAL_RX_ENTRY_LEN) {
+				// If the RX STACK has reached its limit, hold reception
 				if (this->rx_stack.size() >= SERIAL_RX_STACK_LIMIT) {
 #ifdef DEBUG_PRINTS
-					printf("DEBUG: %s rx stack limit reached, reception hold: %llu entries\n", this->portName.c_str(), this->rx_stack.size());
+					printf("DEBUG: [!] rx stack limit reached, reception hold: %llu entries\n", this->rx_stack.size());
 #endif
-					this->rx_waitc.wait(lock, [this]() { return this->rx_stack.size() < SERIAL_RX_STACK_LIMIT || !(this->port->isOpen() && this->client->isActive()); });
+					this->rx_waitc.wait(lock, [this]() { return this->rx_stack.size() < SERIAL_RX_STACK_LIMIT || !this->port->isOpen(); });
 				}
-				stackEntry = this->rx_stack[++this->next_free_rxid];
+				this->rx_stack[++this->next_free_rxid] = {0UL, unique_ptr<char>(new char[SERIAL_RX_ENTRY_LEN] {0}), chrono::steady_clock::now(), false};
 			}
 
-			// If newly created entry, initialize first
-			if (stackEntry.second == 0) {
-				stackEntry.second = new char[SERIAL_RX_ENTRY_LEN] {0};
-			}
-
-			unsigned long received = this->port->readBytes(stackEntry.second + stackEntry.first, SERIAL_RX_ENTRY_LEN - stackEntry.first);
-
+			// Read from serial into free rx entry, append to existing data
+			rx_entry& stackEntry = this->rx_stack[this->next_free_rxid];
+			unsigned long received = this->port->readBytes(get<1>(stackEntry).get() + get<0>(stackEntry), SERIAL_RX_ENTRY_LEN - get<0>(stackEntry));
 #ifdef DEBUG_PRINTS
-			if (received != 0) printf("DEBUG: serial -> %s rx stack: [rx %u] size %llu len: %lu + %lu\n", this->portName.c_str(), this->next_free_rxid, this->rx_stack.size(), stackEntry.first, received);
+			if (received != 0) printf("DEBUG: |serial| -> [rx stack] -> network -> serial : [rx %u] size %llu len: %lu + %lu\n", this->next_free_rxid, this->rx_stack.size(), get<0>(stackEntry), received);
 #endif
-
-			stackEntry.first += received;
+			get<0>(stackEntry) += received;
 
 		}
 
 		// Notify client TX thread that new data is available
-		this->client->notifySerialData();
+		this->new_data();
 
 	}
 
 	// Delete rx stack
-	for (auto entry = this->rx_stack.begin(); entry != this->rx_stack.end(); entry++) {
-		delete[] entry->second.second;
-	}
 	this->rx_stack.clear();
 }
