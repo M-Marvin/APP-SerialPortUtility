@@ -1,6 +1,6 @@
 
-#include "serial_port.h"
 #include <de_m_marvin_serialportaccess_SerialPort.h>
+#include "serial_port.hpp"
 
 //BOOL APIENTRY DllMain( HMODULE hModule,
 //                       DWORD  ul_reason_for_call,

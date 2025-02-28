@@ -5,20 +5,8 @@
  *      Author: marvi
  */
 
-#include <corecrt.h>
-#include <serial_port.h>
-#include <condition_variable>
-#include <cstdio>
-#include <cwchar>
-#include <map>
-#include <mutex>
 #include <stdexcept>
-#include <string>
-#include <thread>
-#include <utility>
-#include <chrono>
-
-#include "soeimpl.h"
+#include "soeimpl.hpp"
 
 using namespace std;
 

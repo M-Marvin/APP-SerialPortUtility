@@ -1,9 +1,10 @@
+
 #ifdef PLATFORM_WINDOWS
 
 #include <stdio.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include "network.h"
+#include "network.hpp"
 
 bool InetInit() {
 
@@ -71,7 +72,7 @@ bool INetAddress::fromstr(string& addressStr, unsigned int port) {
 		this->implData->addr.sockaddr4.sin_family = AF_INET;
 		this->implData->addr.sockaddr4.sin_port = htons(port);
 		return true;
-	} else if (inet_pton(AF_INET6, addressStr.c_str(), &this->implData->addr.sockaddr6) == 1) {
+	} else if (inet_pton(AF_INET6, addressStr.c_str(), &this->implData->addr.sockaddr6.sin6_addr) == 1) {
 		this->implData->addr.sockaddr6.sin6_family = AF_INET6;
 		this->implData->addr.sockaddr6.sin6_port = htons(port);
 		return true;
@@ -122,7 +123,11 @@ bool resolve_inet(string& hostStr, string& portStr, bool lookForUDP, vector<INet
 
 	for (ptr = info; ptr != 0; ptr = ptr->ai_next) {
 		addresses.emplace_back();
-		addresses.back().implData->addr.sockaddr = *ptr->ai_addr;
+		if (ptr->ai_family == AF_INET6) {
+			addresses.back().implData->addr.sockaddr6 = *((SOCKADDR_IN6*) ptr->ai_addr);
+		} else if (ptr->ai_family == AF_INET) {
+			addresses.back().implData->addr.sockaddr4 = *((SOCKADDR_IN*) ptr->ai_addr);
+		}
 	}
 
 	::freeaddrinfo(info);
@@ -154,7 +159,7 @@ bool Socket::listen(const INetAddress& address) {
 		return false;
 	}
 
-	int result = ::bind(this->implData->handle, &address.implData->addr.sockaddr, sizeof(SOCKADDR));
+	int result = ::bind(this->implData->handle, &address.implData->addr.sockaddr, address.implData->addr.sockaddr.sa_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6));
 	if (result == SOCKET_ERROR) {
 		printerror("bind() failed: %s\n", WSAGetLastError());
 		::closesocket(this->implData->handle);
@@ -186,7 +191,7 @@ bool Socket::bind(INetAddress& address) {
 		return false;
 	}
 
-	int result = ::bind(this->implData->handle, &address.implData->addr.sockaddr, sizeof(SOCKADDR));
+	int result = ::bind(this->implData->handle, &address.implData->addr.sockaddr, address.implData->addr.sockaddr.sa_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6));
 	if (result == SOCKET_ERROR) {
 		printerror("bind() failed: %s\n", WSAGetLastError());
 		::closesocket(this->implData->handle);
@@ -233,7 +238,7 @@ bool Socket::connect(const INetAddress& address) {
 		return false;
 	}
 
-	int result = ::connect(this->implData->handle, &address.implData->addr.sockaddr, sizeof(SOCKADDR));
+	int result = ::connect(this->implData->handle, &address.implData->addr.sockaddr, address.implData->addr.sockaddr.sa_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6));
 	if (result == SOCKET_ERROR) {
 		printerror("connect() failed: %s\n", WSAGetLastError());
 		::closesocket(this->implData->handle);
@@ -287,7 +292,7 @@ bool Socket::receive(char* buffer, unsigned int length, unsigned int* received) 
 	int result = ::recv(this->implData->handle, buffer, length, 0);
 	if (result < 0) {
 		int error = WSAGetLastError();
-		if (error != 10004) printerror("recvfrom() failed: %s\n", error);
+		if (error != 10004) printerror("recv() failed: %s\n", error);
 		close();
 		return false;
 	} else {
@@ -309,7 +314,7 @@ bool Socket::receivefrom(INetAddress& address, char* buffer, unsigned int length
 		return false;
 	}
 
-	int senderAdressLen = sizeof(SOCKADDR_IN);
+	int senderAdressLen = sizeof(SOCKADDR_IN6);
 	int result = ::recvfrom(this->implData->handle, buffer, length, 0, &address.implData->addr.sockaddr, &senderAdressLen);
 	if (result == SOCKET_ERROR) {
 		int error = WSAGetLastError();
@@ -332,7 +337,7 @@ bool Socket::sendto(const INetAddress& address, const char* buffer, unsigned int
 		return false;
 	}
 
-	int result = ::sendto(this->implData->handle, buffer, length, 0, &address.implData->addr.sockaddr, sizeof(SOCKADDR));
+	int result = ::sendto(this->implData->handle, buffer, length, 0, &address.implData->addr.sockaddr, address.implData->addr.sockaddr.sa_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6));
 	if (result == SOCKET_ERROR) {
 		printerror("sendto() failed: %s\n", WSAGetLastError());
 		close();

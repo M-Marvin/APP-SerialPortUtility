@@ -7,23 +7,9 @@
 
 #ifdef SIDE_SERVER
 
-#include "soeserver.h"
-
-#include <stdio.h>
-#include <iostream>
-#include <string.h>
-#include <network.h>
-#include <serial_port.h>
-#include <thread>
-#include <vector>
-#include <mutex>
-#include <algorithm>
-#include "soeimpl.h"
+#include "soeimpl.hpp"
 
 using namespace std;
-
-//Socket listenSocket;
-//vector<SOESocketHandler*> clients = vector<SOESocketHandler*>();
 
 int main(int argn, const char** argv) {
 
@@ -31,8 +17,8 @@ int main(int argn, const char** argv) {
 	setvbuf(stdout, NULL, _IONBF, 0);
 
 	// Default configuration
-	unsigned int port = DEFAULT_SOE_PORT;
-	string host = "0.0.0.0";
+	string port = to_string(DEFAULT_SOE_PORT);
+	string host = "localhost";
 
 	// Parse arguments
 	for (int i = 0; i < argn; i++) {
@@ -41,7 +27,7 @@ int main(int argn, const char** argv) {
 			return 0;
 		} else if (strcmp(argv[i], "-port") == 0) {
 			if (i == argn - 1) return 1;
-			port = atoi(argv[i + 1]);
+			port = string(argv[i + 1]);
 		} else if (strcmp(argv[i], "-addr") == 0) {
 			if (i == argn - 1) return 1;
 			host = string(argv[i + 1]);
@@ -50,83 +36,50 @@ int main(int argn, const char** argv) {
 
 	// Initialize networking
 	if (!InetInit()) {
-		printf("failed to initialize network system!\n");
+		printf("failed to initialize network!\n");
 		return -1;
 	}
 
-	INetAddress localAddress = INetAddress();
-	if (!localAddress.fromstr(host, port)) {
-		return -1;
-	}
+	// Resolve supplied host string
+	vector<INetAddress> localAddresses;
+	resolve_inet(host, port, true, localAddresses);
 
-	// Open server port
-	printf("open soa port: %d\n", port);
+	// Attempt to bind to first available local host address
 	Socket* socket = new Socket();
-	if (!socket->bind(localAddress)) {
-		printf("failed to claim port!\n");
-		return -1;
+	for (INetAddress& address : localAddresses) {
+
+		if (socket->bind(address)) {
+
+			string localAddress;
+			unsigned int localPort;
+			address.tostr(localAddress, &localPort);
+			printf("serial over ethernet/IP, open server port on: %s %d\n", localAddress.c_str(), localPort);
+
+			{
+				// Start socket handler
+				SOESocketHandler handler(socket);
+
+				// Read console
+				string cmd;
+				while (true) {
+					getline(std::cin, cmd);
+					if (cmd == "exit" || cmd == "stop") break;
+				}
+			}
+
+			InetCleanup();
+			printf("server shutdown complete\n");
+			return 0;
+
+		}
+
 	}
 
-	SOESocketHandler* handler = new SOESocketHandler(socket);
+	printf("unable to bind to address: %s %s\n", host.c_str(), port.c_str());
 
-	while (true) {};
-
-	delete handler;
-
-//	// Close server port
-//	listenSocket.close();
-//
-//	// Wait for all clients to terminate
-//	while (clients.size() > 0)
-//		cleanupClosedClients();
-
-	// Cleanup and exit
 	InetCleanup();
-	printf("soa shutdown completed");
-	return 0;
+	return -1;
 
 }
-
-//void shutdown() {
-//	printf("soa shutdown requested ...\n");
-//	listenSocket.close();
-//}
-//
-//void cleanupClosedClients() {
-//
-//	// Cleanup and set to NULL all close/inactive clients
-//	for (auto client = clients.begin(); client != clients.end(); client ++) {
-//		if (!(*client)->isActive()) {
-//			delete (*client);
-//			(*client) = 0;
-//			printf("DEBUG: connection closed!\n");
-//		}
-//	}
-//
-//	// Delete all NULL entries from the list of clients
-//	clients.erase(remove(clients.begin(), clients.end(), (SOESocketHandler*) 0), clients.end());
-//
-//}
-//
-//void handleClientReception() {
-//	while (listenSocket.isOpen()) {
-//
-////		// Accept incoming connections
-////		Socket* clientSocket = new Socket();
-////		if (!listenSocket.accept(*clientSocket)) {
-////			printf("DEBUG: connect failed!\n");
-////			delete clientSocket;
-////			continue;
-////		}
-////		printf("DEBUG: new connection!\n");
-////
-////		cleanupClosedClients();
-////
-////		// Start new client handler
-////		SOESocketHandler* client = new SOESocketHandler(clientSocket);
-////		clients.push_back(client);
-//
-//	}
-//}
 
 #endif

@@ -3,7 +3,8 @@
 #include <string.h>
 #include <malloc.h>
 #include <de_m_marvin_serialportaccess_SerialPort.h>
-#include "serial_port.h"
+
+#include "serial_port.hpp"
 
 // FIXME update code (maybe ?)
 

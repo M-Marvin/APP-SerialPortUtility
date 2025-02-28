@@ -5,8 +5,8 @@
  *      Author: marvi
  */
 
-#ifndef SOEIMPL_H_
-#define SOEIMPL_H_
+#ifndef SOEIMPL_HPP_
+#define SOEIMPL_HPP_
 
 class Socket;
 
@@ -35,8 +35,8 @@ class Socket;
 #define INET_KEEP_ALIVE_TIMEOUT 10000								// Timeout for network connection, if no packages is received within this time, a lost connection is assumed
 #define INET_KEEP_ALIVE_INTERVAL 1000								// Timeout for receiving packages, before sending keep alive package (OPC_STREAM with length 0)
 
-#include <network.h>
-#include <serial_port.h>
+#include <network.hpp>
+#include <serial_port.hpp>
 #include <thread>
 #include <map>
 #include <shared_mutex>
@@ -371,4 +371,4 @@ private:
 
 };
 
-#endif /* SOEIMPL_H_ */
+#endif /* SOEIMPL_HPP_ */

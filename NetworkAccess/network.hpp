@@ -5,8 +5,8 @@
  *      Author: marvi
  */
 
-#ifndef NETWORK_H_
-#define NETWORK_H_
+#ifndef NETWORK_HPP_
+#define NETWORK_HPP_
 
 #include <string>
 #include <vector>
@@ -33,7 +33,7 @@ public:
 
 };
 
-bool resolve_inet(string& hostStr, string& portStr, vector<INetAddress>& address);
+bool resolve_inet(string& hostStr, string& portStr, bool lookForUDP, vector<INetAddress>& addresses);
 
 enum SocketType {
 	UNBOUND = 0,
@@ -140,4 +140,4 @@ private:
 bool InetInit();
 void InetCleanup();
 
-#endif /* NETWORK_H_ */
+#endif /* NETWORK_HPP_ */

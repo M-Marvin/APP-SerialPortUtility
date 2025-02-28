@@ -5,7 +5,6 @@
  *      Author: Marvin Koehler
  */
 
-#include <serial_port.h>
 #include <stdio.h>
 #include <thread>
 #include <condition_variable>
@@ -14,6 +13,7 @@
 
 #include <windows.h>
 #include "serialportterminal.h"
+#include <serial_port.hpp>
 
 #define BUFFER_SIZE 128
 #define CONSECUTIVE_DELAY 500
