@@ -7,62 +7,18 @@
 
 #ifdef SIDE_CLIENT
 
-#include <stdio.h>
 #include <iostream>
 #include <string.h>
-#include <network.hpp>
-#include <serial_port.hpp>
-#include <thread>
-#include <vector>
-#include <mutex>
-#include <algorithm>
 #include "soeimpl.hpp"
 
-#include <map>
-
-void testConnect() {
-
-	INetAddress localAddress = INetAddress();
-	string local = "0.0.0.0";
-	localAddress.fromstr(local, 0);
-
-	INetAddress remoteAddress = INetAddress();
-	string host = "192.168.178.59";
-	remoteAddress.fromstr(host, DEFAULT_SOE_PORT);
-
-	Socket* socket = new Socket();
-	if (!socket->bind(localAddress)) {
-		delete socket;
-		printf("failed to open socket!\n");
-		return;
+void openPort(SOESocketHandler& handler, const string& host, const string& port, const string& remotePort, const string& localPort, unsigned int baud) {
+	vector<INetAddress> addresses;
+	resolve_inet(host, port, true, addresses);
+	for (INetAddress address : addresses) {
+		SerialPortConfiguration config = DEFAULT_PORT_CONFIGURATION;
+		config.baudRate = baud;
+		if (handler.openRemotePort(address, remotePort, config, localPort)) break;
 	}
-
-	printf("connected socket\n");
-
-	SOESocketHandler* soeHandler = new SOESocketHandler(socket);
-
-	printf("created soe handler\n");
-
-	SerialPortConfiguration config = DEFAULT_PORT_CONFIGURATION;
-	config.baudRate = 250000;
-
-	if (!soeHandler->openRemotePort(remoteAddress, "\\\\.\\COM3", config, "\\\\.\\COM10", 4000)) {
-		printf("failed to establish connection!\n");
-	} else {
-
-		while (true) {}
-
-		if (!soeHandler->closeRemotePort(remoteAddress, "\\\\.\\COM10", 4000)) {
-			printf("close connection failed!\n");
-		}
-
-	}
-
-	socket->close();
-	while (soeHandler->isActive()) {}
-	delete soeHandler;
-	printf("connection closed\n");
-
 }
 
 int main(int argn, const char** argv) {
@@ -118,12 +74,22 @@ int main(int argn, const char** argv) {
 				while (true) {
 					getline(std::cin, cmd);
 					if (cmd == "exit" || cmd == "stop") break;
-
-					if (cmd.rfind("open", 0) == 0) {
-
-
-
-						printf("%s\n", cmd.c_str());
+					if (cmd.rfind("link", 0) == 0) {
+						int del1 = cmd.find(" ", 0);
+						int del2 = cmd.find(" ", del1 + 1);
+						int del3 = cmd.find(" ", del2 + 1);
+						int del4 = cmd.find(" ", del3 + 1);
+						int del5 = cmd.find(" ", del4 + 1);
+						if (del1 > 0 && del2 > del1 && del3 > del2 && del4 > del3 && del5 > del4) {
+							string hostStr = cmd.substr(del1 + 1, del2 - del1 - 1);
+							string portStr = cmd.substr(del2 + 1, del3 - del2 - 1);
+							string localPort = cmd.substr(del3 + 1, del4 - del3 - 1);
+							string remotePort = cmd.substr(del4 + 1, del5 - del4 - 1);
+							string baudRateStr = cmd.substr(del5 + 1, cmd.length() - del5 - 1);
+							openPort(handler, hostStr, portStr, localPort, remotePort, stoul(baudRateStr));
+						} else {
+							printf("link [remote address] [port] [remote serial] [local serial] [baud rate]");
+						}
 					}
 				}
 			}

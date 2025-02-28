@@ -7,6 +7,8 @@
 
 #ifdef SIDE_SERVER
 
+#include <string.h>
+#include <iostream>
 #include "soeimpl.hpp"
 
 using namespace std;

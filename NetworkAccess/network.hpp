@@ -33,7 +33,7 @@ public:
 
 };
 
-bool resolve_inet(string& hostStr, string& portStr, bool lookForUDP, vector<INetAddress>& addresses);
+bool resolve_inet(const string& hostStr, const string& portStr, bool lookForUDP, vector<INetAddress>& addresses);
 
 enum SocketType {
 	UNBOUND = 0,

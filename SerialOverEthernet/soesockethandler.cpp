@@ -665,7 +665,7 @@ void SOESocketHandler::handleClientRX() {
 
 #ifdef SIDE_CLIENT
 
-bool SOESocketHandler::openRemotePort(const INetAddress& remoteAddress, const string& remotePortName, const SerialPortConfiguration config, const string& localPortName, unsigned int timeoutms) {
+bool SOESocketHandler::openRemotePort(const INetAddress& remoteAddress, const string& remotePortName, const SerialPortConfiguration config, const string& localPortName) {
 
 	// Attempt and wait to for port open
 	cv_status status;
@@ -674,14 +674,14 @@ bool SOESocketHandler::openRemotePort(const INetAddress& remoteAddress, const st
 		this->remote_port_status = false;
 		this->remote_port_name = remotePortName;
 		if (!sendOpenRequest(remoteAddress, remotePortName, config)) return false;
-		status = this->remote_port_waitc.wait_for(lock, std::chrono::milliseconds(timeoutms));
+		status = this->remote_port_waitc.wait_for(lock, std::chrono::milliseconds(INET_KEEP_ALIVE_INTERVAL));
 		this->remote_port_name.clear();
 	}
 
 	// If no response, attempt close port
 	if (status == std::cv_status::timeout) {
 		printf("failed to claim remote port %s, connection timed out\n", remotePortName.c_str());
-		if (!closeRemotePort(remoteAddress, remotePortName, timeoutms)) {
+		if (!closeRemotePort(remoteAddress, remotePortName)) {
 			printf("failed to close remote port %s, port might still be open on server!\n", remotePortName.c_str());
 		}
 		return false;
@@ -696,7 +696,7 @@ bool SOESocketHandler::openRemotePort(const INetAddress& remoteAddress, const st
 		printf("failed to claim local port %s, close remote port %s!\n", localPortName.c_str(), remotePortName.c_str());
 		delete port;
 
-		if (!closeRemotePort(remoteAddress, remotePortName, timeoutms)) {
+		if (!closeRemotePort(remoteAddress, remotePortName)) {
 			printf("close remote port %s failed, port might still be open on server!\n", remotePortName.c_str());
 		}
 		return false;
@@ -716,7 +716,7 @@ bool SOESocketHandler::openRemotePort(const INetAddress& remoteAddress, const st
 
 }
 
-bool SOESocketHandler::closeRemotePort(const INetAddress& remoteAddress, const string& remotePortName, unsigned int timeoutms) {
+bool SOESocketHandler::closeRemotePort(const INetAddress& remoteAddress, const string& remotePortName) {
 
 	// Attempt and wait for port close
 	cv_status status;
@@ -725,7 +725,7 @@ bool SOESocketHandler::closeRemotePort(const INetAddress& remoteAddress, const s
 		this->remote_port_status = false;
 		this->remote_port_name = remotePortName;
 		if (!sendCloseRequest(remoteAddress, remotePortName)) return false;
-		status = this->remote_port_waitc.wait_for(lock, std::chrono::milliseconds(timeoutms));
+		status = this->remote_port_waitc.wait_for(lock, std::chrono::milliseconds(INET_KEEP_ALIVE_INTERVAL));
 		this->remote_port_name.clear();
 	}
 

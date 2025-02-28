@@ -36,6 +36,7 @@ void printerror(const char* format, int error) {
 
 struct SocketImplData {
 	SOCKET handle;
+	int addrType;
 };
 
 struct INetAddrImplData {
@@ -107,7 +108,7 @@ bool INetAddress::tostr(string& addressStr, unsigned int* port) const {
 	}
 }
 
-bool resolve_inet(string& hostStr, string& portStr, bool lookForUDP, vector<INetAddress>& addresses) {
+bool resolve_inet(const string& hostStr, const string& portStr, bool lookForUDP, vector<INetAddress>& addresses) {
 
 	struct addrinfo hints {0};
 	hints.ai_family = AF_UNSPEC;
@@ -153,6 +154,7 @@ bool Socket::listen(const INetAddress& address) {
 		return false;
 	}
 
+	this->implData->addrType = address.implData->addr.sockaddr.sa_family;
 	this->implData->handle = ::socket(address.implData->addr.sockaddr.sa_family, SOCK_STREAM, IPPROTO_TCP);
 	if (this->implData->handle == INVALID_SOCKET) {
 		printerror("socket() failed: %s\n", WSAGetLastError());
@@ -185,6 +187,7 @@ bool Socket::bind(INetAddress& address) {
 		return false;
 	}
 
+	this->implData->addrType = address.implData->addr.sockaddr.sa_family;
 	this->implData->handle = ::socket(address.implData->addr.sockaddr.sa_family, SOCK_DGRAM, IPPROTO_UDP);
 	if (this->implData->handle == INVALID_SOCKET) {
 		printerror("socket() failed: %s\n", WSAGetLastError());
@@ -221,6 +224,7 @@ bool Socket::accept(Socket &socket) {
 		return false;
 	}
 
+	socket.implData->addrType = this->implData->addrType;
 	socket.implData->handle = clientSocket;
 	socket.stype = STREAM;
 	return true;
@@ -334,6 +338,11 @@ bool Socket::sendto(const INetAddress& address, const char* buffer, unsigned int
 		return false;
 	} else if (this->stype != LISTEN_UDP) {
 		printf("tried to call sendto() on non LISTEN_UDP socket!\n");
+		return false;
+	}
+
+	if (address.implData->addr.sockaddr.sa_family != this->implData->addrType) {
+		printf("tried to call receivefrom() with invalid address type for this socket!\n");
 		return false;
 	}
 

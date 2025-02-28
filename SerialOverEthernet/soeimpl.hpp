@@ -241,19 +241,17 @@ public:
 	 * @param remotePortName The remote port name to claim
 	 * @param config The serial port configuration (baud, dataBits, stopBits etc)
 	 * @param localPortName The local port name to claim
-	 * @param timeoutms The timeout for the remote port claim, if exceeded the connection will fail
 	 * @return true if the remote and local port could successfully be claimed and connected, false otherwise
 	 */
-	bool openRemotePort(const INetAddress& remoteAddress, const string& remotePortName, const SerialPortConfiguration config, const string& localPortName, unsigned int timeoutms);
+	bool openRemotePort(const INetAddress& remoteAddress, const string& remotePortName, const SerialPortConfiguration config, const string& localPortName);
 
 	/**
 	 * Attempts to release the remote port and the corresponding local port.
 	 * 	 * @param remoteAddress The network address to send control frames too
 	 * @param remotePortName The remote port name to release
-	 * @param timeoutms Tge timeout for the remote port release, if exceeded, the release will fail
 	 * @return true if the remote and local port could be released successfully, false otherwise
 	 */
-	bool closeRemotePort(const INetAddress& remoteAddress, const string& remotePortName, unsigned int timeoutms);
+	bool closeRemotePort(const INetAddress& remoteAddress, const string& remotePortName);
 #endif
 	/**
 	 * Returns true if the network connection is still operational
