@@ -1,16 +1,16 @@
 
+#include "serial_port.hpp"
 #include <iostream>
 #include <string.h>
 #include <malloc.h>
 #include <de_m_marvin_serialportaccess_SerialPort.h>
+#include <string>
 
-#include "serial_port.hpp"
-
-// FIXME update code (maybe ?)
+using namespace std;
 
 JNIEXPORT jlong JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1createSerialPort(JNIEnv* env, jclass clazz, jstring portName)
 {
-	SerialPort* port = new SerialPort(env->GetStringUTFChars(portName, 0));
+	SerialPort* port = newSerialPort(env->GetStringUTFChars(portName, 0));
 	return (jlong)port;
 }
 

@@ -1,0 +1,32 @@
+plugins {
+    id 'cpp'
+}
+
+model {
+    platforms {
+        x86 {
+            architecture 'x86'
+        }
+        microblaze {
+            architecture 'microblaze'
+        }
+    }
+
+    toolChains {
+        gcc(Gcc) {
+            target('x86')
+            target('microblaze') {
+				path 'D:/Programms/SysGCC/bin'
+                cCompiler.executable 'arm-linux-gnueabihf-gcc.exe'
+                linker.executable 'arm-linux-gnueabihf-ld.exe'
+            }
+        }
+    }
+
+    components {
+        main(NativeExecutableSpec) {
+            targetPlatform 'x86'
+            targetPlatform 'microblaze'
+        }
+    }
+}
