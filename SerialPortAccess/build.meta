@@ -1,0 +1,124 @@
+import java.io.File;
+
+import de.m_marvin.metabuild.core.tasks.BuildTask;
+import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
+import de.m_marvin.metabuild.maven.Maven;
+import de.m_marvin.metabuild.maven.tasks.MavenPublishTask;
+import de.m_marvin.metabuild.maven.tasks.MavenResolveTask;
+
+public class Buildfile extends CppMultiTargetBuildScript {
+	
+	String version = "1.0";
+	
+	@Override
+	public void init() {
+		
+		projectName = "serialportaccess";
+		
+		// platform windows AMD 64
+		var target = makeTarget("WinAMD64", "serialportaccess_x64.dll");
+		target.compileCpp.define("PLATFORM_WIN");
+		target.linkCpp.options.add("-shared");
+
+		// platform linux AMD 64
+		target = makeTarget("LinAMD64", "serialportaccess_x64.so");
+		target.compileCpp.define("PLATFORM_LIN");
+		target.linkCpp.options.add("-shared");
+		target.compileCpp.compiler = "x86_64-linux-gnu-g++";
+		target.linkCpp.linker = "x86_64-linux-gnu-g++";
+		target.compileCpp.options.add("-fPIC");
+		
+		// platform linux ARM 32 (raspberry pi)
+		target = makeTarget("LinARM32", "serialportaccess_arm32.so");
+		target.compileCpp.define("PLATFORM_LIN");
+		target.linkCpp.options.add("-shared");
+		target.compileCpp.compiler = "arm-linux-gnueabihf-g++";
+		target.linkCpp.linker = "arm-linux-gnueabihf-g++";
+		target.compileCpp.options.add("-fPIC");
+		
+		// platform linux ARM 64 (raspberry pi)
+		target = makeTarget("LinARM64", "serialportaccess_arm64.so");
+		target.compileCpp.define("PLATFORM_LIN");
+		target.linkCpp.options.add("-shared");
+		target.compileCpp.compiler = "aarch64-linux-gnu-g++";
+		target.linkCpp.linker = "aarch64-linux-gnu-g++";
+		target.compileCpp.options.add("-fPIC");
+		
+		super.init();
+		
+		// JNI versions not part of normal build
+		var buildJni = new BuildTask("buildJni");
+		buildJni.group = "build";
+		
+		// platform windows AMD 64 with JNI
+		target = makeTarget("WinAMD64jniapi", "serialportaccess_jni_x64.dll");
+		target.compileCpp.define("PLATFORM_WIN");
+		target.compileCpp.define("INCLUDE_JNIAPI");
+		target.linkCpp.options.add("-shared");
+		target.build.dependencyOf(buildJni);
+
+		// platform linux AMD 64 with JNI
+		target = makeTarget("LinAMD64jniapi", "serialportaccess_jni_x64.so");
+		target.compileCpp.define("PLATFORM_LIN");
+		target.compileCpp.define("INCLUDE_JNIAPI");
+		target.linkCpp.options.add("-shared");
+		target.compileCpp.compiler = "x86_64-linux-gnu-g++";
+		target.linkCpp.linker = "x86_64-linux-gnu-g++";
+		target.compileCpp.options.add("-fPIC");
+		target.build.dependencyOf(buildJni);
+
+		// platform linux ARM 32 (raspberry pi) with JNI
+		target = makeTarget("LinARM32jniapi", "serialportaccess_jni_arm32.so");
+		target.compileCpp.define("PLATFORM_LIN");
+		target.compileCpp.define("INCLUDE_JNIAPI");
+		target.linkCpp.options.add("-shared");
+		target.compileCpp.compiler = "arm-linux-gnueabihf-g++";
+		target.linkCpp.linker = "arm-linux-gnueabihf-g++";
+		target.compileCpp.options.add("-fPIC");
+		target.build.dependencyOf(buildJni);
+		
+		// platform linux ARM 64 (raspberry pi) with JNI
+		target = makeTarget("LinARM64jniapi", "serialportaccess_jni_arm64.so");
+		target.compileCpp.define("PLATFORM_LIN");
+		target.compileCpp.define("INCLUDE_JNIAPI");
+		target.linkCpp.options.add("-shared");
+		target.compileCpp.compiler = "aarch64-linux-gnu-g++";
+		target.linkCpp.linker = "aarch64-linux-gnu-g++";
+		target.compileCpp.options.add("-fPIC");
+		target.build.dependencyOf(buildJni);
+		
+	}
+	
+	@Override
+	public void dependencies(MavenResolveTask dependencies, String config) {
+		
+		logger().info("[i] >>> JAVA_HOME: %s", System.getenv("JAVA_HOME"));
+		logger().info("[i] >>> NOTE: Java JNI headers for %s platform are expected to be found in JAVA_HOME/include", config);
+		
+		if (config.endsWith("jniapi")) {
+			importBuild("jserialportaccess", new File("../JSerialPortAccess"));
+			dependencies.dependsOn("jserialportaccess:compileJava");
+
+			// jserialportaccess generated headers
+			dependencies.systemOpt("local:jserialportaccess-header:1", "../JSerialPortAccess/build/headers/main/java");
+			
+			// java JNI headers
+			dependencies.systemOpt("local:java-jni-headers::h:1", "${env.JAVA_HOME}/include");
+			if (config.startsWith("Win"))
+				dependencies.systemOpt("local:java-jni-win32-headers::h:1", "${env.JAVA_HOME}/include/win32");
+			if (config.startsWith("Lin"))
+				dependencies.systemOpt("local:java-jni-win32-headers::h:1", "${env.JAVA_HOME}/include/linux");
+			
+		}
+		
+	}
+	
+	@Override
+	public void publishing(MavenPublishTask publish, String config) {
+		
+		publish.repository(Maven.mavenLocal());
+		publish.coordinates("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":" + version);
+		
+	}
+	
+}

@@ -1,3 +1,0 @@
-E:/GitHub/LIBRARY-SerialPortAccess/SerialPortAccess/build_amd64_win/CMakeFiles/serial.dir
-E:/GitHub/LIBRARY-SerialPortAccess/SerialPortAccess/build_amd64_win/CMakeFiles/edit_cache.dir
-E:/GitHub/LIBRARY-SerialPortAccess/SerialPortAccess/build_amd64_win/CMakeFiles/rebuild_cache.dir
