@@ -1,5 +1,3 @@
-/Debug_amd64/
-/Release_amd64/
-/Release_amd64_lin/
-/Release_arm64_lin/
-/Release_arm32_lin/
+build
+bin
+*.log

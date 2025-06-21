@@ -1,22 +1,29 @@
 package de.m_marvin.serialportaccess;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.Map;
 
-/* NativeLoader v0.1 */
+/* NativeLoader v1.0 */
 public class NativeLoader {
 	
 	private static String libLoadConfig = "/libload.cfg";
 	private static String tempLibFolder = System.getProperty("java.io.tmpdir");
 	private static Map<String, File> libMap = new HashMap<>();
+	
+	private NativeLoader() {
+		throw new UnsupportedOperationException("can not construct instance of NativeLoader!");
+	}
 	
 	public static void setLibLoadConfig(String fileLocation) {
 		libLoadConfig = fileLocation;
@@ -39,7 +46,7 @@ public class NativeLoader {
 		} else if (arch.contains("aarch64")) {
 			arch = "arm_64";
 		} else {
-			System.err.println("NativeLoader: Unknown arch: " + arch);
+			throw new UnsatisfiedLinkError("Unknown platform architecture: " + arch);
 		}
 		
 		String os = System.getProperty("os.name").toLowerCase();
@@ -48,13 +55,13 @@ public class NativeLoader {
 		} else if (os.contains("linux") || os.contains("sunos") || os.contains("freebsd")) {
 			os = "lin";
 		} else {
-			System.err.println("NativeLoader: Unknown os: " + os);
+			throw new UnsatisfiedLinkError("Unknown platform operating system: " + arch);
 		}
 		
 		return os + "_" + arch;
 	}
 	
-	private static String getNativeForArchitecture(String nativeName) {
+	private static String getNativeForArchitecture(String nativeName) throws IOException {
 		String arch = getArchitectureName();
 		String nativeFile = null;
 		
@@ -74,54 +81,62 @@ public class NativeLoader {
 			}
 			reader.close();
 		} catch (IOException | NullPointerException e) {
-			System.err.println("NativeLoader: Could not open config file!");
+			throw new IOException("Could not read native libload file: " + libLoadConfig, e);
 		}
 		
 		if (nativeFile == null) {
-			System.err.println("NativeLoader: No natives for the current architecture available!");
+			throw new IOException("Missing native definition for platform: " + arch);
 		}
 		
 		return nativeFile;
 	}
 	
-	public static void extractNative(String nativeLocation, String targetLocation, String targetFileName) {
-		
-		if (!new File(targetLocation).isDirectory()) {
-			new File(targetLocation).mkdir();
-		}
-		
+	public static void extractNative(String nativeLocation, String targetLocation, String targetFileName) throws IOException {
 		try {
-			InputStream is = NativeLoader.class.getResourceAsStream(nativeLocation);
-			if (is == null) {
-				System.err.println("NativeLoader: The native lib " + nativeLocation + " is missing in the jar!");
-				return;
+			InputStream archiveStream = NativeLoader.class.getResourceAsStream(nativeLocation);
+			if (archiveStream == null) {
+				throw new IOException("Missing native library in archive: " + nativeLocation);
 			}
-			OutputStream os = new FileOutputStream(new File(targetLocation, targetFileName));
-			os.write(is.readAllBytes());
-			is.close();
-			os.close();
-		} catch (FileNotFoundException e) {
-			System.out.println("Could not extract native " + targetFileName + ", maybe it already exists and is used by an another process!");
+			
+			ByteArrayOutputStream bufferStream = new ByteArrayOutputStream();
+			archiveStream.transferTo(bufferStream);
+			archiveStream.close();
+			
+			File targetNativeFile;
+			try {
+				MessageDigest md = MessageDigest.getInstance("MD5");
+				String hash = HexFormat.of().formatHex(md.digest(bufferStream.toByteArray()));
+				targetNativeFile = new File(targetLocation, hash + "/" + targetFileName);
+			} catch (NoSuchAlgorithmException e) {
+				targetNativeFile = new File(targetLocation, targetFileName);
+			}
+			
+			targetNativeFile.getParentFile().mkdirs();
+			OutputStream fileStream = new FileOutputStream(targetNativeFile);
+			fileStream.write(bufferStream.toByteArray());
+			fileStream.close();
 		} catch (IOException e) {
-			System.err.println("NativeLoader: Failed to extract native " + nativeLocation + " to " + targetLocation + "!");
-			e.printStackTrace();
+			throw new IOException("Unable to extract native library: " + nativeLocation, e);
 		}
 	}
 	
 	public static String getNative(String nativeName) {
 		
 		if (!libMap.containsKey(nativeName)) {
-			String nativeFilePath = getNativeForArchitecture(nativeName);
-			if (nativeFilePath == null) {
-				System.err.println("NativeLoader: Unable to extract native " + nativeFilePath + "!");
-				return null;
+			try {
+				String nativeFilePath = getNativeForArchitecture(nativeName);
+				if (nativeFilePath == null) {
+					System.err.println("NativeLoader: Unable to extract native " + nativeFilePath + "!");
+					return null;
+				}
+				String fileName = new File(nativeFilePath).getName();
+				File tempLocation = new File(tempLibFolder, fileName);
+				libMap.put(nativeName, tempLocation);
+				
+				extractNative(nativeFilePath, tempLibFolder, fileName);
+			} catch (IOException e) {
+				throw new LinkageError("Unable to get native: " + nativeName, e);
 			}
-			String fileName = new File(nativeFilePath).getName();
-			File tempLocation = new File(tempLibFolder, fileName);
-			libMap.put(nativeName, tempLocation);
-			
-			extractNative(nativeFilePath, tempLibFolder, fileName);
-						
 		}
 		
 		return libMap.get(nativeName).toString();
@@ -130,7 +145,7 @@ public class NativeLoader {
 	public static void loadNative(String nativeName) {
 		String filePath = getNative(nativeName);
 		if (filePath == null) {
-			System.err.println("NativeLoader: Could not load the native " + nativeName + "!");
+			throw new UnsatisfiedLinkError("Unable to find native: " + nativeName);
 		} else {
 			System.load(filePath);
 		}

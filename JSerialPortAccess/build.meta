@@ -9,6 +9,8 @@ import de.m_marvin.metabuild.maven.Maven;
 
 public class Buildfile extends JavaBuildScript {
 	
+	String version = "2.0-SNAPSHOT";
+	
 	@Override
 	public void init() {
 
@@ -33,23 +35,20 @@ public class Buildfile extends JavaBuildScript {
 	}
 	
 	@Override
-	public void repositories() {
-		
-		dependencies.repository(Maven.mavenLocal());
-		
-	}
-	
-	@Override
-	public void dependencies() {
-		
-		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-winamd64::zip:1.0");
-		
-	}
-	
-	@Override
 	public void manifest() {
 		
+		jar.metainfo.put("Implementation-Title", projectName);
+		jar.metainfo.put("Implementation-Version", version);
+		jar.metainfo.put("Author", "M_Marvin");
 		
+	}
+	
+	@Override
+	public void publishing() {
+		
+		super.publishing();
+		
+		publishMavenLocal.coordinates("de.m_marvin.serialportaccess:jserialportaccess:" + version);
 		
 	}
 	

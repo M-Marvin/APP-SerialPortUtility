@@ -1,5 +1,2 @@
-/Debug/
-/Release_win_amd64/
-/Debug_win_amd64/
-/Debug_Client_win_amd64/
-/Debug_Server_win_amd64/
+build
+*.log
