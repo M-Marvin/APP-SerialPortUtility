@@ -1,40 +1,28 @@
-18.06.2025_02:24:59: [DEBUG] : JVM runtime: 21.0.3
-18.06.2025_02:24:59: [DEBUG] : Meta runtime: 0.4-alpha-SNAPSHOT
-18.06.2025_02:24:59: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.4-alpha-SNAPSHOT
-18.06.2025_02:24:59: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.4-alpha-SNAPSHOT
-18.06.2025_02:24:59: [ INFO] Metabuild: - metabuild-cpp.jar
-18.06.2025_02:24:59: [ INFO] Metabuild: - metabuild-java.jar
-18.06.2025_02:24:59: [ INFO] Metabuild: - metabuild-maven.jar
-18.06.2025_02:24:59: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
-18.06.2025_02:24:59: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
-18.06.2025_02:24:59: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\SerialPortAccess\build.meta
-18.06.2025_02:24:59: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:24:59: [ INFO] : [i] >>> NOTE: Java JNI headers for WinAMD64 platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:24:59: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:24:59: [ INFO] : [i] >>> NOTE: Java JNI headers for LinAMD64 platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:24:59: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:24:59: [ INFO] : [i] >>> NOTE: Java JNI headers for LinARM32 platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:24:59: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:24:59: [ INFO] : [i] >>> NOTE: Java JNI headers for LinARM64 platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:24:59: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:24:59: [ INFO] : [i] >>> NOTE: Java JNI headers for WinAMD64jniapi platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:24:59: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\JSerialPortAccess\build.meta
-18.06.2025_02:24:59: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:24:59: [ INFO] : [i] >>> NOTE: Java JNI headers for LinAMD64jniapi platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:24:59: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:24:59: [ INFO] : [i] >>> NOTE: Java JNI headers for LinARM32jniapi platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:24:59: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:24:59: [ INFO] : [i] >>> NOTE: Java JNI headers for LinARM64jniapi platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:24:59: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
-18.06.2025_02:24:59: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
-18.06.2025_02:24:59: [ INFO] jserialportaccess/maven_dependency/javaDependencies: attempt offline cache resolution to verify available dependencies ...
-18.06.2025_02:24:59: [ INFO] jserialportaccess/maven_dependency/javaDependencies: -> fully resolved POM: de.m_marvin.serialportaccess:serialportaccess-winamd64::pom:1.0
-18.06.2025_02:24:59: [ INFO] jserialportaccess/maven_dependency/javaDependencies: offline cache verified, all dependencies available
-18.06.2025_02:24:59: [ INFO] /maven_dependency/cppDependenciesWinAMD64jniapi: attempt offline cache resolution to verify available dependencies ...
-18.06.2025_02:24:59: [ INFO] /maven_dependency/cppDependenciesWinAMD64jniapi: offline cache verified, all dependencies available
-18.06.2025_02:24:59: [ INFO] /compile_cpp/compileCppWinAMD64jniapi: located cpp compiler: D:\Programms\mingw64-ucrt\bin\g++.exe
-18.06.2025_02:24:59: [ INFO] Metabuild: skipping build run phase
-18.06.2025_02:24:59: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> FINISH
-18.06.2025_02:24:59: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
-18.06.2025_02:24:59: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
-18.06.2025_02:24:59: [ INFO] Metabuild: TASKS: 5  UP_TO_DATE: 5  FAILED: 0
+21.06.2025_16:16:29: [DEBUG] : JVM runtime: 21.0.3
+21.06.2025_16:16:29: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
+21.06.2025_16:16:29: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+21.06.2025_16:16:29: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+21.06.2025_16:16:29: [ INFO] Metabuild: - metabuild-cpp.jar
+21.06.2025_16:16:29: [ INFO] Metabuild: - metabuild-java.jar
+21.06.2025_16:16:29: [ INFO] Metabuild: - metabuild-maven.jar
+21.06.2025_16:16:29: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
+21.06.2025_16:16:29: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
+21.06.2025_16:16:30: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\SerialPortAccess\build.meta
+21.06.2025_16:16:30: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
+21.06.2025_16:16:30: [ INFO] : [i] >>> NOTE: Java JNI headers for WinAMD64jniapi platform are expected to be found in JAVA_HOME/include
+21.06.2025_16:16:30: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\JSerialPortAccess\build.meta
+21.06.2025_16:16:30: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
+21.06.2025_16:16:30: [ INFO] : [i] >>> NOTE: Java JNI headers for LinAMD64jniapi platform are expected to be found in JAVA_HOME/include
+21.06.2025_16:16:30: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
+21.06.2025_16:16:30: [ INFO] : [i] >>> NOTE: Java JNI headers for LinARM32jniapi platform are expected to be found in JAVA_HOME/include
+21.06.2025_16:16:30: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
+21.06.2025_16:16:30: [ INFO] : [i] >>> NOTE: Java JNI headers for LinARM64jniapi platform are expected to be found in JAVA_HOME/include
+21.06.2025_16:16:30: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
+21.06.2025_16:16:30: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
+21.06.2025_16:16:30: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> RUN
+21.06.2025_16:16:30: [ WARN] : ! RUNNING METABUILD INIT SEQUENCE, REWRITING WRAPPER JAR
+21.06.2025_16:16:30: [ WARN] : ! METAW SCRIPTS WILL BE REWRITTEN
+21.06.2025_16:16:31: [DEBUG] Metabuild: STATE TRANSITION: RUN >>> FINISH
+21.06.2025_16:16:31: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
+21.06.2025_16:16:31: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
+21.06.2025_16:16:31: [ INFO] Metabuild: TASKS: 1  UP_TO_DATE: 1  FAILED: 0

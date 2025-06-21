@@ -51,14 +51,14 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		buildJni.group = "build";
 		
 		// platform windows AMD 64 with JNI
-		target = makeTarget("WinAMD64jniapi", "serialportaccess_jni_x64.dll");
+		target = makeTarget("WinAMD64jniapi", "jni/serialportaccess_jni_x64.dll");
 		target.compileCpp.define("PLATFORM_WIN");
 		target.compileCpp.define("INCLUDE_JNIAPI");
 		target.linkCpp.options.add("-shared");
 		target.build.dependencyOf(buildJni);
 
 		// platform linux AMD 64 with JNI
-		target = makeTarget("LinAMD64jniapi", "serialportaccess_jni_x64.so");
+		target = makeTarget("LinAMD64jniapi", "jni/serialportaccess_jni_x64.so");
 		target.compileCpp.define("PLATFORM_LIN");
 		target.compileCpp.define("INCLUDE_JNIAPI");
 		target.linkCpp.options.add("-shared");
@@ -68,7 +68,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.build.dependencyOf(buildJni);
 
 		// platform linux ARM 32 (raspberry pi) with JNI
-		target = makeTarget("LinARM32jniapi", "serialportaccess_jni_arm32.so");
+		target = makeTarget("LinARM32jniapi", "jni/serialportaccess_jni_arm32.so");
 		target.compileCpp.define("PLATFORM_LIN");
 		target.compileCpp.define("INCLUDE_JNIAPI");
 		target.linkCpp.options.add("-shared");
@@ -78,7 +78,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.build.dependencyOf(buildJni);
 		
 		// platform linux ARM 64 (raspberry pi) with JNI
-		target = makeTarget("LinARM64jniapi", "serialportaccess_jni_arm64.so");
+		target = makeTarget("LinARM64jniapi", "jni/serialportaccess_jni_arm64.so");
 		target.compileCpp.define("PLATFORM_LIN");
 		target.compileCpp.define("INCLUDE_JNIAPI");
 		target.linkCpp.options.add("-shared");
@@ -92,10 +92,11 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	@Override
 	public void dependencies(MavenResolveTask dependencies, String config) {
 		
-		logger().info("[i] >>> JAVA_HOME: %s", System.getenv("JAVA_HOME"));
-		logger().info("[i] >>> NOTE: Java JNI headers for %s platform are expected to be found in JAVA_HOME/include", config);
-		
 		if (config.endsWith("jniapi")) {
+
+			logger().info("[i] >>> JAVA_HOME: %s", System.getenv("JAVA_HOME"));
+			logger().info("[i] >>> NOTE: Java JNI headers for %s platform are expected to be found in JAVA_HOME/include", config);
+			
 			importBuild("jserialportaccess", new File("../JSerialPortAccess"));
 			dependencies.dependsOn("jserialportaccess:compileJava");
 

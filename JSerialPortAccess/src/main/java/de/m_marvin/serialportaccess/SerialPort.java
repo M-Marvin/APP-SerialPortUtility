@@ -1,5 +1,7 @@
 package de.m_marvin.serialportaccess;
 
+import java.util.Objects;
+
 public class SerialPort {
 	
 	static {
@@ -8,15 +10,120 @@ public class SerialPort {
 		NativeLoader.loadNative("serialportaccess");
 	}
 	
+	public static enum SerialPortParity {
+		PARITY_NONE(1),
+		PARITY_ODD(2),
+		PARITY_EVEN(3),
+		PARITY_MARK(4),
+		PARITY_SPACE(5),
+		PARITY_UNDEFINED(0);
+		
+		private int value;
+		
+		private SerialPortParity(int value) {
+			this.value = value;
+		}
+		
+		public int getValue() {
+			return value;
+		}
+		
+		public static SerialPortParity fromValue(int value) {
+			for (var e : values())
+				if (e.value == value) return e;
+			return PARITY_UNDEFINED;
+		}
+		
+	}
+
+	public static enum SerialPortFlowControl {
+		FLOW_NONE(1),
+		FLOW_XON_XOFF(2),
+		FLOW_RTS_CTS(3),
+		FLOW_DSR_DTS(4),
+		FLOW_UNDEFINED(0);
+		
+		private int value;
+		
+		private SerialPortFlowControl(int value) {
+			this.value = value;
+		}
+		
+		public int getValue() {
+			return value;
+		}
+		
+		public static SerialPortFlowControl fromValue(int value) {
+			for (var e : values())
+				if (e.value == value) return e;
+			return FLOW_UNDEFINED;
+		}
+		
+	}
+
+	public static enum SerialPortStopBits {
+		STOPB_ONE(1),
+		STOPB_ONE_HALF(2),
+		STOPB_TWO(3),
+		STOPB_UNDEFINED(0);
+		
+		private int value;
+		
+		private SerialPortStopBits(int value) {
+			this.value = value;
+		}
+		
+		public int getValue() {
+			return value;
+		}
+		
+		public static SerialPortStopBits fromValue(int value) {
+			for (var e : values())
+				if (e.value == value) return e;
+			return STOPB_UNDEFINED;
+		}
+		
+	}
+	
+	public static class SerialPortConfiguration {
+		
+		public long baudRate = 9600;
+		public byte dataBits = 8;
+		public SerialPortStopBits stopBits = SerialPortStopBits.STOPB_ONE;
+		public SerialPortParity parity = SerialPortParity.PARITY_NONE;
+		public SerialPortFlowControl flowControl = SerialPortFlowControl.FLOW_NONE;
+
+		@Override
+		public boolean equals(Object obj) {
+			if (obj instanceof SerialPortConfiguration other) {
+				return	this.baudRate == other.baudRate &&
+						this.dataBits == other.dataBits &&
+						Objects.equals(this.stopBits, other.stopBits) &&
+						Objects.equals(this.parity, other.parity) &&
+						Objects.equals(this.flowControl, other.flowControl);
+			}
+			return false;
+		}
+		
+		@Override
+		public int hashCode() {
+			return Objects.hash(this.baudRate, this.dataBits, this.stopBits, this.parity, this.flowControl);
+		}
+		
+	}
+	
 	public static final int DEFAULT_BUFFER_SIZE = 256;
 	public static final long DEFAULT_CONSECUTIVE_LOOP_DELAY = 100;
 	public static final long DEFAULT_CONSECUTIVE_RECEPTION_TIMEOUT = 1000;
+	public static final SerialPortConfiguration DEFAULT_PORT_CONFIGURATION = new SerialPortConfiguration();
 	
 	protected static native long n_createSerialPort(String portFile);
 	protected static native void n_disposeSerialPort(long handle);
-	protected static native void n_setBaud(long handle, int baud);
+	protected static native boolean n_setBaud(long handle, int baud);
 	protected static native int n_getBaud(long handle);
-	protected static native void n_setTimeouts(long handle, int readTimeout, int writeTimeout);
+	protected static native boolean n_setConfig(long handle, SerialPortConfiguration config);
+	protected static native boolean n_getConfig(long handle, SerialPortConfiguration config);
+	protected static native boolean n_setTimeouts(long handle, int readTimeout, int writeTimeout);
 	protected static native boolean n_openPort(long handle);
 	protected static native void n_closePort(long handle);
 	protected static native boolean n_isOpen(long handle);
@@ -36,6 +143,19 @@ public class SerialPort {
 	}
 	
 	@Override
+	public int hashCode() {
+		return Long.hashCode(this.handle);
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof SerialPort other) {
+			return other.handle == this.handle;
+		}
+		return false;
+	}
+	
+	@Override
 	public String toString() {
 		return this.portName;
 	}
@@ -44,12 +164,12 @@ public class SerialPort {
 		n_disposeSerialPort(this.handle);
 	}
 	
-	public void setBaud(int baud) {
-		n_setBaud(handle, baud);
+	public boolean setBaud(int baud) {
+		return n_setBaud(handle, baud);
 	}
 	
-	public void setTimeouts(int readTimeout, int writeTimeout) {
-		n_setTimeouts(this.handle, readTimeout, writeTimeout);
+	public boolean setTimeouts(int readTimeout, int writeTimeout) {
+		return n_setTimeouts(this.handle, readTimeout, writeTimeout);
 	}
 	
 	public boolean openPort() {
@@ -66,6 +186,16 @@ public class SerialPort {
 	
 	public int getBaud() {
 		return n_getBaud(handle);
+	}
+	
+	public boolean setConfig(SerialPortConfiguration config) {
+		return n_setConfig(handle, config);
+	}
+	
+	public SerialPortConfiguration getConfig() {
+		SerialPortConfiguration config = new SerialPortConfiguration();
+		if (!n_getConfig(handle, config)) return null;
+		return config;
 	}
 	
 	/**

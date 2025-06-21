@@ -10,7 +10,7 @@
 #define LIB_IMPORT
 #endif
 
-typedef enum SerialPortParities {
+typedef enum SerialPortParity {
 	SPC_PARITY_NONE = 1,
 	SPC_PARITY_ODD = 2,
 	SPC_PARITY_EVEN = 3,
@@ -61,21 +61,21 @@ public:
 	 * The port has to be open for this to work.
 	 * @param config The configuration struct to apply
 	 */
-	virtual LIB_EXPORT void setConfig(const SerialPortConfig &config) = 0;
+	virtual LIB_EXPORT bool setConfig(const SerialPortConfig &config) = 0;
 
 	/**
 	 * Reads the current configuration of the port.
 	 * The port has to be open for this to work.
 	 * @param config The configuration struct to write the configuration to
 	 */
-	virtual LIB_EXPORT void getConfig(SerialPortConfig &config) = 0;
+	virtual LIB_EXPORT bool getConfig(SerialPortConfig &config) = 0;
 
 	/**
 	 * Sets the baud rate for the port, this is equal to doing it using setConfig().
 	 * The port has to be open for this to work.
 	 * @param baud The baud rate to set for the port
 	 */
-	virtual LIB_EXPORT void setBaud(unsigned long baud) = 0;
+	virtual LIB_EXPORT bool setBaud(unsigned long baud) = 0;
 
 	/**
 	 * Gets the current baud rate configured for the port, equal to doing it using getConfig().
@@ -91,7 +91,7 @@ public:
 	 * @param readTimeout The read timeout, if the requested amount of data is not received within this time, it returns with what it has (might be zero)
 	 * @param writeTimeout The write timout, if the supplied data could not be written within this time, it returns with the ammount of data that could be written (might be zero)
 	 */
-	virtual LIB_EXPORT void setTimeouts(unsigned int readTimeout, unsigned int writeTimeout) = 0;
+	virtual LIB_EXPORT bool setTimeouts(unsigned int readTimeout, unsigned int writeTimeout) = 0;
 
 	/**
 	 * Attempt to claim/open the port.

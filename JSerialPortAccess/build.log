@@ -1,46 +1,28 @@
-18.06.2025_02:28:55: [DEBUG] : JVM runtime: 21.0.3
-18.06.2025_02:28:55: [DEBUG] : Meta runtime: 0.4-alpha-SNAPSHOT
-18.06.2025_02:28:55: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.4-alpha-SNAPSHOT
-18.06.2025_02:28:55: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.4-alpha-SNAPSHOT
-18.06.2025_02:28:55: [ INFO] Metabuild: - metabuild-cpp.jar
-18.06.2025_02:28:55: [ INFO] Metabuild: - metabuild-java.jar
-18.06.2025_02:28:55: [ INFO] Metabuild: - metabuild-maven.jar
-18.06.2025_02:28:55: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
-18.06.2025_02:28:55: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
-18.06.2025_02:28:55: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\JSerialPortAccess\build.meta
-18.06.2025_02:28:55: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\SerialPortAccess\build.meta
-18.06.2025_02:28:55: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:28:55: [ INFO] : [i] >>> NOTE: Java JNI headers for WinAMD64 platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:28:55: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:28:55: [ INFO] : [i] >>> NOTE: Java JNI headers for LinAMD64 platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:28:55: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:28:55: [ INFO] : [i] >>> NOTE: Java JNI headers for LinARM32 platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:28:55: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:28:55: [ INFO] : [i] >>> NOTE: Java JNI headers for LinARM64 platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:28:55: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:28:55: [ INFO] : [i] >>> NOTE: Java JNI headers for WinAMD64jniapi platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:28:55: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:28:55: [ INFO] : [i] >>> NOTE: Java JNI headers for LinAMD64jniapi platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:28:55: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:28:55: [ INFO] : [i] >>> NOTE: Java JNI headers for LinARM32jniapi platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:28:55: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
-18.06.2025_02:28:55: [ INFO] : [i] >>> NOTE: Java JNI headers for LinARM64jniapi platform are expected to be found in JAVA_HOME/include
-18.06.2025_02:28:55: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
-18.06.2025_02:28:55: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
-18.06.2025_02:28:55: [ INFO] /maven_dependency/javaDependencies: attempt offline cache resolution to verify available dependencies ...
-18.06.2025_02:28:55: [ INFO] /maven_dependency/javaDependencies: -> fully resolved POM: de.m_marvin.serialportaccess:serialportaccess-winamd64::pom:1.0
-18.06.2025_02:28:55: [ INFO] /maven_dependency/javaDependencies: offline cache verified, all dependencies available
-18.06.2025_02:28:55: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> RUN
-18.06.2025_02:28:55: [ WARN] /java_run/runTest: starting process: de.m_marvin.serialportaccess.Test
-18.06.2025_02:28:55: [DEBUG] /java_run/runTest: java cmd: C:\Program Files\Java\jdk-21.0.3+9\bin\java.exe -classpath E:\GitHub\LIBRARY-SerialPortAccess\JSerialPortAccess\build\classes\main\java;E:\GitHub\LIBRARY-SerialPortAccess\JSerialPortAccess\build\classes\test\java;E:\GitHub\LIBRARY-SerialPortAccess\JSerialPortAccess\src\main\resources;C:\Users\marvi\.meta\files\rrp_cbf2121a7940579828308e5b8003467d\de\m_marvin\serialportaccess\serialportaccess-winamd64\1.0\serialportaccess-winamd64-1.0.zip de.m_marvin.serialportaccess.Test
-Enter loopback port for testing: --- e ---
-create SerialPort classes.
-NativeLoader: The native lib /natives/serialportaccess_jni_x64.dll is missing in the jar!
-check is open
-open port
-failed, either port not available or lib not functional!
-18.06.2025_02:28:58: [ WARN] /java_run/runTest: process terminated, exit code: -1
-18.06.2025_02:28:58: [DEBUG] Metabuild: STATE TRANSITION: RUN >>> FINISH
-18.06.2025_02:28:58: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
-18.06.2025_02:28:58: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
-18.06.2025_02:28:58: [ INFO] Metabuild: TASKS: 4  UP_TO_DATE: 4  FAILED: 0
+21.06.2025_16:17:19: [DEBUG] : JVM runtime: 21.0.3
+21.06.2025_16:17:19: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
+21.06.2025_16:17:19: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+21.06.2025_16:17:19: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+21.06.2025_16:17:19: [ INFO] Metabuild: - metabuild-cpp.jar
+21.06.2025_16:17:19: [ INFO] Metabuild: - metabuild-java.jar
+21.06.2025_16:17:19: [ INFO] Metabuild: - metabuild-maven.jar
+21.06.2025_16:17:19: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
+21.06.2025_16:17:19: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
+21.06.2025_16:17:19: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\JSerialPortAccess\build.meta
+21.06.2025_16:17:19: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\SerialPortAccess\build.meta
+21.06.2025_16:17:19: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
+21.06.2025_16:17:19: [ INFO] : [i] >>> NOTE: Java JNI headers for WinAMD64jniapi platform are expected to be found in JAVA_HOME/include
+21.06.2025_16:17:19: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
+21.06.2025_16:17:19: [ INFO] : [i] >>> NOTE: Java JNI headers for LinAMD64jniapi platform are expected to be found in JAVA_HOME/include
+21.06.2025_16:17:19: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
+21.06.2025_16:17:19: [ INFO] : [i] >>> NOTE: Java JNI headers for LinARM32jniapi platform are expected to be found in JAVA_HOME/include
+21.06.2025_16:17:19: [ INFO] : [i] >>> JAVA_HOME: C:\Program Files\Java\jdk-17.0.10+7
+21.06.2025_16:17:19: [ INFO] : [i] >>> NOTE: Java JNI headers for LinARM64jniapi platform are expected to be found in JAVA_HOME/include
+21.06.2025_16:17:19: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
+21.06.2025_16:17:19: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
+21.06.2025_16:17:19: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> RUN
+21.06.2025_16:17:19: [ WARN] : ! RUNNING METABUILD INIT SEQUENCE, REWRITING WRAPPER JAR
+21.06.2025_16:17:19: [ WARN] : ! METAW SCRIPTS WILL BE REWRITTEN
+21.06.2025_16:17:20: [DEBUG] Metabuild: STATE TRANSITION: RUN >>> FINISH
+21.06.2025_16:17:20: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
+21.06.2025_16:17:20: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
+21.06.2025_16:17:20: [ INFO] Metabuild: TASKS: 1  UP_TO_DATE: 1  FAILED: 0

@@ -20,7 +20,7 @@ public class Buildfile extends JavaBuildScript {
 		
 		importBuild("serialportaccess", new File("../SerialPortAccess"));
 		
-		var copyNatives = new FileTask("copyNatives", Action.COPY, new File("../SerialPortAccess/build/bin"), new File("src/main/resources/natives"), true);
+		var copyNatives = new FileTask("copyNatives", Action.COPY, new File("../SerialPortAccess/build/bin/jni"), new File("src/main/resources/natives"), true);
 		copyNatives.group = "build";
 		copyNatives.dependsOn("serialportaccess:buildJni");
 		copyNatives.dependencyOf(jar);

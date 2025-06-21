@@ -7,6 +7,17 @@
 #include <chrono>
 #include <stdio.h>
 
+void printError(const char* format) {
+	DWORD errorCode = GetLastError();
+	if (errorCode == 0) return;
+	LPSTR msg;
+	if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msg, 0, NULL) > 0) {
+		setbuf(stdout, NULL);
+		printf(format, errorCode, msg);
+		LocalFree(msg);
+	}
+}
+
 class SerialPortWin : public SerialPort {
 
 private:
@@ -29,13 +40,16 @@ public:
 		closePort();
 	}
 
-	void setConfig(const SerialPortConfig &config) {
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return;
+	bool setConfig(const SerialPortConfig &config) {
+		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
 
-		GetCommState(this->comPortHandle, &this->comPortState);
+		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
+			printError("Error %lu in setConfig:GetCommState: %s\n");
+			return false;
+		}
+
 		this->comPortState.BaudRate = config.baudRate;
 		this->comPortState.fBinary = TRUE;
-		this->comPortState.fParity = (config.parity != SPC_PARITY_NONE);
 		this->comPortState.fOutxCtsFlow = (config.flowControl == SPC_FLOW_RTS_CTS);
 		this->comPortState.fOutxDsrFlow = (config.flowControl == SPC_FLOW_DSR_DTR);
 		this->comPortState.fDtrControl = (config.flowControl == SPC_FLOW_DSR_DTR) ? DTR_CONTROL_ENABLE : DTR_CONTROL_DISABLE;
@@ -50,45 +64,51 @@ public:
 		this->comPortState.XonLim = 2048;
 		this->comPortState.XoffLim = 512;
 		this->comPortState.ByteSize = config.dataBits;
+		this->comPortState.fParity = (config.parity != SPC_PARITY_NONE);
 		switch (config.parity) {
-		case SPC_PARITY_NONE: this->comPortState.Parity = NOPARITY; break;
 		case SPC_PARITY_ODD: this->comPortState.Parity = ODDPARITY; break;
 		case SPC_PARITY_EVEN: this->comPortState.Parity = EVENPARITY; break;
 		case SPC_PARITY_MARK: this->comPortState.Parity = MARKPARITY; break;
 		case SPC_PARITY_SPACE: this->comPortState.Parity = SPACEPARITY; break;
 		default: break;
+		case SPC_PARITY_NONE: this->comPortState.Parity = NOPARITY; break;
 		}
 		switch (config.stopBits) {
-		case SPC_STOPB_ONE: this->comPortState.StopBits = ONESTOPBIT; break;
 		case SPC_STOPB_ONE_HALF: this->comPortState.StopBits = ONE5STOPBITS; break;
 		case SPC_STOPB_TWO: this->comPortState.StopBits = TWOSTOPBITS; break;
 		default: break;
+		case SPC_STOPB_ONE: this->comPortState.StopBits = ONESTOPBIT; break;
 		}
 		this->comPortState.XonChar = 17;
 		this->comPortState.XoffChar = 19;
 		this->comPortState.ErrorChar = 0;
 		this->comPortState.EofChar = 0;
 		this->comPortState.EvtChar = 0;
-		SetCommState(this->comPortHandle, &this->comPortState);
 
+		if (!SetCommState(this->comPortHandle, &this->comPortState)) {
+			printError("Error %lu in setConfig:SetCommState: %s\n");
+			return false;
+		}
+
+		return true;
 	}
 
-	void getConfig(SerialPortConfig &config) {
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return;
+	bool getConfig(SerialPortConfig &config) {
+		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
 
-		GetCommState(this->comPortHandle, &this->comPortState);
+		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
+			printError("Error %lu in getConfig:GetCommState: %s\n");
+			return false;
+		}
+
 		config.baudRate = this->comPortState.BaudRate;
-		if (this->comPortState.fParity == 0) {
-			config.parity = SPC_PARITY_NONE;
-		} else {
-			switch (this->comPortState.Parity) {
-			case NOPARITY: config.parity = SPC_PARITY_NONE; break;
-			case ODDPARITY: config.parity = SPC_PARITY_ODD; break;
-			case EVENPARITY: config.parity = SPC_PARITY_EVEN; break;
-			case MARKPARITY: config.parity = SPC_PARITY_MARK; break;
-			case SPACEPARITY: config.parity = SPC_PARITY_SPACE; break;
-			default: config.parity = SPC_PARITY_UNDEFINED; break;
-			}
+		switch (this->comPortState.Parity) {
+		case NOPARITY: config.parity = SPC_PARITY_NONE; break;
+		case ODDPARITY: config.parity = SPC_PARITY_ODD; break;
+		case EVENPARITY: config.parity = SPC_PARITY_EVEN; break;
+		case MARKPARITY: config.parity = SPC_PARITY_MARK; break;
+		case SPACEPARITY: config.parity = SPC_PARITY_SPACE; break;
+		default: config.parity = SPC_PARITY_UNDEFINED; break;
 		}
 		config.dataBits = this->comPortState.ByteSize;
 		switch (this->comPortState.StopBits) {
@@ -106,6 +126,8 @@ public:
 		} else {
 			config.flowControl = SPC_FLOW_UNDEFINED;
 		}
+
+		return true;
 	}
 
 	bool openPort()
@@ -133,30 +155,47 @@ public:
 		return this->comPortHandle != INVALID_HANDLE_VALUE;
 	}
 
-	void setBaud(unsigned long baud)
+	bool setBaud(unsigned long baud)
 	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return;
-		GetCommState(this->comPortHandle, &this->comPortState);
+		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
+			printError("Error %lu in setBaud:GetCommState: %s\n");
+			return false;
+		}
 		this->comPortState.BaudRate = baud;
-		SetCommState(this->comPortHandle, &this->comPortState);
+		if (!SetCommState(this->comPortHandle, &this->comPortState)) {
+			printError("Error %lu in setBaud:SetCommState: %s\n");
+			return false;
+		}
+		return true;
 	}
 
 	unsigned long getBaud()
 	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return 0;
-		GetCommState(this->comPortHandle, &this->comPortState);
+		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
+			printError("Error %lu in getBaud:GetCommState: %s\n");
+			return 0;
+		}
 		return this->comPortState.BaudRate;
 	}
 
-	void setTimeouts(unsigned int readTimeout, unsigned int writeTimeout)
+	bool setTimeouts(unsigned int readTimeout, unsigned int writeTimeout)
 	{
-		GetCommTimeouts(this->comPortHandle, &this->comPortTimeouts);
+		if (!GetCommTimeouts(this->comPortHandle, &this->comPortTimeouts)) {
+			printError("Error %lu in setTimeouts:GetCommTimeouts: %s\n");
+			return false;
+		}
 		this->comPortTimeouts.ReadIntervalTimeout = readTimeout == 0 ? MAXDWORD : 0;
 		this->comPortTimeouts.ReadTotalTimeoutConstant = readTimeout;
 		this->comPortTimeouts.ReadTotalTimeoutMultiplier = 0;
 		this->comPortTimeouts.WriteTotalTimeoutConstant = writeTimeout;
 		this->comPortTimeouts.WriteTotalTimeoutMultiplier = 0;
-		SetCommTimeouts(this->comPortHandle, &this->comPortTimeouts);
+		if (!SetCommTimeouts(this->comPortHandle, &this->comPortTimeouts)) {
+			printError("Error %lu in setTimeouts:SetCommTimeouts: %s\n");
+			return false;
+		}
+		return true;
 	}
 
 	unsigned long readBytes(char* buffer, unsigned long bufferCapacity)

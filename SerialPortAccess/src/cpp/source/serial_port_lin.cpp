@@ -10,6 +10,57 @@
 #include <termios.h>
 #include <unistd.h>
 
+void printError(const char* format) {
+	setbuf(stdout, NULL);
+	int errorCode = errno;
+	if (errorCode == 0) return;
+	printf(format, errorCode, strerror(errorCode));
+}
+
+unsigned int getBaudCfgValue(unsigned long baud) {
+	switch (baud) {
+	case 0: return B0; break;
+	case 50: return B50; break;
+	case 75: return B75; break;
+	case 110: return B110; break;
+	case 134: return B134; break;
+	case 150: return B150; break;
+	case 200: return B200; break;
+	case 300: return B300; break;
+	case 600: return B600; break;
+	case 1200: return B1200; break;
+	case 1800: return B1800; break;
+	case 2400: return B2400; break;
+	case 4800: return B4800; break;
+	case 9600: return B9600; break;
+	case 19200: return B19200; break;
+	case 38400: return B38400; break;
+	default: return 0;
+	}
+}
+
+unsigned long getBaudValue(unsigned int baudCfg) {
+	switch (baudCfg) {
+	case B0: return 0; break;
+	case B50: return 50; break;
+	case B75: return 75; break;
+	case B110: return 110; break;
+	case B134: return 134; break;
+	case B150: return 150; break;
+	case B200: return 200; break;
+	case B300: return 300; break;
+	case B600: return 600; break;
+	case B1200: return 1200; break;
+	case B1800: return 1800; break;
+	case B2400: return 2400; break;
+	case B4800: return 4800; break;
+	case B9600: return 9600; break;
+	case B19200: return 19200; break;
+	case B38400: return 38400; break;
+	default: return 0;
+	}
+}
+
 class SerialPortLin : public SerialPort {
 
 private:
@@ -29,61 +80,12 @@ public:
 		closePort();
 	}
 
-	unsigned int getBaudCfgValue(unsigned long baud) {
-		switch (baud) {
-		case 0: return B0; break;
-		case 50: return B50; break;
-		case 75: return B75; break;
-		case 110: return B110; break;
-		case 134: return B134; break;
-		case 150: return B150; break;
-		case 200: return B200; break;
-		case 300: return B300; break;
-		case 600: return B600; break;
-		case 1200: return B1200; break;
-		case 1800: return B1800; break;
-		case 2400: return B2400; break;
-		case 4800: return B4800; break;
-		case 9600: return B9600; break;
-		case 19200: return B19200; break;
-		case 38400: return B38400; break;
-		default: {
-				printf("Baud speed %lu not suppoted, selected default %u!\n", baud, 9600U);
-				return B9600;
-			}
-		}
-	}
+	bool setConfig(const SerialPortConfig &config) {
+		if (this->comPortHandle < 0) return false;
 
-	unsigned long getBaudValue(unsigned int baudCfg) {
-		switch (baudCfg) {
-		case B0: return 0; break;
-		case B50: return 50; break;
-		case B75: return 75; break;
-		case B110: return 110; break;
-		case B134: return 134; break;
-		case B150: return 150; break;
-		case B200: return 200; break;
-		case B300: return 300; break;
-		case B600: return 600; break;
-		case B1200: return 1200; break;
-		case B1800: return 1800; break;
-		case B2400: return 2400; break;
-		case B4800: return 4800; break;
-		case B9600: return 9600; break;
-		case B19200: return 19200; break;
-		case B38400: return 38400; break;
-		default: {
-				printf("Baud set to an unknown value!");
-				return 0;
-			}
-		}
-	}
-
-	void setConfig(const SerialPortConfig &config) {
-		if (this->comPortHandle < 0) return;
 		if (tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printf("Error %i from setConfig:tcgetattr: %s\n", errno, strerror(errno));
-			return;
+			printError("Error %i in setConfig:tcgetattr: %s\n");
+			return false;
 		}
 
 		// Default serial prot configuration from https://blog.mbedded.ninja/programming/operating-systems/linux/linux-serial-ports-using-c-cpp/
@@ -104,7 +106,10 @@ public:
 		this->comPortState.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
 		// Some fields might get overriden below depending on the configuration
 
-		cfsetspeed(&this->comPortState, getBaudCfgValue(config.baudRate));
+		if (cfsetspeed(&this->comPortState, getBaudCfgValue(config.baudRate)) != 0) {
+			printError("Error %i in setConfig:cfsetspeed: %s\n");
+			return false;
+		}
 
 		if (config.parity != SPC_PARITY_NONE)
 			this->comPortState.c_cflag |= PARENB; // Enable parity
@@ -115,7 +120,7 @@ public:
 			else if (config.parity == SPC_PARITY_EVEN)
 				this->comPortState.c_cflag &= ~PARODD;
 			else
-				printf("Error mark/space parity not supported");
+				return false; // mark/space parity not supported
 		}
 
 		switch (config.flowControl) {
@@ -130,7 +135,7 @@ public:
 			this->comPortState.c_cflag |= IXOFF; // Disable XON
 			break;
 		default:
-			printf("Error RTS/DTS flow control not supported");
+			return false; // RTS/DTS flow control not supported
 		case SPC_PARITY_NONE:
 			this->comPortState.c_cflag |= CRTSCTS; // Disable RTS/CTS
 			this->comPortState.c_cflag |= IXON; // Disable XON
@@ -144,7 +149,7 @@ public:
 		case 6: this->comPortState.c_cflag |= CS6; break;
 		case 7:	this->comPortState.c_cflag |= CS7; break;
 		default:
-			printf("Error data size not supported");
+			return false; // data size not supported
 		case 8:this->comPortState.c_cflag |= CS8; break;
 		}
 
@@ -158,16 +163,19 @@ public:
 		}
 
 		if (tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
-			printf("Error %i from setConfig:tcsetattr: %s\n", errno, strerror(errno));
+			printError("Error %i in setConfig:tcsetattr: %s\n");
+			return false;
 		}
 
+		return true;
 	}
 
-	void getConfig(SerialPortConfig &config) {
-		if (this->comPortHandle < 0) return;
+	bool getConfig(SerialPortConfig &config) {
+		if (this->comPortHandle < 0) return false;
+
 		if (tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printf("Error %i from setConfig:tcgetattr: %s\n", errno, strerror(errno));
-			return;
+			printError("Error %i in getConfig:tcgetattr: %s\n");
+			return false;
 		}
 
 		config.baudRate = getBaudValue(cfgetospeed(&this->comPortState));
@@ -193,6 +201,8 @@ public:
 		}
 
 		config.stopBits = (this->comPortState.c_cflag & CSTOPB) ? SPC_STOPB_TWO : SPC_STOPB_ONE;
+
+		return true;
 	}
 
 	bool openPort()
@@ -220,45 +230,58 @@ public:
 		return this->comPortHandle >= 0;
 	}
 
-	void setBaud(unsigned long baud)
+	bool setBaud(unsigned long baud)
 	{
-		if (this->comPortHandle < 0) return;
+		if (this->comPortHandle < 0) return false;
+
 		if (tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printf("Error %i from setBaud: %s\n", errno, strerror(errno));
-			return;
+			printError("Error %i in setBaud:tcgetattr: %s\n");
+			return false;
 		}
 
-		cfsetspeed(&this->comPortState, getBaudCfgValue(baud));
+		if (cfsetspeed(&this->comPortState, getBaudCfgValue(baud)) != 0) {
+			printError("Error %i in setBaud:cfsetspeed: %s\n");
+			return false;
+		}
 
 		if (tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
-			printf("Error %i from setBaud: %s\n", errno, strerror(errno));
+			printError("Error %i in setBaud:tcsetattr: %s\n");
+			return false;
 		}
+
+		return true;
 	}
 
 	unsigned long getBaud()
 	{
 		if (this->comPortHandle < 0) return 0;
-		if (tcgetattr(this->comPortHandle, &this->comPortState)!= 0) {
-			printf("Error %i from getBaud: %s\n", errno, strerror(errno));
+
+		if (tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
+			printError("Error %i in getBaud:tcgetattr: %s\n");
 			return 0;
 		}
 
 		return getBaudValue(cfgetospeed(&this->comPortState));
 	}
 
-	void setTimeouts(unsigned int readTimeout, unsigned int writeTimeout)
+	bool setTimeouts(unsigned int readTimeout, unsigned int writeTimeout)
 	{
-		if (this->comPortHandle < 0) return;
+		if (this->comPortHandle < 0) return false;
+
 		if (tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printf("Error %i from setTimeouts: %s\n", errno, strerror(errno));
+			printError("Error %i in setTimeouts:tcgetattr: %s\n");
+			return false;
 		}
 
 		this->comPortState.c_cc[VMIN] = 0;
 		this->comPortState.c_cc[VTIME] = (unsigned char) (readTimeout / 100); // Convert ms in ds
 
 		if (tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
-			printf("Error %i from setTimeouts: %s\n", errno, strerror(errno));
+			printError("Error %i in setTimeouts:tcsetattr: %s\n");
+			return false;
 		}
+
+		return true;
 	}
 
 	unsigned long readBytes(char* buffer, unsigned long bufferCapacity)
