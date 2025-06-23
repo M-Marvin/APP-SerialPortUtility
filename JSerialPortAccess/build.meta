@@ -6,6 +6,8 @@ import de.m_marvin.metabuild.core.tasks.FileTask.Action;
 import de.m_marvin.metabuild.cpp.tasks.CppLinkTask;
 import de.m_marvin.metabuild.java.script.JavaBuildScript;
 import de.m_marvin.metabuild.maven.Maven;
+import de.m_marvin.metabuild.maven.types.Repository;
+import de.m_marvin.metabuild.maven.types.Repository.Credentials;
 
 public class Buildfile extends JavaBuildScript {
 	
@@ -49,6 +51,16 @@ public class Buildfile extends JavaBuildScript {
 		super.publishing();
 		
 		publishMavenLocal.coordinates("de.m_marvin.serialportaccess:jserialportaccess:" + version);
+		
+		publishMaven.coordinates("de.m_marvin.serialportaccess:jserialportaccess:" + version);
+		publishMaven.repository(new Repository(
+				"GHP [SerialPortAccess]", 
+				"https://maven.pkg.github.com/m-marvin/library-serialportaccess",
+				new Credentials(
+						() -> System.getenv("GITHUB_ACTOR"), 
+						() -> System.getenv("GITHUB_TOKEN")
+				)
+		));
 		
 	}
 	

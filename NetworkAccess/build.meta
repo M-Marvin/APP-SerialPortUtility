@@ -1,0 +1,13 @@
+import de.m_marvin.metabuild.core.script.BuildScript;
+import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
+
+public class Buildfile extends CppMultiTargetBuildScript {
+	
+	@Override
+	public void init() {
+		
+		super.init();
+		
+	}
+	
+}

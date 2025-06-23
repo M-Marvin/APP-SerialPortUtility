@@ -43,11 +43,11 @@ typedef struct SerialPortConfiguration {
 } SerialPortConfig;
 
 static const SerialPortConfig DEFAULT_PORT_CONFIGURATION = {
-	.baudRate = 9200,
+	.baudRate = 9600,
 	.dataBits = 8,
 	.stopBits = SPC_STOPB_ONE,
 	.parity = SPC_PARITY_NONE,
-	.flowControl = SPC_FLOW_XON_XOFF
+	.flowControl = SPC_FLOW_NONE
 };
 
 class SerialPort
@@ -60,6 +60,7 @@ public:
 	 * Applies the supplied configuration to the port.
 	 * The port has to be open for this to work.
 	 * @param config The configuration struct to apply
+	 * @return true if the configuration was set, false if an error occurred
 	 */
 	virtual LIB_EXPORT bool setConfig(const SerialPortConfig &config) = 0;
 
@@ -67,6 +68,7 @@ public:
 	 * Reads the current configuration of the port.
 	 * The port has to be open for this to work.
 	 * @param config The configuration struct to write the configuration to
+	 * @return true if the configuration was read, false if an error occurred
 	 */
 	virtual LIB_EXPORT bool getConfig(SerialPortConfig &config) = 0;
 
@@ -74,6 +76,7 @@ public:
 	 * Sets the baud rate for the port, this is equal to doing it using setConfig().
 	 * The port has to be open for this to work.
 	 * @param baud The baud rate to set for the port
+	 * @return true if the baud was set, false if an error occurred
 	 */
 	virtual LIB_EXPORT bool setBaud(unsigned long baud) = 0;
 
@@ -89,13 +92,14 @@ public:
 	 * Zero means no timeout.
 	 * The port has to be open for this to work.
 	 * @param readTimeout The read timeout, if the requested amount of data is not received within this time, it returns with what it has (might be zero)
-	 * @param writeTimeout The write timout, if the supplied data could not be written within this time, it returns with the ammount of data that could be written (might be zero)
+	 * @param writeTimeout The write timeout, if the supplied data could not be written within this time, it returns with the ammount of data that could be written (might be zero)
+	 * @return true if the timeouts where set, false if an error occurred
 	 */
 	virtual LIB_EXPORT bool setTimeouts(unsigned int readTimeout, unsigned int writeTimeout) = 0;
 
 	/**
 	 * Attempt to claim/open the port.
-	 * This might fail if the port was not found or is already clamed by an another process.
+	 * This might fail if the port was not found or is already claimed by an another process.
 	 * @return true if the port was successfully opened, false otherwise
 	 */
 	virtual LIB_EXPORT bool openPort() = 0;
@@ -114,9 +118,10 @@ public:
 
 	/**
 	 * Attempts to fill the buffer by reading bytes from the port.
-	 * If not enough bytes could be read after the read timeout expires, the number of bytes read is returned.
+	 * If not enough bytes could be read after the read timeout expires, the function returns with what was received.
 	 * @param buffer The buffer to write the data to
 	 * @param bufferCapacity The capacity of the buffer, aka the max number of bytes to read
+	 * @return The number of bytes read
 	 */
 	virtual LIB_EXPORT unsigned long readBytes(char* buffer, unsigned long bufferCapacity) = 0;
 
@@ -138,14 +143,16 @@ public:
 	 * @param bufferCapacity The capacity of the buffer, aka the max number of bytes to read
 	 * @param consecutiveDelay The timeout to add when data was received
 	 * @param receptionWaitTimeout The minimum time to wait for the first byte
+	 * @return The number of bytes read
 	 */
 	virtual LIB_EXPORT unsigned long readBytesConsecutive(char* buffer, unsigned long bufferCapacity, unsigned int consecutiveDelay, unsigned int receptionWaitTimeout) = 0;
 
 	/**
 	 * Attempts to write the content of the buffer to the serial port.
-	 * Id not all data could be written until the write timeout expires, the number of bytes written is returned.
+	 * If not all data could be written until the write timeout expires, the function returns.
 	 * @param buffer The buffer to read the data from
 	 * @param bufferLength The length of the buffer, aka the number of bytes to write
+	 * @return The number of bytes written
 	 */
 	virtual LIB_EXPORT unsigned long writeBytes(const char* buffer, unsigned long bufferLength) = 0;
 	
@@ -153,9 +160,7 @@ public:
 
 extern "C" {
 
-void testFunc();
-
-SerialPort* newSerialPort(const char* portFile);
-//SerialPort* newSerialPort(const std::string& portFile);
+SerialPort* LIB_EXPORT newSerialPort(const char* portFile);
+SerialPort* LIB_EXPORT newSerialPortS(const std::string& portFile);
 
 }

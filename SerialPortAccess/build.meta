@@ -5,10 +5,12 @@ import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
 import de.m_marvin.metabuild.maven.Maven;
 import de.m_marvin.metabuild.maven.tasks.MavenPublishTask;
 import de.m_marvin.metabuild.maven.tasks.MavenResolveTask;
+import de.m_marvin.metabuild.maven.types.Repository;
+import de.m_marvin.metabuild.maven.types.Repository.Credentials;
 
 public class Buildfile extends CppMultiTargetBuildScript {
 	
-	String version = "1.0";
+	String version = "2.0-SNAPSHOT";
 	
 	@Override
 	public void init() {
@@ -18,30 +20,28 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		// platform windows AMD 64
 		var target = makeTarget("WinAMD64", "serialportaccess_x64.dll");
 		target.compileCpp.define("PLATFORM_WIN");
+		target.linkCpp.linker = target.compileCpp.compiler = "winamd64-g++";
 		target.linkCpp.options.add("-shared");
-
+		
 		// platform linux AMD 64
 		target = makeTarget("LinAMD64", "serialportaccess_x64.so");
 		target.compileCpp.define("PLATFORM_LIN");
 		target.linkCpp.options.add("-shared");
-		target.compileCpp.compiler = "x86_64-linux-gnu-g++";
-		target.linkCpp.linker = "x86_64-linux-gnu-g++";
+		target.linkCpp.linker = target.compileCpp.compiler = "linamd64-g++";
 		target.compileCpp.options.add("-fPIC");
 		
 		// platform linux ARM 32 (raspberry pi)
 		target = makeTarget("LinARM32", "serialportaccess_arm32.so");
 		target.compileCpp.define("PLATFORM_LIN");
 		target.linkCpp.options.add("-shared");
-		target.compileCpp.compiler = "arm-linux-gnueabihf-g++";
-		target.linkCpp.linker = "arm-linux-gnueabihf-g++";
+		target.linkCpp.linker = target.compileCpp.compiler = "linarm32-g++";
 		target.compileCpp.options.add("-fPIC");
 		
 		// platform linux ARM 64 (raspberry pi)
 		target = makeTarget("LinARM64", "serialportaccess_arm64.so");
 		target.compileCpp.define("PLATFORM_LIN");
 		target.linkCpp.options.add("-shared");
-		target.compileCpp.compiler = "aarch64-linux-gnu-g++";
-		target.linkCpp.linker = "aarch64-linux-gnu-g++";
+		target.linkCpp.linker = target.compileCpp.compiler = "linarm64-g++";
 		target.compileCpp.options.add("-fPIC");
 		
 		super.init();
@@ -54,6 +54,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target = makeTarget("WinAMD64jniapi", "jni/serialportaccess_jni_x64.dll");
 		target.compileCpp.define("PLATFORM_WIN");
 		target.compileCpp.define("INCLUDE_JNIAPI");
+		target.linkCpp.linker = target.compileCpp.compiler = "winamd64-g++";
 		target.linkCpp.options.add("-shared");
 		target.build.dependencyOf(buildJni);
 
@@ -62,8 +63,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.compileCpp.define("PLATFORM_LIN");
 		target.compileCpp.define("INCLUDE_JNIAPI");
 		target.linkCpp.options.add("-shared");
-		target.compileCpp.compiler = "x86_64-linux-gnu-g++";
-		target.linkCpp.linker = "x86_64-linux-gnu-g++";
+		target.linkCpp.linker = target.compileCpp.compiler = "linamd64-g++";
 		target.compileCpp.options.add("-fPIC");
 		target.build.dependencyOf(buildJni);
 
@@ -72,8 +72,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.compileCpp.define("PLATFORM_LIN");
 		target.compileCpp.define("INCLUDE_JNIAPI");
 		target.linkCpp.options.add("-shared");
-		target.compileCpp.compiler = "arm-linux-gnueabihf-g++";
-		target.linkCpp.linker = "arm-linux-gnueabihf-g++";
+		target.linkCpp.linker = target.compileCpp.compiler = "linarm32-g++";
 		target.compileCpp.options.add("-fPIC");
 		target.build.dependencyOf(buildJni);
 		
@@ -82,8 +81,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.compileCpp.define("PLATFORM_LIN");
 		target.compileCpp.define("INCLUDE_JNIAPI");
 		target.linkCpp.options.add("-shared");
-		target.compileCpp.compiler = "aarch64-linux-gnu-g++";
-		target.linkCpp.linker = "aarch64-linux-gnu-g++";
+		target.linkCpp.linker = target.compileCpp.compiler = "linarm64-g++";
 		target.compileCpp.options.add("-fPIC");
 		target.build.dependencyOf(buildJni);
 		
@@ -115,10 +113,19 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	}
 	
 	@Override
-	public void publishing(MavenPublishTask publish, String config) {
+	public void publishing(MavenPublishTask publish, MavenPublishTask publishLocal, String config) {
 		
-		publish.repository(Maven.mavenLocal());
+		publishLocal.coordinates("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":" + version);
+		
 		publish.coordinates("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":" + version);
+		publish.repository(new Repository(
+				"GHP [SerialPortAccess]", 
+				"https://maven.pkg.github.com/m-marvin/library-serialportaccess",
+				new Credentials(
+						() -> System.getenv("GITHUB_ACTOR"), 
+						() -> System.getenv("GITHUB_TOKEN")
+				)
+		));
 		
 	}
 	

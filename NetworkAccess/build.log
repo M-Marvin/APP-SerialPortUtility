@@ -1,0 +1,11 @@
+23.06.2025_18:30:37: [DEBUG] : JVM runtime: 21.0.3
+23.06.2025_18:30:37: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
+23.06.2025_18:30:37: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+23.06.2025_18:30:37: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+23.06.2025_18:30:37: [ INFO] Metabuild: - metabuild-cpp.jar
+23.06.2025_18:30:37: [ INFO] Metabuild: - metabuild-java.jar
+23.06.2025_18:30:37: [ INFO] Metabuild: - metabuild-maven.jar
+23.06.2025_18:30:37: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
+23.06.2025_18:30:37: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
+23.06.2025_18:30:37: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\NetworkAccess\build.meta
+23.06.2025_18:30:37: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY

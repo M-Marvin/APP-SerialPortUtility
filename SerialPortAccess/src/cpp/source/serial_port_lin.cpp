@@ -323,7 +323,7 @@ SerialPort* newSerialPort(const char* portFile) {
 	return new SerialPortLin(portFile);
 }
 
-SerialPort* newSerialPort(const std::string& portFile) {
+SerialPort* newSerialPortS(const std::string& portFile) {
 	return new SerialPortLin(portFile.c_str());
 }
 

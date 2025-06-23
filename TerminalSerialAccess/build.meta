@@ -1,0 +1,65 @@
+import java.awt.Desktop.Action;
+import java.io.File;
+import java.lang.reflect.Executable;
+
+import de.m_marvin.metabuild.core.tasks.FileTask;
+import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
+import de.m_marvin.metabuild.maven.Maven;
+import de.m_marvin.metabuild.maven.tasks.MavenResolveTask;
+import de.m_marvin.metabuild.maven.types.Repository;
+import de.m_marvin.metabuild.maven.types.Repository.Credentials;
+
+public class Buildfile extends CppMultiTargetBuildScript {
+	
+	@Override
+	public void init() {
+		
+		projectName = "terminalserial";
+
+		var target = makeTarget("WinAMD64", "serial.exe");
+		target.compileCpp.compiler = target.linkCpp.linker = "winamd64-g++";
+		target.linkCpp.libraries.add("serialportaccess_x64");
+		target.compileCpp.options.add("-g");
+		super.init();
+		
+	}
+	
+	@Override
+	public TargetConfig makeTarget(String config, String excutableName) {
+		var target = super.makeTarget(config, excutableName);
+		
+		var copyLibs = new FileTask("copyLibs" + config, de.m_marvin.metabuild.core.tasks.FileTask.Action.COPY, target.binaryUnzip.output, new File("build/bin/" + config + "/"), true);
+		copyLibs.group = "platform";
+		copyLibs.dependencyOf(target.build);
+		copyLibs.dependsOn(target.binaryUnzip);
+		
+		target.linkCpp.outputFile = new File("build/bin/" + config + "/" + excutableName);
+		
+		return target;
+	}
+	
+	@Override
+	public void repositories(MavenResolveTask dependencies, String config) {
+		
+		dependencies.repository(new Repository(
+				"GHP [SerialPortAccess]", 
+				"https://maven.pkg.github.com/m-marvin/library-serialportaccess",
+				new Credentials(
+						() -> System.getenv("GITHUB_ACTOR"), 
+						() -> System.getenv("GITHUB_TOKEN")
+				)
+		));
+		
+		dependencies.repository(Maven.mavenLocal());
+		
+	}
+	
+	@Override
+	public void dependencies(MavenResolveTask dependencies, String config) {
+		
+		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config + "::zip:2.0-SNAPSHOT");
+		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config + ":headers:zip:2.0-SNAPSHOT");
+		
+	}
+	
+}

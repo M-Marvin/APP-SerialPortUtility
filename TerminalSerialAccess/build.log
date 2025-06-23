@@ -1,0 +1,52 @@
+23.06.2025_18:30:43: [DEBUG] : JVM runtime: 21.0.3
+23.06.2025_18:30:43: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
+23.06.2025_18:30:43: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+23.06.2025_18:30:43: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+23.06.2025_18:30:43: [ INFO] Metabuild: - metabuild-cpp.jar
+23.06.2025_18:30:43: [ INFO] Metabuild: - metabuild-java.jar
+23.06.2025_18:30:43: [ INFO] Metabuild: - metabuild-maven.jar
+23.06.2025_18:30:43: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
+23.06.2025_18:30:43: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
+23.06.2025_18:30:43: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build.meta
+23.06.2025_18:30:43: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
+23.06.2025_18:30:43: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
+23.06.2025_18:30:43: [ INFO] /maven_dependency/cppDependenciesWinAMD64: attempt offline cache resolution to verify available dependencies ...
+23.06.2025_18:30:43: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: https://maven.pkg.github.com/m-marvin/library-serialportaccess/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/maven-metadata.xml
+23.06.2025_18:30:43: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: not found: 404 Not Found
+23.06.2025_18:30:43: [ WARN] /maven_dependency/cppDependenciesWinAMD64: unable to resolve artifact graph for group: de.m_marvin.serialportaccess:serialportaccess-WinAMD64:2.0-SNAPSHOT (scope COMPILE)
+23.06.2025_18:30:43: [ INFO] /maven_dependency/cppDependenciesWinAMD64: offline cache incomplete, COMPILETIME missing files, request remote resolution
+23.06.2025_18:30:44: [ INFO] /compile_cpp/compileCppWinAMD64: located cpp compiler: D:\Programms\toolchains\w64devkit\bin\winamd64-g++.exe
+23.06.2025_18:30:44: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> RUN
+23.06.2025_18:30:44: [ INFO] /maven_dependency/cppDependenciesWinAMD64: attempt offline cache resolution to verify available dependencies ...
+23.06.2025_18:30:44: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: https://maven.pkg.github.com/m-marvin/library-serialportaccess/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/maven-metadata.xml
+23.06.2025_18:30:44: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: not found: 404 Not Found
+23.06.2025_18:30:44: [ WARN] /maven_dependency/cppDependenciesWinAMD64: unable to resolve artifact graph for group: de.m_marvin.serialportaccess:serialportaccess-WinAMD64:2.0-SNAPSHOT (scope COMPILE)
+23.06.2025_18:30:44: [ INFO] /maven_dependency/cppDependenciesWinAMD64: offline cache incomplete, COMPILETIME missing files, request remote resolution
+23.06.2025_18:30:44: [ INFO] /maven_dependency/cppDependenciesWinAMD64: attempt resolve 'de.m_marvin.serialportaccess:serialportaccess-WinAMD64::pom:2.0-SNAPSHOT' on [GHP [SerialPortAccess]]
+23.06.2025_18:30:44: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: https://maven.pkg.github.com/m-marvin/library-serialportaccess/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/maven-metadata.xml
+23.06.2025_18:30:44: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: not found: 404 Not Found
+23.06.2025_18:30:44: [ INFO] /maven_dependency/cppDependenciesWinAMD64: attempt resolve 'de.m_marvin.serialportaccess:serialportaccess-WinAMD64::pom:2.0-SNAPSHOT' on [Maven Local]
+23.06.2025_18:30:44: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/serialportaccess-WinAMD64-2.0-20250623-162812-4.pom
+23.06.2025_18:30:44: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/serialportaccess-WinAMD64-2.0-20250623-162812-4.pom.md5
+23.06.2025_18:30:44: [ INFO] /maven_dependency/cppDependenciesWinAMD64: -> fully resolved POM: de.m_marvin.serialportaccess:serialportaccess-WinAMD64::pom:2.0-SNAPSHOT
+23.06.2025_18:30:44: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/serialportaccess-WinAMD64-2.0-20250623-162812-4.zip
+23.06.2025_18:30:44: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/serialportaccess-WinAMD64-2.0-20250623-162812-4.zip.md5
+23.06.2025_18:30:44: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/serialportaccess-WinAMD64-2.0-20250623-162812-4-headers.zip
+23.06.2025_18:30:44: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/serialportaccess-WinAMD64-2.0-20250623-162812-4-headers.zip.md5
+23.06.2025_18:30:44: [ INFO] /make_archive/headersZipWinAMD64: make archive from files: build\WinAMD64\bin\serial-headers.zip
+23.06.2025_18:30:44: [DEBUG] /extract_archive/headersUnzipWinAMD64: unpack archive files: C:\Users\marvi\.meta\files\rrp_cbf2121a7940579828308e5b8003467d\de\m_marvin\serialportaccess\serialportaccess-WinAMD64\2.0-SNAPSHOT\serialportaccess-WinAMD64-2.0-20250623-162812-4-headers.zip -> build\WinAMD64\includeHeaders
+23.06.2025_18:30:44: [DEBUG] /extract_archive/headersUnzipWinAMD64: extracting entry: serial_port.hpp
+23.06.2025_18:30:44: [DEBUG] /extract_archive/binaryUnzipWinAMD64: unpack archive files: C:\Users\marvi\.meta\files\rrp_cbf2121a7940579828308e5b8003467d\de\m_marvin\serialportaccess\serialportaccess-WinAMD64\2.0-SNAPSHOT\serialportaccess-WinAMD64-2.0-20250623-162812-4.zip -> build\WinAMD64\includeLibraries
+23.06.2025_18:30:44: [DEBUG] /extract_archive/binaryUnzipWinAMD64: extracting entry: serialportaccess_x64.dll
+23.06.2025_18:30:45: [ INFO] /compile_cpp/compileCppWinAMD64: located cpp compiler: D:\Programms\toolchains\w64devkit\bin\winamd64-g++.exe
+23.06.2025_18:30:45: [ INFO] /compile_cpp/compileCppWinAMD64: compiling source file: E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\source\serialportterminal.cpp
+23.06.2025_18:30:45: [DEBUG] /compile_cpp/compileCppWinAMD64: cmd: D:\Programms\toolchains\w64devkit\bin\winamd64-g++.exe -o E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\WinAMD64\objects\cpp\serialportterminal.o E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\source\serialportterminal.cpp -c -g -I "E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\WinAMD64\includeHeaders" -I "E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\header"
+23.06.2025_18:30:47: [ INFO] /undefined/copyLibsWinAMD64: copy files: build\WinAMD64\includeLibraries -> build\bin\WinAMD64
+23.06.2025_18:30:48: [ INFO] /link_cpp/linkCppWinAMD64: linking objects in: C:\Windows\system32\build\WinAMD64\objects\cpp
+23.06.2025_18:30:48: [ INFO] /link_cpp/linkCppWinAMD64: located cpp compiler: D:\Programms\toolchains\w64devkit\bin\winamd64-g++.exe
+23.06.2025_18:30:48: [DEBUG] /link_cpp/linkCppWinAMD64: cmd: D:\Programms\toolchains\w64devkit\bin\winamd64-g++.exe E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\WinAMD64\objects\cpp\serialportterminal.o -o E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\bin\WinAMD64\serial.exe -L"E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\WinAMD64\includeLibraries" -lserialportaccess_x64
+23.06.2025_18:30:48: [ INFO] /make_archive/binaryZipWinAMD64: make archive from files: build\WinAMD64\bin\serial.zip
+23.06.2025_18:30:49: [DEBUG] Metabuild: STATE TRANSITION: RUN >>> FINISH
+23.06.2025_18:30:49: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
+23.06.2025_18:30:49: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
+23.06.2025_18:30:49: [ INFO] Metabuild: TASKS: 10  UP_TO_DATE: 10  FAILED: 0

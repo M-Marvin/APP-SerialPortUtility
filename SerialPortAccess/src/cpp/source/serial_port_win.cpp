@@ -240,7 +240,7 @@ SerialPort* newSerialPort(const char* portFile) {
 	return new SerialPortWin(portFile);
 }
 
-SerialPort* newSerialPort(const std::string& portFile) {
+SerialPort* newSerialPortS(const std::string& portFile) {
 	return new SerialPortWin(portFile.c_str());
 }
 

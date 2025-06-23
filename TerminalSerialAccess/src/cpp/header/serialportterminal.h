@@ -9,6 +9,9 @@
 #define SERIALPORTTERMINAL_H_
 
 int main(int argc, const char** argv);
+
+bool setupConsole(bool lineInput);
+
 void transmitionLoop();
 void receptionLoop();
 
