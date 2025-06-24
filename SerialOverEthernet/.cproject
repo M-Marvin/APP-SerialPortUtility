@@ -18,10 +18,7 @@
 		<pathentry include="D:/Programms/toolchains/w64devkit/lib/gcc/x86_64-w64-mingw32/15.1.0/include" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/w64devkit/lib/gcc/x86_64-w64-mingw32/15.1.0/include-fixed" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/w64devkit/include" kind="inc" path="" system="true"/>
-		<pathentry include="E:/GitHub/LIBRARY-SerialPortAccess/SerialOverEthernet/build/WinAMD64-client/includeHeaders" kind="inc" path="" system="true"/>
+		<pathentry include="E:/GitHub/LIBRARY-SerialPortAccess/SerialOverEthernet/build/WinAMD64/includeHeaders" kind="inc" path="" system="true"/>
 		<pathentry include="E:/GitHub/LIBRARY-SerialPortAccess/SerialOverEthernet/src/cpp/header" kind="inc" path="" system="true"/>
-		<pathentry kind="mac" name="SIDE_CLIENT" path="" value=""/>
-		<pathentry kind="mac" name="SIDE_SERVER" path="" value=""/>
-		<pathentry kind="mac" name="DEBUG_PRINTS" path="" value=""/>
 	</storageModule>
 </cproject>

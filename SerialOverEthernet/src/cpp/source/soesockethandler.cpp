@@ -1,8 +1,12 @@
 /*
- * soeclient.cpp
+ * soesockethandler.cpp
+ *
+ * Handles the individual connections going in and out trough an socket.
+ * In this implementation there is usualy only one socket, but nothing prevents multiple
+ * ports from being opened.
  *
  *  Created on: 04.02.2025
- *      Author: marvi
+ *      Author: Marvin Koehler
  */
 
 #include <stdexcept>
@@ -79,9 +83,9 @@ void SOESocketHandler::handleClientTX() {
 					if (entry->second.last_send + chrono::milliseconds(INET_KEEP_ALIVE_INTERVAL) < now) {
 						length = 0;
 						rxid = 0;
-	#ifdef DEBUG_PRINTS
+#ifdef DEBUG_PRINTS
 						printf("DEBUG: send keep alive: %s\n", entry->first.c_str());
-	#endif
+#endif
 					} else {
 						continue;
 					}
@@ -154,7 +158,6 @@ void SOESocketHandler::handleClientRX() {
 		payloadLen = pckgLen - SOE_FRAME_HEADER_LEN;
 
 		switch (opc) {
-#ifdef SIDE_SERVER
 		case OPC_OPEN: {
 
 			// Check payload length
@@ -203,8 +206,14 @@ void SOESocketHandler::handleClientRX() {
 			// Decode port name string
 			string portName = string(payload + 19, portStrLen);
 
+			// Check for name conflicts with existing port claims
+			if (this->ports.count(portName)) {
+				sendError(remoteAddress, portName, "port name conflict");
+				break;
+			}
+
 			// Attempt to open port
-			SerialPort* serialPort = new SerialPort(portName.c_str());
+			SerialPort* serialPort = newSerialPort(portName.c_str());
 			if (!serialPort->openPort()) {
 				sendError(remoteAddress, portName, "failed to claim port");
 				delete serialPort;
@@ -288,7 +297,6 @@ void SOESocketHandler::handleClientRX() {
 
 			break;
 		}
-#endif
 		case OPC_STREAM: {
 
 			// Check payload length
@@ -323,13 +331,7 @@ void SOESocketHandler::handleClientRX() {
 			shared_lock<shared_timed_mutex> lock(this->portsm);
 			port_claim* portClaim = 0;
 			try {
-#ifdef SIDE_CLIENT
-				// From the server we get the remote host name, so we need to map it to the local port
-				string localPortName = this->remote2localPort.at(portName);
-				portClaim = &this->ports.at(localPortName);
-#else
 				portClaim = &this->ports.at(portName);
-#endif
 			} catch (const std::out_of_range& e) {
 				sendError(remoteAddress, portName, "port not claimed");
 				break;
@@ -405,15 +407,9 @@ void SOESocketHandler::handleClientRX() {
 			shared_lock<shared_timed_mutex> lock(this->portsm);
 			port_claim* portClaim = 0;
 			try {
-#ifdef SIDE_CLIENT
-				// From the server we get the remote host name, so we need to map it to the local port
-				string localPortName = this->remote2localPort.at(portName);
-				portClaim = &this->ports.at(localPortName);
-#else
 				portClaim = &this->ports.at(portName);
-#endif
 			} catch (const std::out_of_range& e) {
-				break;
+				break; // Received data for an closed port, this can be caused trough network delay, just ignore
 			}
 
 			// Confirm reception
@@ -454,13 +450,7 @@ void SOESocketHandler::handleClientRX() {
 			shared_lock<shared_timed_mutex> lock(this->portsm);
 			port_claim* portClaim = 0;
 			try {
-#ifdef SIDE_CLIENT
-				// From the server we get the remote host name, so we need to map it to the local port
-				string localPortName = this->remote2localPort.at(portName);
-				portClaim = &this->ports.at(localPortName);
-#else
 				portClaim = &this->ports.at(portName);
-#endif
 			} catch (const std::out_of_range& e) {
 #ifdef DEBUG_PRINTS
 				printf("DEBUG: received tx confirm for closed port: %s [rx %u]\n", portName.c_str(), rxid);
@@ -521,7 +511,7 @@ void SOESocketHandler::handleClientRX() {
 			} else {
 				printf("received error frame: %s : %s\n", portName.c_str(), message.c_str());
 
-#ifdef SIDE_CLIENT
+				// Check if this matches an ongoing port claim
 				if (this->remote_port_name.length() > 0 && this->remote_port_name == portName) {
 
 #ifdef DEBUG_PRINTS
@@ -536,13 +526,11 @@ void SOESocketHandler::handleClientRX() {
 					}
 
 				}
-#endif
 
 			}
 
 			break;
 		}
-#ifdef SIDE_CLIENT
 		case OPC_OPENED: {
 
 			// Check payload length
@@ -578,7 +566,6 @@ void SOESocketHandler::handleClientRX() {
 
 			break;
 		}
-#endif
 		case OPC_CLOSED: {
 
 			// Check payload length
@@ -601,47 +588,49 @@ void SOESocketHandler::handleClientRX() {
 			// Decode port name string
 			string portName = string(payload + 2, portStrLen);
 
-#ifdef SIDE_CLIENT
+			if (this->remote2localPort.count(portName)) {
 
-			// If a open/close sequence is currently pending for this port
-			if (this->remote_port_name == portName) {
+				// If a open/close sequence is currently pending for this port
+				if (this->remote_port_name == portName) {
 #ifdef DEBUG_PRINTS
-				printf("DEBUG: received close confirm for remote port: %s\n", portName.c_str());
+					printf("DEBUG: received close confirm for remote port: %s\n", portName.c_str());
 #endif
-				// Signal to current open/close sequence (if there is one)
-				{
-					unique_lock<mutex> lock(this->remote_port_waitm);
-					this->remote_port_status = true;
-					this->remote_port_waitc.notify_all();
+					// Signal to current open/close sequence (if there is one)
+					{
+						unique_lock<mutex> lock(this->remote_port_waitm);
+						this->remote_port_status = true;
+						this->remote_port_waitc.notify_all();
+					}
+
+				// If not, this just tells us the server wants us to close the port for some reason
+				} else {
+#ifdef DEBUG_PRINTS
+					printf("DEBUG: received close notification for remote port: %s\n", portName.c_str());
+#endif
+					// Attempt to get and close local port
+					{
+						// From the server we get the remote host name, so we need to map it to the local port
+						unique_lock<shared_timed_mutex> lock(this->portsm);
+						string localPortName = this->remote2localPort.at(portName);
+						this->ports.erase(localPortName);
+						this->remote2localPort.erase(portName);
+						printf("closed local port: %s\n", localPortName.c_str());
+					}
+
 				}
 
+			// If we are the server side of this connection
 			} else {
+
 #ifdef DEBUG_PRINTS
-				printf("DEBUG: received close notification for remote port: %s\n", portName.c_str());
+				printf("DEBUG: received close notification: %s\n", portName.c_str());
 #endif
-				// Attempt to get and close local port
-				{
-					// From the server we get the remote host name, so we need to map it to the local port
-					unique_lock<shared_timed_mutex> lock(this->portsm);
-					string localPortName = this->remote2localPort.at(portName);
-					this->ports.erase(localPortName);
-					this->remote2localPort.erase(portName);
-					printf("closed local port: %s\n", localPortName.c_str());
-				}
+
+				// Attempt to get and close port
+				{ unique_lock<shared_timed_mutex> lock(this->portsm); this->ports.erase(portName); }
+				printf("closed port: %s\n", portName.c_str());
 
 			}
-
-#endif
-#ifdef SIDE_SERVER
-#ifdef DEBUG_PRINTS
-			printf("DEBUG: received close notification: %s\n", portName.c_str());
-#endif
-
-			// Attempt to get and close port
-			{ unique_lock<shared_timed_mutex> lock(this->portsm); this->ports.erase(portName); }
-			printf("closed port: %s\n", portName.c_str());
-
-#endif
 
 			break;
 		}
@@ -663,9 +652,13 @@ void SOESocketHandler::handleClientRX() {
 
 }
 
-#ifdef SIDE_CLIENT
-
 bool SOESocketHandler::openRemotePort(const INetAddress& remoteAddress, const string& remotePortName, const SerialPortConfiguration config, const string& localPortName) {
+
+	// Check for name conflicts with existing port claims
+	if (this->ports.count(remotePortName)) {
+		printf("failed to initialize connection, name conflict: %s\n", remotePortName.c_str());
+		return false;
+	}
 
 	// Attempt and wait to for port open
 	cv_status status;
@@ -709,8 +702,8 @@ bool SOESocketHandler::openRemotePort(const INetAddress& remoteAddress, const st
 		}
 	});
 	unique_lock<shared_timed_mutex> lock(this->portsm);
-	this->ports[localPortName] = {std::unique_ptr<SOEPortHandler>(portHandler), remoteAddress, chrono::steady_clock::now() + chrono::milliseconds(INET_KEEP_ALIVE_TIMEOUT)};
-	this->remote2localPort[remotePortName] = localPortName;
+
+	this->ports[remotePortName] = {std::unique_ptr<SOEPortHandler>(portHandler), remoteAddress, chrono::steady_clock::now() + chrono::milliseconds(INET_KEEP_ALIVE_TIMEOUT)};
 
 	return true;
 
@@ -740,30 +733,13 @@ bool SOESocketHandler::closeRemotePort(const INetAddress& remoteAddress, const s
 	// Attempt to find and close local port, if no port registered, skip this step
 	try {
 		unique_lock<shared_timed_mutex> lock(this->portsm);
-		string localPortName = this->remote2localPort.at(remotePortName);
-		this->ports.erase(localPortName);
-		this->remote2localPort.erase(remotePortName);
-
+		this->ports.erase(remotePortName);
 		return true;
 	} catch (const std::out_of_range& e) {
-		return true;
+		return true; // for whatever reason the entry was already deleted, no reason to panic
 	}
 
 }
-
-#endif
-
-#ifdef SIDE_CLIENT
-	const string& SOESocketHandler::local2remotePort(const string& name) {
-		if (name.empty()) return name;
-		for (const auto& kv : this->remote2localPort) {
-			if (kv.second == name) {
-				return kv.first;
-			}
-		}
-		return name;
-	}
-#endif
 
 // Sends an response frame
 bool SOESocketHandler::sendFrame(const INetAddress& remoteAddress, char opc, const char* payload, unsigned int length) {
@@ -788,15 +764,9 @@ bool SOESocketHandler::sendFrame(const INetAddress& remoteAddress, char opc, con
 }
 
 // Sends an error message response frame
-void SOESocketHandler::sendError(const INetAddress& remoteAddress, const string& portName, const string& msg) {
+void SOESocketHandler::sendError(const INetAddress& remoteAddress, const string& remotePortName, const string& msg) {
 
 	if (!this->socket->isOpen()) return;
-
-#ifdef SIDE_CLIENT
-	string remotePortName = local2remotePort(portName);
-#else
-	string remotePortName = portName;
-#endif
 
 	// Get message and portName name length
 	unsigned int portLen = remotePortName.length();
@@ -829,15 +799,9 @@ void SOESocketHandler::sendError(const INetAddress& remoteAddress, const string&
 }
 
 // Sends an port open/close reponse frame
-bool SOESocketHandler::sendClaimStatus(const INetAddress& remoteAddress, bool claimed, const string& portName) {
+bool SOESocketHandler::sendClaimStatus(const INetAddress& remoteAddress, bool claimed, const string& remotePortName) {
 
 	if (!this->socket->isOpen()) return false;
-
-#ifdef SIDE_CLIENT
-	string remotePortName = local2remotePort(portName);
-#else
-	string remotePortName = portName;
-#endif
 
 	// Get port name length
 	unsigned int portLen = remotePortName.length();
@@ -858,15 +822,9 @@ bool SOESocketHandler::sendClaimStatus(const INetAddress& remoteAddress, bool cl
 }
 
 // Sends an transmission confirm frame
-bool SOESocketHandler::sendConfirm(const INetAddress& remoteAddress, bool transmission, const string& portName, unsigned int txid) {
+bool SOESocketHandler::sendConfirm(const INetAddress& remoteAddress, bool transmission, const string& remotePortName, unsigned int txid) {
 
 	if (!this->socket->isOpen()) return false;
-
-#ifdef SIDE_CLIENT
-	string remotePortName = local2remotePort(portName);
-#else
-	string remotePortName = portName;
-#endif
 
 	// Get port name length
 	unsigned int portLen = remotePortName.length();
@@ -893,15 +851,9 @@ bool SOESocketHandler::sendConfirm(const INetAddress& remoteAddress, bool transm
 }
 
 // Send payload stream frame
-bool SOESocketHandler::sendStream(const INetAddress& remoteAddress, const string& portName, unsigned int rxid, const char* payload, unsigned long length) {
+bool SOESocketHandler::sendStream(const INetAddress& remoteAddress, const string& remotePortName, unsigned int rxid, const char* payload, unsigned long length) {
 
 	if (!this->socket->isOpen()) return false;
-
-#ifdef SIDE_CLIENT
-	string remotePortName = local2remotePort(portName);
-#else
-	string remotePortName = portName;
-#endif
 
 	// Get port name length
 	unsigned int portLen = remotePortName.length();
@@ -929,8 +881,6 @@ bool SOESocketHandler::sendStream(const INetAddress& remoteAddress, const string
 	return sendFrame(remoteAddress, OPC_STREAM, buffer, payloadLen);
 
 }
-
-#ifdef SIDE_CLIENT
 
 // Sends an port open request frame
 bool SOESocketHandler::sendOpenRequest(const INetAddress& remoteAddress, const string& portName, const SerialPortConfiguration& config) {
@@ -996,5 +946,3 @@ bool SOESocketHandler::sendCloseRequest(const INetAddress& remoteAddress, const 
 	return sendFrame(remoteAddress, OPC_CLOSE, buffer, payloadLen);
 
 }
-
-#endif

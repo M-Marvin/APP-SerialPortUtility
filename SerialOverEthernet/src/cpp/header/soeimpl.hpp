@@ -1,16 +1,17 @@
 /*
  * SOEClient.h
  *
+ * Defines the functions and classes as well as default configurations for Serial Over Ethernet.
+ * Also contains the description how the network communication is handled.
+ *
  *  Created on: 04.02.2025
- *      Author: marvi
+ *      Author: Marvin Koehler
  */
 
 #ifndef SOEIMPL_HPP_
 #define SOEIMPL_HPP_
 
 class Socket;
-
-//#define DEBUG_PRINTS
 
 #define DEFAULT_SOE_PORT 26
 
@@ -55,6 +56,8 @@ using namespace std;
  * TX STACK	- the stack used to store payload that was RECEIVED over network and has to be TRANSMITTED over serial, consists of an TXID to payload map
  * TXID		- the id of an payload that was received over network, the RXID will become the TXID on the other end of the network connection
  *
+ * NOTE: The terms "server" and "client" to specific instances of SOE, everything is based on peer to peer connections, but for each connection
+ * the "client" reffers to the side initiating the connection and "server" to the side contacted by the client to establish a connection.
  *
  * CLIENT OPEN PORT (initiated by the openRemotePort method)
  * 1. Client sends OPC_OPEN request
@@ -106,9 +109,9 @@ using namespace std;
  * SERVER CONTROL FRAME BEHAVIORS:
  * OPC_ERROR	-> log received error, no further actions required
  * OPC_OPEN		-> attempt to open the port, answer with OPC_OPENED if succeeded, answer with OPC_ERROR otherwise
- * OPC_OPENED	-> INVALID FOR SERVER, LOG INVALID FRAME
+ * OPC_OPENED	-> INVALID FOR SERVER, DOES NOTHING
  * OPC_CLOSE	-> attempt to close the port, answer with OPC_CLOSED if succeeded, answer with OPC_ERROR otherwise
- * OPC_CLOSED	-> INVALID FOR SERVER, LOG INVALID FRAME
+ * OPC_CLOSED	-> INVALID FOR SERVER, DOES NOTHING
  * OPC_STREAM	-> put supplied data on port transmission stack, confirm with OPC_RX_CONFIRM, send OPC_TX_CONFIRM as soon as data was transmitted trough serial, answer with OPC_ERROR if data could not be processed
  *
  * CLIENT CONTROL FRAME BEHAVIORS:
@@ -234,7 +237,6 @@ public:
 	 */
 	~SOESocketHandler();
 
-#ifdef SIDE_CLIENT
 	/**
 	 * Attempts to claim the given port on the remote server and the given local port and connecting them over the serial over ethernet protocoll
 	 * @param remoteAddress The network address to send control frames too
@@ -252,7 +254,7 @@ public:
 	 * @return true if the remote and local port could be released successfully, false otherwise
 	 */
 	bool closeRemotePort(const INetAddress& remoteAddress, const string& remotePortName);
-#endif
+
 	/**
 	 * Returns true if the network connection is still operational
 	 * @return true as long as the network socket is still open
@@ -313,7 +315,6 @@ private:
 	 */
 	bool sendStream(const INetAddress& remoteAddress, const string& portName, unsigned int rxid, const char* payload, unsigned long length);
 
-#ifdef SIDE_CLIENT
 	/**
 	 * Assembles and transmits an OPC_OPEN frame to the server.
 	 * @param remoteAddress The network address to send control frames too
@@ -330,7 +331,6 @@ private:
 	 * @return true if the data could be send successfully, false otherwise
 	 */
 	bool sendCloseRequest(const INetAddress& remoteAddress, const string& portName);
-#endif
 
 	/**
 	 * Handles network package reception
@@ -357,15 +357,12 @@ private:
 	mutex tx_waitm;							// Mutex to protect condition variable
 	condition_variable tx_waitc;			// Condition variable, the tx thread whil wait here for new data to transmit over network
 
-#ifdef SIDE_CLIENT
-	map<string, string> remote2localPort;
-	const string& local2remotePort(const string& name);
+	map<string, string> remote2localPort;	// Keeps a list of the remote ports to the local ports, ports opened from remote (for which this side acts as server) are not listed here
 
 	string remote_port_name;				// Name of the remote port of the current open/close sequence
 	bool remote_port_status;				// Status for the pending open/close sequence, set before condition variable is released
 	mutex remote_port_waitm;				// Mutex protecting condition variable
 	condition_variable remote_port_waitc;	// Condition variable for pending port open/close sequences, waits for OPC_OPENED or OPC_CLOSED
-#endif
 
 };
 

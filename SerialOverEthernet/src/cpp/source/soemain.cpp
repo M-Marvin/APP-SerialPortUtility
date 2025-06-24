@@ -1,14 +1,16 @@
 /*
- * soeclient.cpp
+ * soemain.cpp
+ *
+ * Main entry point for Serial Over Ethernet
+ * Handles command line parsing and terminal input as well as network access.
  *
  *  Created on: 22.02.2025
- *      Author: marvi
+ *      Author: Marvin Koehler
  */
-
-#ifdef SIDE_CLIENT
 
 #include <iostream>
 #include <string.h>
+#include <filesystem>
 #include "soeimpl.hpp"
 
 void openPort(SOESocketHandler& handler, const string& host, const string& port, const string& remotePort, const string& localPort, unsigned int baud) {
@@ -21,25 +23,30 @@ void openPort(SOESocketHandler& handler, const string& host, const string& port,
 	}
 }
 
-int main(int argn, const char** argv) {
+int main(int argc, const char** argv) {
 
 	// Disable output caching
 	setbuf(stdout, NULL);
 
+	// Print help when no arguments supplied
+	if (argc == 1) {
+		filesystem::path executable(argv[0]);
+		string executableName = executable.filename().string();
+		printf("%s (-addr [local IP]) (-port [local port])\n", executableName.c_str());
+		return 1;
+	}
+
 	// Default configuration
-	string port = "0"; // Assign dynamic port
+	string port = to_string(DEFAULT_SOE_PORT);
 	string host = "localhost";
 
-	// Parse arguments
-	for (int i = 0; i < argn; i++) {
-		if (strcmp(argv[i], "-help") == 0) {
-			printf("soa (-port *soe-port-number*) (-addr *soe-local-ip*)");
-			return 0;
-		} else if (strcmp(argv[i], "-port") == 0) {
-			if (i == argn - 1) return 1;
+	// Parse arguments for network connection
+	for (int i = 0; i < argc; i++) {
+		if (strcmp(argv[i], "-port") == 0) {
+			if (i == argc - 1) return 1;
 			port = string(argv[i + 1]);
 		} else if (strcmp(argv[i], "-addr") == 0) {
-			if (i == argn - 1) return 1;
+			if (i == argc - 1) return 1;
 			host = string(argv[i + 1]);
 		}
 	}
@@ -70,11 +77,18 @@ int main(int argn, const char** argv) {
 				SOESocketHandler handler(socket);
 
 				// Read console
+				printf("type ...\n");
+				printf(" exit - to force terminate this client\n");
+				printf(" link - to establish an serial connection to an server\n");
+				// TODO missing functions
+//				printf(" unlink - to close an existing connection\n");
+//				printf(" close - to close all connections\n");
 				string cmd;
 				while (true) {
 					getline(std::cin, cmd);
 					if (cmd == "exit" || cmd == "stop") break;
 					if (cmd.rfind("link", 0) == 0) {
+						// TODO better pasing and input validation
 						int del1 = cmd.find(" ", 0);
 						int del2 = cmd.find(" ", del1 + 1);
 						int del3 = cmd.find(" ", del2 + 1);
@@ -108,6 +122,3 @@ int main(int argn, const char** argv) {
 	return -1;
 
 }
-
-
-#endif
