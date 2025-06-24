@@ -18,6 +18,7 @@
 		<pathentry include="D:/Programms/toolchains/w64devkit/lib/gcc/x86_64-w64-mingw32/15.1.0/include" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/w64devkit/lib/gcc/x86_64-w64-mingw32/15.1.0/include-fixed" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/w64devkit/include" kind="inc" path="" system="true"/>
+		<pathentry include="E:/GitHub/LIBRARY-SerialPortAccess/TerminalSerialAccess/build/WinAMD64/includeHeaders" kind="inc" path="" system="true"/>
 		<pathentry include="E:/GitHub/LIBRARY-SerialPortAccess/TerminalSerialAccess/src/cpp/header" kind="inc" path="" system="true"/>
 	</storageModule>
 </cproject>

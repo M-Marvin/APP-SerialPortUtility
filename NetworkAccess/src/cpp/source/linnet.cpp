@@ -1,4 +1,4 @@
-#ifdef PLATFORM_LINUX
+#ifdef PLATFORM_LIN
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include "network.h"
+#include "network.hpp"
 
 bool InetInit() {
 	return true;

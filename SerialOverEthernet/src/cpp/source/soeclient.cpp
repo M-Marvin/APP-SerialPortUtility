@@ -24,7 +24,7 @@ void openPort(SOESocketHandler& handler, const string& host, const string& port,
 int main(int argn, const char** argv) {
 
 	// Disable output caching
-	setvbuf(stdout, NULL, _IONBF, 0);
+	setbuf(stdout, NULL);
 
 	// Default configuration
 	string port = "0"; // Assign dynamic port
@@ -63,7 +63,7 @@ int main(int argn, const char** argv) {
 			string localAddress;
 			unsigned int localPort;
 			address.tostr(localAddress, &localPort);
-			printf("serial over ethernet/IP, open server port on: %s %d\n", localAddress.c_str(), localPort);
+			printf("serial over ethernet/IP, open client port on: %s %d\n", localAddress.c_str(), localPort);
 
 			{
 				// Start socket handler
@@ -88,7 +88,7 @@ int main(int argn, const char** argv) {
 							string baudRateStr = cmd.substr(del5 + 1, cmd.length() - del5 - 1);
 							openPort(handler, hostStr, portStr, localPort, remotePort, stoul(baudRateStr));
 						} else {
-							printf("link [remote address] [port] [remote serial] [local serial] [baud rate]");
+							printf("link [remote address] [port] [remote serial] [local serial] [baud rate]\n");
 						}
 					}
 				}

@@ -1,0 +1,66 @@
+import java.io.File;
+
+import de.m_marvin.metabuild.core.tasks.FileTask;
+import de.m_marvin.metabuild.core.tasks.FileTask.Action;
+import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
+import de.m_marvin.metabuild.maven.Maven;
+import de.m_marvin.metabuild.maven.tasks.MavenResolveTask;
+
+public class Buildfile extends CppMultiTargetBuildScript {
+	
+	@Override
+	public void init() {
+		
+		projectName = "serialoverethernet";
+		
+		// Platform windows AMD 64 Client
+		var target = makeTarget("WinAMD64-client", "soe-client.exe");
+		target.linkCpp.linker = target.compileCpp.compiler = "winamd64-g++";
+		target.linkCpp.libraries.add("serialportaccess_x64");
+		target.linkCpp.libraries.add("netsocket_x64");
+		target.compileCpp.define("DEBUG_PRINTS");
+		target.compileCpp.define("SIDE_CLIENT");
+		target.compileCpp.define("SIDE_SERVER");
+		
+		super.init();
+		
+	}
+	
+	@Override
+	public TargetConfig makeTarget(String config, String executableName) {
+		
+		var target = super.makeTarget(config, executableName);
+		
+		String platform = config.split("-")[0];
+		target.linkCpp.outputFile = new File("build/bin/" + platform + "/" + executableName);
+		
+		var copyLibs = new FileTask("copyLibs" + config, Action.COPY, target.binaryUnzip.output, new File("build/bin/" + platform), true);
+		copyLibs.group = "platform";
+		copyLibs.dependsOn(target.binaryUnzip);
+		copyLibs.dependencyOf(target.build);
+		
+		return target;
+		
+	}
+	
+	@Override
+	public void repositories(MavenResolveTask dependencies, String config) {
+		
+		dependencies.repository(Maven.mavenLocal());
+		
+	}
+	
+	@Override
+	public void dependencies(MavenResolveTask dependencies, String config) {
+		
+		String platform = config.split("-")[0];
+		
+		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + platform + "::zip:2.0-SNAPSHOT");
+		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + platform + ":headers:zip:2.0-SNAPSHOT");
+
+		dependencies.implementation("de.m_marvin.serialportaccess:netsocket-" + platform + "::zip:1.0-SNAPSHOT");
+		dependencies.implementation("de.m_marvin.serialportaccess:netsocket-" + platform + ":headers:zip:1.0-SNAPSHOT");
+		
+	}
+	
+}

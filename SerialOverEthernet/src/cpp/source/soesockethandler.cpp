@@ -525,7 +525,7 @@ void SOESocketHandler::handleClientRX() {
 				if (this->remote_port_name.length() > 0 && this->remote_port_name == portName) {
 
 #ifdef DEBUG_PRINTS
-					printf("DEBUG: received error frame for remot port open/close sequence: %s\n", portName.c_str());
+					printf("DEBUG: received error frame for remote port open/close sequence: %s\n", portName.c_str());
 #endif
 
 					// Signal to current open/close sequence (if there is one)
@@ -691,7 +691,7 @@ bool SOESocketHandler::openRemotePort(const INetAddress& remoteAddress, const st
 	if (!this->remote_port_status) return false;
 
 	// Attempt to open local port
-	SerialPort* port = new SerialPort(localPortName.c_str());
+	SerialPort* port = newSerialPortS(localPortName);
 	if (!port->openPort()) {
 		printf("failed to claim local port %s, close remote port %s!\n", localPortName.c_str(), remotePortName.c_str());
 		delete port;

@@ -19,7 +19,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		var target = makeTarget("WinAMD64", "serial.exe");
 		target.compileCpp.compiler = target.linkCpp.linker = "winamd64-g++";
 		target.linkCpp.libraries.add("serialportaccess_x64");
-		target.compileCpp.options.add("-g");
+//		target.compileCpp.options.add("-g");
+		
 		super.init();
 		
 	}

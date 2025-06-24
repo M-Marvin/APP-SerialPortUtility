@@ -15,8 +15,8 @@ using namespace std;
 
 int main(int argn, const char** argv) {
 
-	// Disable output caching
-	setvbuf(stdout, NULL, _IONBF, 0);
+	// Disable output buffering
+	setbuf(stdout, NULL);
 
 	// Default configuration
 	string port = to_string(DEFAULT_SOE_PORT);

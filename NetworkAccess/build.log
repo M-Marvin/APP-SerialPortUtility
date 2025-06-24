@@ -1,11 +1,20 @@
-23.06.2025_18:30:37: [DEBUG] : JVM runtime: 21.0.3
-23.06.2025_18:30:37: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
-23.06.2025_18:30:37: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
-23.06.2025_18:30:37: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
-23.06.2025_18:30:37: [ INFO] Metabuild: - metabuild-cpp.jar
-23.06.2025_18:30:37: [ INFO] Metabuild: - metabuild-java.jar
-23.06.2025_18:30:37: [ INFO] Metabuild: - metabuild-maven.jar
-23.06.2025_18:30:37: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
-23.06.2025_18:30:37: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
-23.06.2025_18:30:37: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\NetworkAccess\build.meta
-23.06.2025_18:30:37: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
+24.06.2025_17:32:15: [DEBUG] : JVM runtime: 21.0.3
+24.06.2025_17:32:15: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
+24.06.2025_17:32:15: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+24.06.2025_17:32:15: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+24.06.2025_17:32:15: [ INFO] Metabuild: - metabuild-cpp.jar
+24.06.2025_17:32:15: [ INFO] Metabuild: - metabuild-java.jar
+24.06.2025_17:32:15: [ INFO] Metabuild: - metabuild-maven.jar
+24.06.2025_17:32:15: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
+24.06.2025_17:32:15: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
+24.06.2025_17:32:15: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\NetworkAccess\build.meta
+24.06.2025_17:32:15: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
+24.06.2025_17:32:15: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
+24.06.2025_17:32:15: [ INFO] /maven_dependency/cppDependenciesWinAMD64: attempt offline cache resolution to verify available dependencies ...
+24.06.2025_17:32:15: [ INFO] /maven_dependency/cppDependenciesWinAMD64: offline cache verified, all dependencies available
+24.06.2025_17:32:15: [ INFO] /compile_cpp/compileCppWinAMD64: located cpp compiler: D:\Programms\toolchains\w64devkit\bin\winamd64-g++.exe
+24.06.2025_17:32:15: [ INFO] Metabuild: skipping build run phase
+24.06.2025_17:32:15: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> FINISH
+24.06.2025_17:32:16: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
+24.06.2025_17:32:16: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
+24.06.2025_17:32:16: [ INFO] Metabuild: TASKS: 3  UP_TO_DATE: 3  FAILED: 0

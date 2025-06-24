@@ -1,5 +1,5 @@
 
-#ifdef PLATFORM_WINDOWS
+#ifdef PLATFORM_WIN
 
 #include <stdio.h>
 #include <winsock2.h>
