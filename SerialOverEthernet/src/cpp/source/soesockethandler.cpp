@@ -169,8 +169,6 @@ void SOESocketHandler::handleClientRX() {
 		opc = pckgBuffer[0];
 		payloadLen = pckgLen - SOE_FRAME_HEADER_LEN;
 
-
-
 		switch (opc) {
 		case OPC_OPEN: {
 
@@ -415,7 +413,6 @@ void SOESocketHandler::handleClientRX() {
 					printf("DEBUG: received keep alive: %s -> %s\n", remotePortName.c_str(), localPortName.c_str());
 #endif
 				}
-
 
 				// Update keep alive timeout
 				portClaim->point_of_timeout = chrono::steady_clock::now() + chrono::milliseconds(INET_KEEP_ALIVE_TIMEOUT);
