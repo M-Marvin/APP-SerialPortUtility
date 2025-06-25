@@ -29,13 +29,27 @@ void interpretFlags(SOESocketHandler& handler, const vector<string>& args) {
 
 	// Parse arguments for connections
 	string remoteHost;
-	string remotePort;
+	string remotePort = to_string(DEFAULT_SOE_PORT);
 	string remoteSerial;
 	string localSerial;
 	SerialPortConfiguration remoteConfig = DEFAULT_PORT_CONFIGURATION;
 	bool link = false;
 
 	for (auto flag = args.begin(); flag != args.end(); flag++) {
+
+		// Complete last link call before processing other options
+		if (*flag == "-link" || *flag == "-unlink") {
+			if (link) {
+				if (remoteHost.empty() || remotePort.empty() || remoteSerial.empty() || localSerial.empty()) {
+					printf("not enough arguments for connection\n");
+					continue;
+				}
+				link = false;
+
+				openPort(handler, remoteHost, remotePort, remoteSerial, localSerial, remoteConfig);
+			}
+		}
+
 		if (flag + 1 != args.end()) {
 			// Flags with argument
 			if (*flag == "-addr") {
@@ -68,26 +82,27 @@ void interpretFlags(SOESocketHandler& handler, const vector<string>& args) {
 				if (*flag == "xonxoff") remoteConfig.flowControl = SPC_FLOW_XON_XOFF;
 				if (*flag == "rtscts") remoteConfig.flowControl = SPC_FLOW_RTS_CTS;
 				if (*flag == "dsrdtr") remoteConfig.flowControl = SPC_FLOW_DSR_DTR;
+			} else if (*flag == "-unlink") {
+				flag++;
+				if (!handler.closeLocalPort(*flag)) {
+					printf("unable to close port: %s\n", flag->c_str());
+				} else {
+					printf("link closed: %s\n", flag->c_str());
+				}
 			}
 		}
 		// Flags without arguments
-		if (*flag == "-link" || *flag == "-unlink") {
-			if (link) {
-				if (remoteHost.empty() || remotePort.empty() || remoteSerial.empty() || localSerial.empty()) {
-					printf("not enough arguments for connection\n");
-					continue;
-				}
 
-				openPort(handler, remoteHost, remotePort, remoteSerial, localSerial, remoteConfig);
-			}
-		}
 		if (*flag == "-link") {
 			link = true;
-		} else if (*flag == "-unlink") {
-			//handler.closeRemotePort(remoteAddress, remotePortName);
 		} else if (*flag == "-close") {
-			link = false; // It makes no sense to apply the previous link call before closing all links again
-
+			if (!handler.closeAllPorts()) {
+				printf("some ports failed to close and might still be open\n");
+			} else {
+				printf("all links closed\n");
+			}
+		} else if (*flag == "-list") {
+			handler.listAllPorts();
 		}
 	}
 
@@ -139,7 +154,7 @@ int mainCPP(filesystem::path& exec, vector<string>& args) {
 			}
 		}
 		// Flags without arguments
-		if (*flag == "-link") {
+		if (*flag == "-link" || *flag == "-unlink" || *flag == "-close" || *flag == "-list" || *flag == "-exit") {
 			break; // End of local network arguments
 		}
 	}
@@ -178,9 +193,9 @@ int mainCPP(filesystem::path& exec, vector<string>& args) {
 				printf("type ...\n");
 				printf(" -exit - to force terminate this client\n");
 				printf(" -link <link options ...> - to establish an serial connection to an server\n");
-				printf(" -unlink [remote serial port] - to close an existing connection\n");
-				// TODO missing functions
-//				printf(" -close - to close all connections\n");
+				printf(" -unlink [local serial port] - to close an existing connection\n");
+				printf(" -close - to close all connections\n");
+				printf(" -list - to view all currently open port links\n");
 				string cmdline;
 				while (true) {
 

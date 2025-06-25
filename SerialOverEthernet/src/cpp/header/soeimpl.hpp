@@ -244,11 +244,30 @@ public:
 
 	/**
 	 * Attempts to release the remote port and the corresponding local port.
-	 * 	 * @param remoteAddress The network address to send control frames too
+	 * @param remoteAddress The network address to send control frames too
 	 * @param remotePortName The remote port name to release
 	 * @return true if the remote and local port could be released successfully, false otherwise
 	 */
 	bool closeRemotePort(const INetAddress& remoteAddress, const string& remotePortName);
+
+	/**
+	 * Attempts to release the remote port and the corresponding local port.
+	 * @param localPortName The local port name to release
+	 * @return true if the remote and local port could be released successfully, false otherwise
+	 */
+	bool closeLocalPort(const string& localPortName);
+
+	/**
+	 * Attempts to release the remote port and the corresponding local port.
+	 * @return true if all the remote and local ports could be released successfully, false otherwise
+	 */
+	bool closeAllPorts();
+
+	/**
+	 * Prints a list with all currently open port link.
+	 */
+	void listAllPorts();
+
 
 	/**
 	 * Returns true if the network connection is still operational
