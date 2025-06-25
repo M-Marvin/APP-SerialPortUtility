@@ -68,6 +68,29 @@ INetAddress& INetAddress::operator=(const INetAddress& other) {
 	return *this;
 }
 
+int compare(const INetAddress& address1, const INetAddress& address2) {
+	int i = (int) address1.implData->addr.sockaddr.sa_family - (int) address2.implData->addr.sockaddr.sa_family;
+	if (i != 0) {
+		return i;
+	} else if (address1.implData->addr.sockaddr.sa_family == AF_INET6) {
+		return memcmp(&address1.implData->addr.sockaddr6, &address2.implData->addr.sockaddr6, sizeof(SOCKADDR_IN6));
+	} else {
+		return memcmp(&address1.implData->addr.sockaddr4, &address2.implData->addr.sockaddr4, sizeof(SOCKADDR_IN));
+	}
+}
+
+bool INetAddress::operator<(const INetAddress& other) const {
+	return compare(*this, other) < 0;
+}
+
+bool INetAddress::operator>(const INetAddress& other) const {
+	return compare(*this, other) > 0;
+}
+
+bool INetAddress::operator==(const INetAddress& other) const {
+	return compare(*this, other) == 0;
+}
+
 bool INetAddress::fromstr(string& addressStr, unsigned int port) {
 	if (inet_pton(AF_INET, addressStr.c_str(), &this->implData->addr.sockaddr4.sin_addr) == 1) {
 		this->implData->addr.sockaddr4.sin_family = AF_INET;

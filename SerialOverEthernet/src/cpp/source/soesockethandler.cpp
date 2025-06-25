@@ -52,7 +52,8 @@ void SOESocketHandler::handleClientTX() {
 			for (auto entry = this->ports.begin(); entry != this->ports.end(); entry++) {
 
 				INetAddress remoteAddress = entry->second.remote_address;
-				string portName = entry->first;
+				string remotePortName = entry->second.remote_port;
+				string localPortName = entry->first;
 
 				// Check if timeout has expired
 				if (entry->second.point_of_timeout < now) {
@@ -60,14 +61,18 @@ void SOESocketHandler::handleClientTX() {
 					string address;
 					unsigned int port = 0;
 					remoteAddress.tostr(address, &port);
-					printf("connection timed out, close port: %s %u : %s\n", address.c_str(), port, portName.c_str());
+					printf("connection timed out, close port: local %s : remote %s %u\n", localPortName.c_str(), address.c_str(), port);
 
 					// Close port
 					lock.unlock();
-					{ unique_lock<shared_timed_mutex> lock(this->portsm); this->ports.erase(entry--); }
-					if (!sendClaimStatus(remoteAddress, false, portName)) {
+					{
+						unique_lock<shared_timed_mutex> lock(this->portsm);
+						this->ports.erase(entry--);
+						this->remote2localPort.erase(make_pair(remoteAddress, remotePortName));
+					}
+					if (!sendClaimStatus(remoteAddress, false, localPortName)) {
 						// If the error report fails too ... don't care at this point ...
-						sendError(remoteAddress, portName, "failed to transmit CLOSE notification");
+						sendError(remoteAddress, localPortName, "failed to transmit CLOSE notification");
 					}
 					immediateWork = true;
 					break;
@@ -84,7 +89,7 @@ void SOESocketHandler::handleClientTX() {
 						length = 0;
 						rxid = 0;
 #ifdef DEBUG_PRINTS
-						printf("DEBUG: send keep alive: %s\n", entry->first.c_str());
+						printf("DEBUG: send keep alive: %s -> %s\n", localPortName.c_str(), remotePortName.c_str());
 #endif
 					} else {
 						continue;
@@ -92,18 +97,25 @@ void SOESocketHandler::handleClientTX() {
 				}
 
 				// Send payload stream frame
-				if (!sendStream(remoteAddress, portName.c_str(), rxid, payload, length)) {
-					sendError(remoteAddress, portName.c_str(), "failed to transmit STREAM frame, close port");
+				if (!sendStream(remoteAddress, localPortName, rxid, payload, length)) {
+					sendError(remoteAddress, localPortName, "failed to transmit STREAM frame, close port");
 
 					// Close port
 					lock.unlock();
-					{ unique_lock<shared_timed_mutex> lock(this->portsm); this->ports.erase(portName); }
-					if (!sendClaimStatus(remoteAddress, false, portName.c_str())) {
+					{
+						unique_lock<shared_timed_mutex> lock(this->portsm);
+						this->ports.erase(localPortName);
+						this->remote2localPort.erase(make_pair(remoteAddress, remotePortName));
+					}
+					if (!sendClaimStatus(remoteAddress, false, localPortName)) {
 						// If the error report fails too ... don't care at this point ...
-						sendError(remoteAddress, portName, "failed to transmit CLOSE notification");
+						sendError(remoteAddress, localPortName, "failed to transmit CLOSE notification");
 					}
 
-					printf("closed port: %s\n", portName.c_str());
+					string address;
+					unsigned int port = 0;
+					remoteAddress.tostr(address, &port);
+					printf("transmission error, close port: remote %s @ %s %u\n", remotePortName.c_str(), address, port);
 
 				}
 
@@ -157,6 +169,8 @@ void SOESocketHandler::handleClientRX() {
 		opc = pckgBuffer[0];
 		payloadLen = pckgLen - SOE_FRAME_HEADER_LEN;
 
+
+
 		switch (opc) {
 		case OPC_OPEN: {
 
@@ -193,29 +207,41 @@ void SOESocketHandler::handleClientRX() {
 			};
 
 			// Decode port name length
-			unsigned short portStrLen =
+			unsigned short remotePortStrLen =
 					(payload[17] & 0xFF) << 8 |
 					(payload[18] & 0xFF) << 0;
 
 			// Check port name length
-			if (portStrLen > payloadLen - 19) {
+			if (remotePortStrLen > payloadLen - 19) {
 				sendError(remoteAddress, NULL, "received invalid OPEN payload");
 				break;
 			}
 
-			// Decode port name string
-			string portName = string(payload + 19, portStrLen);
+			// Decode claim port name length
+			unsigned short localPortStrLen =
+					(payload[19 + remotePortStrLen] & 0xFF) << 8 |
+					(payload[20 + remotePortStrLen] & 0xFF) << 0;
+
+			// Check claim port name length
+			if (localPortStrLen > payloadLen - 20 - remotePortStrLen) {
+				sendError(remoteAddress, NULL, "received invalid OPEN payload");
+				break;
+			}
+
+			// Decode port name strings
+			string remotePortName = string(payload + 19, remotePortStrLen);
+			string localPortName = string(payload + 21 + remotePortStrLen, localPortStrLen);
 
 			// Check for name conflicts with existing port claims
-			if (this->ports.count(portName)) {
-				sendError(remoteAddress, portName, "port name conflict");
+			if (this->ports.count(localPortName)) {
+				sendError(remoteAddress, localPortName, "port name conflict");
 				break;
 			}
 
 			// Attempt to open port
-			SerialPort* serialPort = newSerialPort(portName.c_str());
+			SerialPort* serialPort = newSerialPort(localPortName.c_str());
 			if (!serialPort->openPort()) {
-				sendError(remoteAddress, portName, "failed to claim port");
+				sendError(remoteAddress, localPortName, "failed to claim port");
 				delete serialPort;
 				break;
 			}
@@ -223,33 +249,38 @@ void SOESocketHandler::handleClientRX() {
 			serialPort->setConfig(config);
 			serialPort->setTimeouts(SERIAL_RX_TIMEOUT, SERIAL_TX_TIMEOUT);
 
-			SOEPortHandler* portHandler = new SOEPortHandler(serialPort, [this] { this->notifySerialData(); }, [this, remoteAddress, portName](unsigned int txid) {
-				if (!this->sendConfirm(remoteAddress, true, portName, txid)) {
-					this->sendError(remoteAddress, portName, "failed to transmit TX_CONFIRM");
-
+			SOEPortHandler* portHandler = new SOEPortHandler(serialPort, [this] { this->notifySerialData(); }, [this, remoteAddress, localPortName](unsigned int txid) {
+				if (!this->sendConfirm(remoteAddress, true, localPortName, txid)) {
+					this->sendError(remoteAddress, localPortName, "failed to transmit TX_CONFIRM");
 				}
 			});
 
 			{
 				unique_lock<shared_timed_mutex> lock(this->portsm);
-				this->ports[portName] = {
+				this->ports[localPortName] = {
 						std::unique_ptr<SOEPortHandler>(portHandler),
 						remoteAddress,
+						remotePortName,
 						chrono::steady_clock::now() + chrono::milliseconds(INET_KEEP_ALIVE_TIMEOUT),
 						chrono::steady_clock::now() + chrono::milliseconds(INET_KEEP_ALIVE_INTERVAL)
 				};
+				this->remote2localPort[make_pair(remoteAddress, remotePortName)] = localPortName;
 			}
 
 			// Confirm that the port has been opened, close port if this fails, to avoid unused open ports
-			if (!sendClaimStatus(remoteAddress, true, portName)) {
-				sendError(remoteAddress, portName, "failed to complete OPENED confirmation, close port");
-				{ unique_lock<shared_timed_mutex> lock(this->portsm); this->ports.erase(portName); }
+			if (!sendClaimStatus(remoteAddress, true, localPortName)) {
+				sendError(remoteAddress, localPortName, "failed to complete OPENED confirmation, close port");
+				{
+					unique_lock<shared_timed_mutex> lock(this->portsm);
+					this->ports.erase(localPortName);
+					this->remote2localPort.erase(make_pair(remoteAddress, remotePortName));
+				}
 			}
 
 			string address;
 			unsigned int port = 0;
 			remoteAddress.tostr(address, &port);
-			printf("opened port: %s %u : %s\n", address.c_str(), port, portName.c_str());
+			printf("opened port from remote: local %s : remote %s @ %s %u\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
 
 			break;
 		}
@@ -273,27 +304,39 @@ void SOESocketHandler::handleClientRX() {
 			}
 
 			// Decode port name string
-			string portName = string(payload + 2, portStrLen);
+			string remotePortName = string(payload + 2, portStrLen);
 
-			// Attempt to close port
-			bool closed = false;
-			{
-				unique_lock<shared_timed_mutex> lock(this->portsm);
-				closed = this->ports.count(portName);
-				this->ports.erase(portName);
-			}
-			if (!closed) {
-				sendError(remoteAddress, portName.c_str(), "port not claimed");
-				break;
-			}
+			try {
+				string localPortName = this->remote2localPort.at(make_pair(remoteAddress, remotePortName));
 
-			// Confirm that the port has been closed
-			if (!sendClaimStatus(remoteAddress, false, portName)) {
-				// If the error report fails too ... don't care at this point ...
-				sendError(remoteAddress, portName, "failed to transmit CLOSE confirmation");
-			}
+				// Attempt to close port
+				bool closed = false;
+				{
+					unique_lock<shared_timed_mutex> lock(this->portsm);
+					closed = this->ports.count(localPortName);
+					this->ports.erase(localPortName);
+					this->remote2localPort.erase(make_pair(remoteAddress, remotePortName));
+				}
+				if (!closed) {
+					sendError(remoteAddress, localPortName.c_str(), "port not claimed");
+					break;
+				}
 
-			printf("closed port: %s\n", portName.c_str());
+				// Confirm that the port has been closed
+				if (!sendClaimStatus(remoteAddress, false, localPortName)) {
+					// If the error report fails too ... don't care at this point ...
+					sendError(remoteAddress, localPortName, "failed to transmit CLOSE confirmation");
+				}
+
+				string address;
+				unsigned int port = 0;
+				remoteAddress.tostr(address, &port);
+				printf("closed port from remote: local %s : remote %s @ %s %u\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
+
+			} catch (out_of_range& e) {
+				// This side does not know about this port link
+				sendError(remoteAddress, "", "unknown link");
+			}
 
 			break;
 		}
@@ -317,61 +360,73 @@ void SOESocketHandler::handleClientRX() {
 			}
 
 			// Decode port name string
-			char portName[portStrLen + 1] = {0};
-			memcpy(portName, payload + 2, portStrLen);
+			string remotePortName(payload + 2, portStrLen);
 
-			// Decode transmission id
-			unsigned int txid =
-					(payload[2 + portStrLen] & 0xFF) << 24 |
-					(payload[3 + portStrLen] & 0xFF) << 16 |
-					(payload[4 + portStrLen] & 0xFF) << 8 |
-					(payload[5 + portStrLen] & 0xFF) << 0;
-
-			// Attempt to get port
-			shared_lock<shared_timed_mutex> lock(this->portsm);
-			port_claim* portClaim = 0;
 			try {
-				portClaim = &this->ports.at(portName);
-			} catch (const std::out_of_range& e) {
-				sendError(remoteAddress, portName, "port not claimed");
-				break;
-			}
+				string localPortName = this->remote2localPort.at(make_pair(remoteAddress, remotePortName));
 
-			// Check if port was closed unexpectedly
-			if (!portClaim->handler->isOpen()) {
-				sendError(remoteAddress, portName, "port is already closed");
+				// Decode transmission id
+				unsigned int txid =
+						(payload[2 + portStrLen] & 0xFF) << 24 |
+						(payload[3 + portStrLen] & 0xFF) << 16 |
+						(payload[4 + portStrLen] & 0xFF) << 8 |
+						(payload[5 + portStrLen] & 0xFF) << 0;
 
-				// Close port
-				lock.unlock();
-				{ unique_lock<shared_timed_mutex> lock(this->portsm); this->ports.erase(portName); }
-				if (!sendClaimStatus(remoteAddress, false, portName)) {
-					// If the error report fails too ... don't care at this point ...
-					sendError(remoteAddress, portName, "failed to transmit CLOSE notification");
+				// Attempt to get port
+				shared_lock<shared_timed_mutex> lock(this->portsm);
+				port_claim* portClaim = &this->ports.at(localPortName);
+
+				// Check if port was closed unexpectedly
+				if (!portClaim->handler->isOpen()) {
+					sendError(remoteAddress, localPortName, "port is already closed");
+
+					// Close port
+					lock.unlock();
+					{
+						unique_lock<shared_timed_mutex> lock(this->portsm);
+						this->ports.erase(localPortName);
+						this->remote2localPort.erase(make_pair(remoteAddress, remotePortName));
+					}
+					if (!sendClaimStatus(remoteAddress, false, localPortName)) {
+						// If the error report fails too ... don't care at this point ...
+						sendError(remoteAddress, localPortName, "failed to transmit CLOSE notification");
+					}
+
+					string address;
+					unsigned int port = 0;
+					remoteAddress.tostr(address, &port);
+					printf("port already closed: local %s : remote %s @ %s %u\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
+
+					break;
 				}
 
-				printf("closed port: %s\n", portName);
-
-				break;
-			}
-
-			// Put remaining payload on transmission stack
-			const char* serialData = payload + 6 + portStrLen;
-			size_t serialLen = payloadLen - 6 - portStrLen;
-			if (serialLen > 0) {
-				if (!portClaim->handler->send(txid, serialData, serialLen)) {
-					printf("DEBUG: could not process package, tx stack full: [tx %u] %s\n", txid, portName);
-				}
-			}
+				// Put remaining payload on transmission stack
+				const char* serialData = payload + 6 + portStrLen;
+				size_t serialLen = payloadLen - 6 - portStrLen;
+				if (serialLen > 0) {
+					if (!portClaim->handler->send(txid, serialData, serialLen)) {
 #ifdef DEBUG_PRINTS
-			else {
-				printf("DEBUG: received keep alive: %s\n", portName);
-			}
+						printf("DEBUG: could not process package, tx stack full: [tx %u] %s\n", txid, localPortName.c_str());
 #endif
+					}
+				}
+				else {
+#ifdef DEBUG_PRINTS
+					printf("DEBUG: received keep alive: %s -> %s\n", remotePortName.c_str(), localPortName.c_str());
+#endif
+				}
 
-			// Update keep alive timeout
-			portClaim->point_of_timeout = chrono::steady_clock::now() + chrono::milliseconds(INET_KEEP_ALIVE_TIMEOUT);
 
-			sendConfirm(remoteAddress, false, portName, txid);
+				// Update keep alive timeout
+				portClaim->point_of_timeout = chrono::steady_clock::now() + chrono::milliseconds(INET_KEEP_ALIVE_TIMEOUT);
+
+				sendConfirm(remoteAddress, false, localPortName, txid);
+
+			} catch (out_of_range& e) {
+				// This side does not know about this port link
+				sendError(remoteAddress, "", "unknown link");
+			}
+
 			break;
 		}
 		case OPC_RX_CONFIRM: {
@@ -394,26 +449,29 @@ void SOESocketHandler::handleClientRX() {
 			}
 
 			// Decode port name string
-			string portName = string(payload + 2, portStrLen);
+			string remotePortName = string(payload + 2, portStrLen);
 
-			// Decode transmission id
-			unsigned int rxid =
-					(payload[2 + portStrLen] & 0xFF) << 24 |
-					(payload[3 + portStrLen] & 0xFF) << 16 |
-					(payload[4 + portStrLen] & 0xFF) << 8 |
-					(payload[5 + portStrLen] & 0xFF) << 0;
-
-			// Attempt to get port
-			shared_lock<shared_timed_mutex> lock(this->portsm);
-			port_claim* portClaim = 0;
 			try {
-				portClaim = &this->ports.at(portName);
-			} catch (const std::out_of_range& e) {
-				break; // Received data for an closed port, this can be caused trough network delay, just ignore
-			}
+				string localPortName = this->remote2localPort.at(make_pair(remoteAddress, remotePortName));
 
-			// Confirm reception
-			portClaim->handler->confirmReception(rxid);
+				// Decode transmission id
+				unsigned int rxid =
+						(payload[2 + portStrLen] & 0xFF) << 24 |
+						(payload[3 + portStrLen] & 0xFF) << 16 |
+						(payload[4 + portStrLen] & 0xFF) << 8 |
+						(payload[5 + portStrLen] & 0xFF) << 0;
+
+				// Attempt to get port
+				shared_lock<shared_timed_mutex> lock(this->portsm);
+				port_claim* portClaim = &this->ports.at(localPortName);
+
+				// Confirm reception
+				portClaim->handler->confirmReception(rxid);
+
+			} catch (out_of_range& e) {
+				// This side does not know about this port link
+				sendError(remoteAddress, "", "unknown link");
+			}
 
 			break;
 		}
@@ -437,7 +495,7 @@ void SOESocketHandler::handleClientRX() {
 			}
 
 			// Decode port name string
-			string portName = string(payload + 2, portStrLen);
+			string remotePortName = string(payload + 2, portStrLen);
 
 			// Decode transmission id
 			unsigned int rxid =
@@ -446,20 +504,23 @@ void SOESocketHandler::handleClientRX() {
 					(payload[4 + portStrLen] & 0xFF) << 8 |
 					(payload[5 + portStrLen] & 0xFF) << 0;
 
-			// Attempt to get port
-			shared_lock<shared_timed_mutex> lock(this->portsm);
-			port_claim* portClaim = 0;
 			try {
-				portClaim = &this->ports.at(portName);
-			} catch (const std::out_of_range& e) {
-#ifdef DEBUG_PRINTS
-				printf("DEBUG: received tx confirm for closed port: %s [rx %u]\n", portName.c_str(), rxid);
-#endif
-				break;
-			}
+				string localPortName = this->remote2localPort.at(make_pair(remoteAddress, remotePortName));
 
-			// Confirm reception
-			portClaim->handler->confirmTransmission(rxid);
+				// Attempt to get port
+				shared_lock<shared_timed_mutex> lock(this->portsm);
+				port_claim* portClaim = &this->ports.at(localPortName);
+
+				// Confirm reception
+				portClaim->handler->confirmTransmission(rxid);
+
+			} catch (out_of_range& e) {
+#ifdef DEBUG_PRINTS
+				printf("DEBUG: received tx confirm for closed port: remote %s [rx %u]\n", remotePortName.c_str(), rxid);
+#endif
+				// This side does not know about this port link
+				sendError(remoteAddress, "", "unknown link");
+			}
 
 			break;
 		}
@@ -483,10 +544,11 @@ void SOESocketHandler::handleClientRX() {
 			}
 
 			// Decode port name string
-			string portName = string(payload + 2, portStrLen);
+			string remotePortName = string(payload + 2, portStrLen);
 
 			// Check if additional string available
 			unsigned short msgStrLen = 0;
+			string message;
 			if (payloadLen - 2 - portStrLen >= 2) {
 
 				// Decode message length
@@ -500,33 +562,47 @@ void SOESocketHandler::handleClientRX() {
 					break;
 				}
 
+				// Decode message string
+				message = string(payload + 4 + portStrLen, msgStrLen);
+
 			}
 
-			// Decode message string
-			string message = string(payload + 4 + portStrLen, msgStrLen);
+			if (!remotePortName.empty()) {
 
-			if (msgStrLen == 0) {
-				// If the second (message) string is empty, the first one (portName) is the message
-				printf("received error frame: N/A : %s\n", portName.c_str());
-			} else {
-				printf("received error frame: %s : %s\n", portName.c_str(), message.c_str());
+				try {
+					string localPortName = this->remote2localPort.at(make_pair(remoteAddress, remotePortName));
 
-				// Check if this matches an ongoing port claim
-				if (this->remote_port_name.length() > 0 && this->remote_port_name == portName) {
+					string address;
+					unsigned int port = 0;
+					remoteAddress.tostr(address, &port);
+					printf("received error frame: local %s : remote %s @ %s %u : %s\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port, message.c_str());
+
+					// Check if this matches an ongoing port claim
+					if (!this->remote_port_name.empty() && this->remote_port_name == remotePortName && this->remote_address == remoteAddress) {
 
 #ifdef DEBUG_PRINTS
-					printf("DEBUG: received error frame for remote port open/close sequence: %s\n", portName.c_str());
+						printf("DEBUG: received error frame for remote port open/close sequence: remote %s : local %s\n", remotePortName.c_str(), localPortName.c_str());
 #endif
 
-					// Signal to current open/close sequence (if there is one)
-					{
-						unique_lock<mutex> lock(this->remote_port_waitm);
-						this->remote_port_status = false;
-						this->remote_port_waitc.notify_all();
+						// Signal to current open/close sequence (if there is one)
+						{
+							unique_lock<mutex> lock(this->remote_port_waitm);
+							this->remote_port_status = false;
+							this->remote_port_waitc.notify_all();
+						}
+
 					}
 
+				} catch (out_of_range& e) {
+					// This side does not know about this port link
+					sendError(remoteAddress, "", "unknown link");
 				}
 
+			} else {
+				string address;
+				unsigned int port = 0;
+				remoteAddress.tostr(address, &port);
+				printf("received error frame: local N/A : remote N/A @ %s %u : %s\n", address.c_str(), port, message.c_str());
 			}
 
 			break;
@@ -551,16 +627,21 @@ void SOESocketHandler::handleClientRX() {
 			}
 
 			// Decode port name string
-			string portName = string(payload + 2, portStrLen);
+			string remotePortName = string(payload + 2, portStrLen);
 
 #ifdef DEBUG_PRINTS
-			printf("DEBUG: received open confirm for remote port: %s\n", portName.c_str());
+			try {
+				string localPortName = this->remote2localPort.at(make_pair(remoteAddress, remotePortName));
+				printf("DEBUG: received open confirm for remote port: local %s : remote %s\n", localPortName.c_str(), remotePortName.c_str());
+			} catch (out_of_range& e) {
+				printf("DEBUG: received open confirm for remote port: local N/A : remote %s\n", remotePortName.c_str());
+			}
 #endif
 
 			// Signal to current open/close sequence (if there is one)
-			if (this->remote_port_name.length() > 0) {
+			if (!this->remote_port_name.empty()) {
 				unique_lock<mutex> lock(this->remote_port_waitm);
-				this->remote_port_status = this->remote_port_name == portName;
+				this->remote_port_status = this->remote_port_name == remotePortName && this->remote_address == remoteAddress;
 				this->remote_port_waitc.notify_all();
 			}
 
@@ -586,14 +667,15 @@ void SOESocketHandler::handleClientRX() {
 			}
 
 			// Decode port name string
-			string portName = string(payload + 2, portStrLen);
+			string remotePortName = string(payload + 2, portStrLen);
 
-			if (this->remote2localPort.count(portName)) {
+			try {
+				string localPortName = this->remote2localPort.at(make_pair(remoteAddress, remotePortName));
 
 				// If a open/close sequence is currently pending for this port
-				if (this->remote_port_name == portName) {
+				if (!this->remote_port_name.empty() && this->remote_port_name == remotePortName && this->remote_address == remoteAddress) {
 #ifdef DEBUG_PRINTS
-					printf("DEBUG: received close confirm for remote port: %s\n", portName.c_str());
+					printf("DEBUG: received close confirm for remote port: local %s : remote %s\n", localPortName.c_str(), remotePortName.c_str());
 #endif
 					// Signal to current open/close sequence (if there is one)
 					{
@@ -602,34 +684,29 @@ void SOESocketHandler::handleClientRX() {
 						this->remote_port_waitc.notify_all();
 					}
 
-				// If not, this just tells us the server wants us to close the port for some reason
+				// If not, this just tells us the other end was closed and we should close too
 				} else {
 #ifdef DEBUG_PRINTS
-					printf("DEBUG: received close notification for remote port: %s\n", portName.c_str());
+					printf("DEBUG: received close notification for remote port: local %s : remote %s\n", localPortName.c_str(), remotePortName.c_str());
 #endif
 					// Attempt to get and close local port
 					{
 						// From the server we get the remote host name, so we need to map it to the local port
 						unique_lock<shared_timed_mutex> lock(this->portsm);
-						string localPortName = this->remote2localPort.at(portName);
 						this->ports.erase(localPortName);
-						this->remote2localPort.erase(portName);
-						printf("closed local port: %s\n", localPortName.c_str());
+						this->remote2localPort.erase(make_pair(remoteAddress, remotePortName));
+
+						string address;
+						unsigned int port = 0;
+						remoteAddress.tostr(address, &port);
+						printf("remote port closed, close local: local %s : remote %s @ %s %u1\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
 					}
 
 				}
 
-			// If we are the server side of this connection
-			} else {
-
-#ifdef DEBUG_PRINTS
-				printf("DEBUG: received close notification: %s\n", portName.c_str());
-#endif
-
-				// Attempt to get and close port
-				{ unique_lock<shared_timed_mutex> lock(this->portsm); this->ports.erase(portName); }
-				printf("closed port: %s\n", portName.c_str());
-
+			} catch (out_of_range& e) {
+				// This side does not know about this port link
+				sendError(remoteAddress, "", "unknown link");
 			}
 
 			break;
@@ -652,21 +729,25 @@ void SOESocketHandler::handleClientRX() {
 
 }
 
-bool SOESocketHandler::openRemotePort(const INetAddress& remoteAddress, const string& remotePortName, const SerialPortConfiguration config, const string& localPortName) {
+bool SOESocketHandler::openRemotePort(const INetAddress& remoteAddress, const string& remotePortName, const SerialPortConfiguration& config, const string& localPortName) {
 
 	// Check for name conflicts with existing port claims
-	if (this->ports.count(remotePortName)) {
-		printf("failed to initialize connection, name conflict: %s\n", remotePortName.c_str());
+	if (this->ports.count(localPortName)) {
+		printf("failed to initialize connection, conflict with existing link: %s\n", remotePortName.c_str());
 		return false;
 	}
+
+	// Register local port mapping
+	this->remote2localPort[std::make_pair(remoteAddress, remotePortName)] = localPortName;
 
 	// Attempt and wait to for port open
 	cv_status status;
 	{
 		unique_lock<mutex> lock(this->remote_port_waitm);
 		this->remote_port_status = false;
+		this->remote_address = remoteAddress;
 		this->remote_port_name = remotePortName;
-		if (!sendOpenRequest(remoteAddress, remotePortName, config)) return false;
+		if (!sendOpenRequest(remoteAddress, localPortName, remotePortName, config)) return false;
 		status = this->remote_port_waitc.wait_for(lock, std::chrono::milliseconds(INET_KEEP_ALIVE_INTERVAL));
 		this->remote_port_name.clear();
 	}
@@ -677,11 +758,15 @@ bool SOESocketHandler::openRemotePort(const INetAddress& remoteAddress, const st
 		if (!closeRemotePort(remoteAddress, remotePortName)) {
 			printf("failed to close remote port %s, port might still be open on server!\n", remotePortName.c_str());
 		}
+		this->remote2localPort.erase(std::make_pair(remoteAddress, remotePortName));
 		return false;
 	}
 
 	// If remote claim failed, abbort
-	if (!this->remote_port_status) return false;
+	if (!this->remote_port_status) {
+		this->remote2localPort.erase(std::make_pair(remoteAddress, remotePortName));
+		return false;
+	}
 
 	// Attempt to open local port
 	SerialPort* port = newSerialPortS(localPortName);
@@ -692,18 +777,26 @@ bool SOESocketHandler::openRemotePort(const INetAddress& remoteAddress, const st
 		if (!closeRemotePort(remoteAddress, remotePortName)) {
 			printf("close remote port %s failed, port might still be open on server!\n", remotePortName.c_str());
 		}
+
+		this->remote2localPort.erase(std::make_pair(remoteAddress, remotePortName));
 		return false;
 	}
 	port->setConfig(config);
 	port->setTimeouts(SERIAL_RX_TIMEOUT, SERIAL_TX_TIMEOUT);
+
+	// Register new port link handler
 	SOEPortHandler* portHandler = new SOEPortHandler(port, [this] { this->notifySerialData(); }, [this, remoteAddress, localPortName](unsigned int txid) {
 		if (!this->sendConfirm(remoteAddress, true, localPortName, txid)) {
 			this->sendError(remoteAddress, localPortName, "failed to transmit TX_CONFIRM");
 		}
 	});
 	unique_lock<shared_timed_mutex> lock(this->portsm);
-
-	this->ports[remotePortName] = {std::unique_ptr<SOEPortHandler>(portHandler), remoteAddress, chrono::steady_clock::now() + chrono::milliseconds(INET_KEEP_ALIVE_TIMEOUT)};
+	this->ports[localPortName] = {
+			std::unique_ptr<SOEPortHandler>(portHandler),
+			remoteAddress,
+			remotePortName,
+			chrono::steady_clock::now() + chrono::milliseconds(INET_KEEP_ALIVE_TIMEOUT)
+	};
 
 	return true;
 
@@ -716,6 +809,7 @@ bool SOESocketHandler::closeRemotePort(const INetAddress& remoteAddress, const s
 	{
 		unique_lock<mutex> lock(this->remote_port_waitm);
 		this->remote_port_status = false;
+		this->remote_address = remoteAddress;
 		this->remote_port_name = remotePortName;
 		if (!sendCloseRequest(remoteAddress, remotePortName)) return false;
 		status = this->remote_port_waitc.wait_for(lock, std::chrono::milliseconds(INET_KEEP_ALIVE_INTERVAL));
@@ -734,6 +828,7 @@ bool SOESocketHandler::closeRemotePort(const INetAddress& remoteAddress, const s
 	try {
 		unique_lock<shared_timed_mutex> lock(this->portsm);
 		this->ports.erase(remotePortName);
+		this->remote2localPort.erase(make_pair(remoteAddress, remotePortName));
 		return true;
 	} catch (const std::out_of_range& e) {
 		return true; // for whatever reason the entry was already deleted, no reason to panic
@@ -775,22 +870,19 @@ void SOESocketHandler::sendError(const INetAddress& remoteAddress, const string&
 	if (msgLen > 0xFFFF) msgLen = 0xFFFF;
 
 	// Allocate payload buffer
-	unsigned int payloadLen = (portLen > 0 ? 2 + portLen : 0) + (msgLen > 0 ? 2 + msgLen : 0);
+	unsigned int payloadLen = (2 + portLen) + (msgLen > 0 ? 2 + msgLen : 0);
 	char buffer[payloadLen] = {0};
 
 	// Encode port name
-	if (portLen > 0) {
-		buffer[0] = (portLen >> 8) & 0xFF;
-		buffer[1] = (portLen >> 0) & 0xFF;
-		memcpy(buffer + 2, remotePortName.c_str(), portLen);
-		portLen += 2; // This allows us to make the next statements simpler
-	}
+	buffer[0] = (portLen >> 8) & 0xFF;
+	buffer[1] = (portLen >> 0) & 0xFF;
+	memcpy(buffer + 2, remotePortName.c_str(), portLen);
 
 	// Encode message
 	if (msgLen > 0) {
-		buffer[0 + portLen] = (msgLen >> 8) & 0xFF;
-		buffer[1 + portLen] = (msgLen >> 0) & 0xFF;
-		memcpy(buffer + 2 + portLen, msg.c_str(), msgLen);
+		buffer[2 + portLen] = (msgLen >> 8) & 0xFF;
+		buffer[3 + portLen] = (msgLen >> 0) & 0xFF;
+		memcpy(buffer + 4 + portLen, msg.c_str(), msgLen);
 	}
 
 	// Transmit payload in ERROR frame, ignore result, we don't care about an error-error ...
@@ -883,7 +975,7 @@ bool SOESocketHandler::sendStream(const INetAddress& remoteAddress, const string
 }
 
 // Sends an port open request frame
-bool SOESocketHandler::sendOpenRequest(const INetAddress& remoteAddress, const string& portName, const SerialPortConfiguration& config) {
+bool SOESocketHandler::sendOpenRequest(const INetAddress& remoteAddress, const string& portName, const string& remotePortName, const SerialPortConfiguration& config) {
 
 	if (!this->socket->isOpen()) return false;
 
@@ -891,10 +983,15 @@ bool SOESocketHandler::sendOpenRequest(const INetAddress& remoteAddress, const s
 	unsigned int portLen = portName.length();
 	if (portLen > 0xFFFF) portLen = 0xFFFF;
 
+	// Get remote port name length
+	unsigned int remotePortLen = remotePortName.length();
+	if (remotePortLen > 0xFFFF) remotePortLen = 0xFFFF;
+
 	// Allocate payload buffer
-	unsigned int payloadLen = 19 + portLen;
+	unsigned int payloadLen = 21 + portLen + remotePortLen;
 	char buffer[payloadLen] = {0};
 
+	// TODO
 	// Encode baud rate
 	buffer[0] = (config.baudRate >> 24) & 0xFF;
 	buffer[1] = (config.baudRate >> 16) & 0xFF;
@@ -918,6 +1015,11 @@ bool SOESocketHandler::sendOpenRequest(const INetAddress& remoteAddress, const s
 	buffer[17] = (portLen >> 8) & 0xFF;
 	buffer[18] = (portLen >> 0) & 0xFF;
 	memcpy(buffer + 19, portName.c_str(), portLen);
+
+	// Encode remote port name
+	buffer[19 + portLen] = (remotePortLen >> 8) & 0xFF;
+	buffer[20 + portLen] = (remotePortLen >> 0) & 0xFF;
+	memcpy(buffer + 21 + portLen, remotePortName.c_str(), remotePortLen);
 
 	// Transmit payload in OPENED or ERROR frame
 	return sendFrame(remoteAddress, OPC_OPEN, buffer, payloadLen);

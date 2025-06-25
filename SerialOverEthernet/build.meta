@@ -18,7 +18,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.linker = target.compileCpp.compiler = "winamd64-g++";
 		target.linkCpp.libraries.add("serialportaccess_x64");
 		target.linkCpp.libraries.add("netsocket_x64");
-		//target.compileCpp.define("DEBUG_PRINTS");
+//		target.compileCpp.define("DEBUG_PRINTS");
+//		target.compileCpp.options.add("-g");
 		
 		super.init();
 		

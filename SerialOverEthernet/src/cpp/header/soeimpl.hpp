@@ -56,8 +56,8 @@ using namespace std;
  * TX STACK	- the stack used to store payload that was RECEIVED over network and has to be TRANSMITTED over serial, consists of an TXID to payload map
  * TXID		- the id of an payload that was received over network, the RXID will become the TXID on the other end of the network connection
  *
- * NOTE: The terms "server" and "client" to specific instances of SOE, everything is based on peer to peer connections, but for each connection
- * the "client" reffers to the side initiating the connection and "server" to the side contacted by the client to establish a connection.
+ * NOTE: The terms "server" and "client" to specific instances of SOE, everything is based on peer to peer connections, the terms are just used to describe the two sides of the connection
+ * NOTE: Here, the "client" is the one who initiates the connection, and the "server" is the one responding to it.
  *
  * CLIENT OPEN PORT (initiated by the openRemotePort method)
  * 1. Client sends OPC_OPEN request
@@ -106,19 +106,14 @@ using namespace std;
  * same as above, just with swapped roles of client and server
  *
  *
- * SERVER CONTROL FRAME BEHAVIORS:
+ * CONTROL FRAME BEHAVIORS (when receiving):
  * OPC_ERROR	-> log received error, no further actions required
  * OPC_OPEN		-> attempt to open the port, answer with OPC_OPENED if succeeded, answer with OPC_ERROR otherwise
- * OPC_OPENED	-> INVALID FOR SERVER, DOES NOTHING
+ * OPC_OPENED	-> signal success to current pending open remote port sequence if the port name matches, otherwise ignore
  * OPC_CLOSE	-> attempt to close the port, answer with OPC_CLOSED if succeeded, answer with OPC_ERROR otherwise
- * OPC_CLOSED	-> INVALID FOR SERVER, DOES NOTHING
+ * OPC_CLOSED	-> signal success to current close remote port sequence if the port name matches, otherwise close the local port for the named remote port, since it has been closed on the other side
  * OPC_STREAM	-> put supplied data on port transmission stack, confirm with OPC_RX_CONFIRM, send OPC_TX_CONFIRM as soon as data was transmitted trough serial, answer with OPC_ERROR if data could not be processed
  *
- * CLIENT CONTROL FRAME BEHAVIORS:
- * same as above, only with three changes:
- * OPC_OPENED	-> signal success to current pending open remote port sequence if the port name matches, otherwise ignore
- * OPC_CLOSED	-> signal success to current close remote port sequence if the port name matches, otherwise close the local virtual remote port for the named remote port, since it has been closed on the server
- * OPC_ERROR	-> if the error's port name matches a currently pending open/close sequence, signal error to that sequence, otherwise log it
  */
 
 class SOESocketHandler;
@@ -245,7 +240,7 @@ public:
 	 * @param localPortName The local port name to claim
 	 * @return true if the remote and local port could successfully be claimed and connected, false otherwise
 	 */
-	bool openRemotePort(const INetAddress& remoteAddress, const string& remotePortName, const SerialPortConfiguration config, const string& localPortName);
+	bool openRemotePort(const INetAddress& remoteAddress, const string& remotePortName, const SerialPortConfiguration& config, const string& localPortName);
 
 	/**
 	 * Attempts to release the remote port and the corresponding local port.
@@ -318,11 +313,12 @@ private:
 	/**
 	 * Assembles and transmits an OPC_OPEN frame to the server.
 	 * @param remoteAddress The network address to send control frames too
-	 * @param portName The name of the remote port to open
+	 * @param portName The name of the local port to link
+	 * @param remotePortName The name of the remote port to open
 	 * @param baud The baud rate to configure
 	 * @return true if the data could be send successfully, false otherwise
 	 */
-	bool sendOpenRequest(const INetAddress& remoteAddress, const string& portName, const SerialPortConfiguration& config);
+	bool sendOpenRequest(const INetAddress& remoteAddress, const string& portName, const string& remotePortName, const SerialPortConfiguration& config);
 
 	/**
 	 * Assembles and transmits an OPC_CLOSE frame to the server.
@@ -344,6 +340,7 @@ private:
 	typedef struct {
 		unique_ptr<SOEPortHandler> handler;
 		INetAddress remote_address;
+		string remote_port;
 		chrono::time_point<chrono::steady_clock> point_of_timeout;
 		chrono::time_point<chrono::steady_clock> last_send;
 	} port_claim;
@@ -357,8 +354,9 @@ private:
 	mutex tx_waitm;							// Mutex to protect condition variable
 	condition_variable tx_waitc;			// Condition variable, the tx thread whil wait here for new data to transmit over network
 
-	map<string, string> remote2localPort;	// Keeps a list of the remote ports to the local ports, ports opened from remote (for which this side acts as server) are not listed here
+	map<pair<INetAddress, string>, string> remote2localPort;	// Keeps a list of the remote ports to the local ports
 
+	INetAddress remote_address;				// The remote network address of the current open/close sequence
 	string remote_port_name;				// Name of the remote port of the current open/close sequence
 	bool remote_port_status;				// Status for the pending open/close sequence, set before condition variable is released
 	mutex remote_port_waitm;				// Mutex protecting condition variable

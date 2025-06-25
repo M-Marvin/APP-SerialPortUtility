@@ -28,6 +28,9 @@ public:
 	bool tostr(string& addressStr, unsigned int* port) const;
 
 	INetAddress& operator=(const INetAddress& other);
+	bool operator<(const INetAddress& other) const;
+	bool operator>(const INetAddress& other) const;
+	bool operator==(const INetAddress& other) const;
 
 	INetAddrImplData* implData;
 
