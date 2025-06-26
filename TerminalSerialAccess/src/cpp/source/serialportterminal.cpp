@@ -24,13 +24,11 @@
 #define TRANSMISSION_TIMEOUT 1000
 #define RECEPTION_TIMEOUT 1000
 
-using namespace std;
-
 static bool shouldTerminate;
 static bool lineEditing = false;
 static char sendLineEnd = 0;
-static SerialPortConfiguration portConfiguration(DEFAULT_PORT_CONFIGURATION);
-static SerialPort* port;
+static SerialAccess::SerialPortConfiguration portConfiguration(SerialAccess::DEFAULT_PORT_CONFIGURATION);
+static SerialAccess::SerialPort* port;
 static HANDLE console = 0;
 
 int main(int argc, const char** argv) {
@@ -40,8 +38,8 @@ int main(int argc, const char** argv) {
 
 	// print help if no arguments
 	if (argc == 1) {
-		filesystem::path executable(argv[0]);
-		string executableName = executable.filename().string();
+		std::filesystem::path executable(argv[0]);
+		std::string executableName = executable.filename().string();
 		printf("%s [port name] <options ...>\n", executableName.c_str());
 		printf("options:\n");
 		printf(" -baud [baud]\n");
@@ -54,34 +52,34 @@ int main(int argc, const char** argv) {
 	}
 
 	// parse port name
-	string portName(argv[1]);
+	std::string portName(argv[1]);
 
 	// parse options
 	for (unsigned int i = 2; i < argc; i++) {
-		string flag(argv[i]);
+		std::string flag(argv[i]);
 		if (i + 1 < argc) {
 			i++;
-			string arg = string(argv[i]);
+			std::string arg(argv[i]);
 			// flags with argument
 			if (flag == "-baud") {
-				portConfiguration.baudRate = strtoul(argv[i], NULL, 10);
+				portConfiguration.baudRate = std::strtoul(argv[i], NULL, 10);
 			} else if (flag == "-bits") {
-				portConfiguration.dataBits = strtoull(argv[i], NULL, 10);
+				portConfiguration.dataBits = std::strtoull(argv[i], NULL, 10);
 			} else if (flag == "-stops") {
-				if (arg == "one") portConfiguration.stopBits = SPC_STOPB_ONE;
-				if (arg == "one-half") portConfiguration.stopBits = SPC_STOPB_ONE_HALF;
-				if (arg == "two") portConfiguration.stopBits = SPC_STOPB_TWO;
+				if (arg == "one") portConfiguration.stopBits = SerialAccess::SPC_STOPB_ONE;
+				if (arg == "one-half") portConfiguration.stopBits = SerialAccess::SPC_STOPB_ONE_HALF;
+				if (arg == "two") portConfiguration.stopBits = SerialAccess::SPC_STOPB_TWO;
 			} else if (flag == "-flowctrl") {
-				if (arg == "none") portConfiguration.flowControl = SPC_FLOW_NONE;
-				if (arg == "xonxoff") portConfiguration.flowControl = SPC_FLOW_XON_XOFF;
-				if (arg == "rtscts") portConfiguration.flowControl = SPC_FLOW_RTS_CTS;
-				if (arg == "dsrdtr") portConfiguration.flowControl = SPC_FLOW_DSR_DTR;
+				if (arg == "none") portConfiguration.flowControl = SerialAccess::SPC_FLOW_NONE;
+				if (arg == "xonxoff") portConfiguration.flowControl = SerialAccess::SPC_FLOW_XON_XOFF;
+				if (arg == "rtscts") portConfiguration.flowControl = SerialAccess::SPC_FLOW_RTS_CTS;
+				if (arg == "dsrdtr") portConfiguration.flowControl = SerialAccess::SPC_FLOW_DSR_DTR;
 			} else if (flag == "-parity") {
-				if (arg == "none") portConfiguration.parity = SPC_PARITY_NONE;
-				if (arg == "even") portConfiguration.parity = SPC_PARITY_EVEN;
-				if (arg == "odd") portConfiguration.parity = SPC_PARITY_ODD;
-				if (arg == "mark") portConfiguration.parity = SPC_PARITY_MARK;
-				if (arg == "space") portConfiguration.parity = SPC_PARITY_SPACE;
+				if (arg == "none") portConfiguration.parity = SerialAccess::SPC_PARITY_NONE;
+				if (arg == "even") portConfiguration.parity = SerialAccess::SPC_PARITY_EVEN;
+				if (arg == "odd") portConfiguration.parity = SerialAccess::SPC_PARITY_ODD;
+				if (arg == "mark") portConfiguration.parity = SerialAccess::SPC_PARITY_MARK;
+				if (arg == "space") portConfiguration.parity = SerialAccess::SPC_PARITY_SPACE;
 			} else if (flag == "-lineedit") {
 				lineEditing = true;
 				if (arg == "sendlf") sendLineEnd = '\n';
@@ -112,7 +110,7 @@ int main(int argc, const char** argv) {
 	}
 
 	// crate port
-	port = newSerialPortS(portName);
+	port = SerialAccess::newSerialPortS(portName);
 
 	// open port
 	if (!port->openPort()) {
@@ -137,7 +135,7 @@ int main(int argc, const char** argv) {
 
 	// start reception thread
 	shouldTerminate = false;
-	thread receptionThread(receptionLoop);
+	std::thread receptionThread(receptionLoop);
 
 	// start transmission loop
 	char inputChar;
@@ -151,7 +149,7 @@ int main(int argc, const char** argv) {
 				lineEditing = true;
 			}
 		} else {
-			string line;
+			std::string line;
 			getline(std::cin, line);
 			port->writeBytes(line.c_str(), line.length());
 			if (sendLineEnd) {

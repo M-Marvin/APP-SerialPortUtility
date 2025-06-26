@@ -2,13 +2,7 @@
 
 #include <string>
 
-#ifdef PLATFORM_WIN
-#define LIB_EXPORT __declspec(dllexport)
-#define LIB_IMPORT __declspec(dllimport)
-#else
-#define LIB_EXPORT
-#define LIB_IMPORT
-#endif
+namespace SerialAccess {
 
 typedef enum SerialPortParity {
 	SPC_PARITY_NONE = 1,
@@ -54,7 +48,7 @@ class SerialPort
 {
 
 public:
-	virtual LIB_EXPORT ~SerialPort() {};
+	virtual ~SerialPort() {};
 
 	/**
 	 * Applies the supplied configuration to the port.
@@ -62,7 +56,7 @@ public:
 	 * @param config The configuration struct to apply
 	 * @return true if the configuration was set, false if an error occurred
 	 */
-	virtual LIB_EXPORT bool setConfig(const SerialPortConfig &config) = 0;
+	virtual bool setConfig(const SerialPortConfig &config) = 0;
 
 	/**
 	 * Reads the current configuration of the port.
@@ -70,7 +64,7 @@ public:
 	 * @param config The configuration struct to write the configuration to
 	 * @return true if the configuration was read, false if an error occurred
 	 */
-	virtual LIB_EXPORT bool getConfig(SerialPortConfig &config) = 0;
+	virtual bool getConfig(SerialPortConfig &config) = 0;
 
 	/**
 	 * Sets the baud rate for the port, this is equal to doing it using setConfig().
@@ -78,14 +72,14 @@ public:
 	 * @param baud The baud rate to set for the port
 	 * @return true if the baud was set, false if an error occurred
 	 */
-	virtual LIB_EXPORT bool setBaud(unsigned long baud) = 0;
+	virtual bool setBaud(unsigned long baud) = 0;
 
 	/**
 	 * Gets the current baud rate configured for the port, equal to doing it using getConfig().
 	 * The port has to be open for this to work.
 	 * @return The current baud configured for the port, or 0 if the port is not open
 	 */
-	virtual LIB_EXPORT unsigned long getBaud() = 0;
+	virtual unsigned long getBaud() = 0;
 
 	/**
 	 * Sets the read write timeouts for the port.
@@ -95,26 +89,26 @@ public:
 	 * @param writeTimeout The write timeout, if the supplied data could not be written within this time, it returns with the ammount of data that could be written (might be zero)
 	 * @return true if the timeouts where set, false if an error occurred
 	 */
-	virtual LIB_EXPORT bool setTimeouts(unsigned int readTimeout, unsigned int writeTimeout) = 0;
+	virtual bool setTimeouts(unsigned int readTimeout, unsigned int writeTimeout) = 0;
 
 	/**
 	 * Attempt to claim/open the port.
 	 * This might fail if the port was not found or is already claimed by an another process.
 	 * @return true if the port was successfully opened, false otherwise
 	 */
-	virtual LIB_EXPORT bool openPort() = 0;
+	virtual bool openPort() = 0;
 
 	/**
 	 * Closes the port.
 	 * If the port is already closed, this has no affect.
 	 */
-	virtual LIB_EXPORT void closePort() = 0;
+	virtual void closePort() = 0;
 
 	/**
 	 * Returns true if the port is open and can be written to or read from.
 	 * @return true if the port is open, false otherwise
 	 */
-	virtual LIB_EXPORT bool isOpen() = 0;
+	virtual bool isOpen() = 0;
 
 	/**
 	 * Attempts to fill the buffer by reading bytes from the port.
@@ -123,7 +117,7 @@ public:
 	 * @param bufferCapacity The capacity of the buffer, aka the max number of bytes to read
 	 * @return The number of bytes read
 	 */
-	virtual LIB_EXPORT unsigned long readBytes(char* buffer, unsigned long bufferCapacity) = 0;
+	virtual unsigned long readBytes(char* buffer, unsigned long bufferCapacity) = 0;
 
 	/**
 	 * Attempts to fill the buffer by reading bytes from the port.
@@ -145,7 +139,7 @@ public:
 	 * @param receptionWaitTimeout The minimum time to wait for the first byte
 	 * @return The number of bytes read
 	 */
-	virtual LIB_EXPORT unsigned long readBytesConsecutive(char* buffer, unsigned long bufferCapacity, unsigned int consecutiveDelay, unsigned int receptionWaitTimeout) = 0;
+	virtual unsigned long readBytesConsecutive(char* buffer, unsigned long bufferCapacity, unsigned int consecutiveDelay, unsigned int receptionWaitTimeout) = 0;
 
 	/**
 	 * Attempts to write the content of the buffer to the serial port.
@@ -154,13 +148,11 @@ public:
 	 * @param bufferLength The length of the buffer, aka the number of bytes to write
 	 * @return The number of bytes written
 	 */
-	virtual LIB_EXPORT unsigned long writeBytes(const char* buffer, unsigned long bufferLength) = 0;
+	virtual unsigned long writeBytes(const char* buffer, unsigned long bufferLength) = 0;
 	
 };
 
-extern "C" {
-
-SerialPort* LIB_EXPORT newSerialPort(const char* portFile);
-SerialPort* LIB_EXPORT newSerialPortS(const std::string& portFile);
+SerialPort* newSerialPort(const char* portFile);
+SerialPort* newSerialPortS(const std::string& portFile);
 
 }

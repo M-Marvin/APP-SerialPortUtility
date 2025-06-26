@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-using namespace std;
+namespace NetSocket {
 
 /** Platform Specific Data **/
 struct SocketImplData;
@@ -24,8 +24,8 @@ public:
 	INetAddress(const INetAddress& other);
 	~INetAddress();
 
-	bool fromstr(string& addressStr, unsigned int port);
-	bool tostr(string& addressStr, unsigned int* port) const;
+	bool fromstr(std::string& addressStr, unsigned int port);
+	bool tostr(std::string& addressStr, unsigned int* port) const;
 
 	INetAddress& operator=(const INetAddress& other);
 	bool operator<(const INetAddress& other) const;
@@ -36,7 +36,15 @@ public:
 
 };
 
-bool resolve_inet(const string& hostStr, const string& portStr, bool lookForUDP, vector<INetAddress>& addresses);
+/**
+ * Resolves the supplied host string into a list of network addresses.
+ * @param hostStr The host URL string
+ * @param portStr The host port string
+ * @param lookForUDP If the resolution should happen for TCP or UDP sockets
+ * @param addresses An vector to place the resolved addresses in
+ * @return true if the resolution was successfull, false otherwise
+ */
+bool resolveInet(const std::string& hostStr, const std::string& portStr, bool lookForUDP, std::vector<NetSocket::INetAddress>& addresses);
 
 enum SocketType {
 	UNBOUND = 0,
@@ -142,5 +150,7 @@ private:
 
 bool InetInit();
 void InetCleanup();
+
+}
 
 #endif /* NETWORK_HPP_ */

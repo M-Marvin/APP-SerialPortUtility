@@ -13,10 +13,10 @@
 #include <filesystem>
 #include "soeimpl.hpp"
 
-bool openPort(SOESocketHandler& handler, const string& host, const string& port, const string& remotePort, const string& localPort, const SerialPortConfiguration& config) {
-	vector<INetAddress> addresses;
-	resolve_inet(host, port, true, addresses);
-	for (INetAddress address : addresses) {
+bool openPort(SerialOverEthernet::SOESocketHandler& handler, const std::string& host, const std::string& port, const std::string& remotePort, const std::string& localPort, const SerialAccess::SerialPortConfiguration& config) {
+	std::vector<NetSocket::INetAddress> addresses;
+	NetSocket::resolveInet(host, port, true, addresses);
+	for (NetSocket::INetAddress address : addresses) {
 		if (handler.openRemotePort(address, remotePort, config, localPort)) {
 			printf("link established: %s %s <-> %s\n", host.c_str(), remotePort.c_str(), localPort.c_str());
 			return true;
@@ -25,14 +25,14 @@ bool openPort(SOESocketHandler& handler, const string& host, const string& port,
 	return false;
 }
 
-void interpretFlags(SOESocketHandler& handler, const vector<string>& args) {
+void interpretFlags(SerialOverEthernet::SOESocketHandler& handler, const std::vector<std::string>& args) {
 
 	// Parse arguments for connections
-	string remoteHost;
-	string remotePort = to_string(DEFAULT_SOE_PORT);
-	string remoteSerial;
-	string localSerial;
-	SerialPortConfiguration remoteConfig = DEFAULT_PORT_CONFIGURATION;
+	std::string remoteHost;
+	std::string remotePort = std::to_string(DEFAULT_SOE_PORT);
+	std::string remoteSerial;
+	std::string localSerial;
+	SerialAccess::SerialPortConfiguration remoteConfig = SerialAccess::DEFAULT_PORT_CONFIGURATION;
 	bool link = false;
 
 	for (auto flag = args.begin(); flag != args.end(); flag++) {
@@ -66,22 +66,22 @@ void interpretFlags(SOESocketHandler& handler, const vector<string>& args) {
 				remoteConfig.dataBits = stoul(*++flag);
 			} else if (*flag == "-stops") {
 				flag++;
-				if (*flag == "one") remoteConfig.stopBits = SPC_STOPB_ONE;
-				if (*flag == "one-half") remoteConfig.stopBits = SPC_STOPB_ONE_HALF;
-				if (*flag == "two") remoteConfig.stopBits = SPC_STOPB_TWO;
+				if (*flag == "one") remoteConfig.stopBits = SerialAccess::SPC_STOPB_ONE;
+				if (*flag == "one-half") remoteConfig.stopBits = SerialAccess::SPC_STOPB_ONE_HALF;
+				if (*flag == "two") remoteConfig.stopBits = SerialAccess::SPC_STOPB_TWO;
 			} else if (*flag == "-parity") {
 				flag++;
-				if (*flag == "none") remoteConfig.parity = SPC_PARITY_NONE;
-				if (*flag == "even") remoteConfig.parity = SPC_PARITY_EVEN;
-				if (*flag == "odd") remoteConfig.parity = SPC_PARITY_ODD;
-				if (*flag == "mark") remoteConfig.parity = SPC_PARITY_MARK;
-				if (*flag == "space") remoteConfig.parity = SPC_PARITY_SPACE;
+				if (*flag == "none") remoteConfig.parity = SerialAccess::SPC_PARITY_NONE;
+				if (*flag == "even") remoteConfig.parity = SerialAccess::SPC_PARITY_EVEN;
+				if (*flag == "odd") remoteConfig.parity = SerialAccess::SPC_PARITY_ODD;
+				if (*flag == "mark") remoteConfig.parity = SerialAccess::SPC_PARITY_MARK;
+				if (*flag == "space") remoteConfig.parity = SerialAccess::SPC_PARITY_SPACE;
 			} else if (*flag == "-flowctrl") {
 				flag++;
-				if (*flag == "none") remoteConfig.flowControl = SPC_FLOW_NONE;
-				if (*flag == "xonxoff") remoteConfig.flowControl = SPC_FLOW_XON_XOFF;
-				if (*flag == "rtscts") remoteConfig.flowControl = SPC_FLOW_RTS_CTS;
-				if (*flag == "dsrdtr") remoteConfig.flowControl = SPC_FLOW_DSR_DTR;
+				if (*flag == "none") remoteConfig.flowControl = SerialAccess::SPC_FLOW_NONE;
+				if (*flag == "xonxoff") remoteConfig.flowControl = SerialAccess::SPC_FLOW_XON_XOFF;
+				if (*flag == "rtscts") remoteConfig.flowControl = SerialAccess::SPC_FLOW_RTS_CTS;
+				if (*flag == "dsrdtr") remoteConfig.flowControl = SerialAccess::SPC_FLOW_DSR_DTR;
 			} else if (*flag == "-unlink") {
 				flag++;
 				if (!handler.closeLocalPort(*flag)) {
@@ -116,7 +116,7 @@ void interpretFlags(SOESocketHandler& handler, const vector<string>& args) {
 	}
 }
 
-int mainCPP(filesystem::path& exec, vector<string>& args) {
+int mainCPP(std::filesystem::path& exec, std::vector<std::string>& args) {
 
 	// Disable output caching
 	setbuf(stdout, NULL);
@@ -139,8 +139,8 @@ int mainCPP(filesystem::path& exec, vector<string>& args) {
 	}
 
 	// Default configuration
-	string port = to_string(DEFAULT_SOE_PORT);
-	string host = "localhost";
+	std::string port = std::to_string(DEFAULT_SOE_PORT);
+	std::string host = "localhost";
 
 	// Parse arguments for network connection
 	auto flag = args.begin();
@@ -162,29 +162,29 @@ int mainCPP(filesystem::path& exec, vector<string>& args) {
 		args.erase(args.begin(), flag - 1);
 
 	// Initialize networking
-	if (!InetInit()) {
+	if (!NetSocket::InetInit()) {
 		printf("failed to initialize network!\n");
 		return -1;
 	}
 
 	// Resolve supplied host string
-	vector<INetAddress> localAddresses;
-	resolve_inet(host, port, true, localAddresses);
+	std::vector<NetSocket::INetAddress> localAddresses;
+	NetSocket::resolveInet(host, port, true, localAddresses);
 
 	// Attempt to bind to first available local host address
-	Socket* socket = new Socket();
-	for (INetAddress& address : localAddresses) {
+	NetSocket::Socket* socket = new NetSocket::Socket();
+	for (NetSocket::INetAddress& address : localAddresses) {
 
 		if (socket->bind(address)) {
 
-			string localAddress;
+			std::string localAddress;
 			unsigned int localPort;
 			address.tostr(localAddress, &localPort);
 			printf("serial over ethernet/IP, open client port on: %s %d\n", localAddress.c_str(), localPort);
 
 			{
 				// Start socket handler
-				SOESocketHandler handler(socket);
+				SerialOverEthernet::SOESocketHandler handler(socket);
 
 				// Interpret supplied command flags
 				interpretFlags(handler, args);
@@ -196,14 +196,14 @@ int mainCPP(filesystem::path& exec, vector<string>& args) {
 				printf(" -unlink [local serial port] - to close an existing connection\n");
 				printf(" -close - to close all connections\n");
 				printf(" -list - to view all currently open port links\n");
-				string cmdline;
+				std::string cmdline;
 				while (true) {
 
 					// Read command and arguments
-					getline(std::cin, cmdline);
-					vector<string> cmdargs;
-					string::size_type p1 = 0;
-					for (string::size_type p2 = cmdline.find(' '); p2 != string::npos; p2 = cmdline.find(' ', p1)) {
+					std::getline(std::cin, cmdline);
+					std::vector<std::string> cmdargs;
+					std::string::size_type p1 = 0;
+					for (std::string::size_type p2 = cmdline.find(' '); p2 != std::string::npos; p2 = cmdline.find(' ', p1)) {
 						cmdargs.emplace_back(cmdline, p1, p2 - p1);
 						p1 = p2 + 1;
 					}
@@ -220,7 +220,7 @@ int mainCPP(filesystem::path& exec, vector<string>& args) {
 			}
 
 			// Cleanup network and exit
-			InetCleanup();
+			NetSocket::InetCleanup();
 			printf("client shutdown complete\n");
 			return 0;
 
@@ -230,15 +230,15 @@ int mainCPP(filesystem::path& exec, vector<string>& args) {
 
 	printf("unable to bind to address: %s %s\n", host.c_str(), port.c_str());
 
-	InetCleanup();
+	NetSocket::InetCleanup();
 	return -1;
 
 }
 
 int main(int argc, const char** argv) {
 
-	filesystem::path exec(argv[0]);
-	vector<string> args;
+	std::filesystem::path exec(argv[0]);
+	std::vector<std::string> args;
 	for (unsigned int i1 = 1; i1 < argc; i1++)
 		args.emplace_back(argv[i1]);
 

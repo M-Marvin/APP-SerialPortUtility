@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 void printError(const char* format) {
-	setbuf(stdout, NULL);
+	setbuf(stdout, NULL); // Work around for errors printed during JNI
 	int errorCode = errno;
 	if (errorCode == 0) return;
 	printf(format, errorCode, strerror(errorCode));
@@ -61,7 +61,7 @@ unsigned long getBaudValue(unsigned int baudCfg) {
 	}
 }
 
-class SerialPortLin : public SerialPort {
+class SerialPortLin : public SerialAccess::SerialPort {
 
 private:
 	struct termios comPortState;
@@ -80,7 +80,7 @@ public:
 		closePort();
 	}
 
-	bool setConfig(const SerialPortConfig &config) {
+	bool setConfig(const SerialAccess::SerialPortConfig &config) {
 		if (this->comPortHandle < 0) return false;
 
 		if (tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
@@ -111,32 +111,32 @@ public:
 			return false;
 		}
 
-		if (config.parity != SPC_PARITY_NONE)
+		if (config.parity != SerialAccess::SPC_PARITY_NONE)
 			this->comPortState.c_cflag |= PARENB; // Enable parity
 		else {
 			this->comPortState.c_cflag &= ~PARENB; // Disable parity
-			if (config.parity == SPC_PARITY_ODD)
+			if (config.parity == SerialAccess::SPC_PARITY_ODD)
 				this->comPortState.c_cflag |= PARODD;
-			else if (config.parity == SPC_PARITY_EVEN)
+			else if (config.parity == SerialAccess::SPC_PARITY_EVEN)
 				this->comPortState.c_cflag &= ~PARODD;
 			else
 				return false; // mark/space parity not supported
 		}
 
 		switch (config.flowControl) {
-		case SPC_FLOW_XON_XOFF:
+		case SerialAccess::SPC_FLOW_XON_XOFF:
 			this->comPortState.c_cflag |= CRTSCTS; // Disable RTS/CTS
 			this->comPortState.c_cflag &= ~IXON; // Enable XON
 			this->comPortState.c_cflag &= ~IXOFF; // Enable XON
 			break;
-		case SPC_FLOW_RTS_CTS:
+		case SerialAccess::SPC_FLOW_RTS_CTS:
 			this->comPortState.c_cflag &= ~CRTSCTS; // Enable RTS/CTS
 			this->comPortState.c_cflag |= IXON; // Disable XON
 			this->comPortState.c_cflag |= IXOFF; // Disable XON
 			break;
 		default:
 			return false; // RTS/DTS flow control not supported
-		case SPC_PARITY_NONE:
+		case SerialAccess::SPC_PARITY_NONE:
 			this->comPortState.c_cflag |= CRTSCTS; // Disable RTS/CTS
 			this->comPortState.c_cflag |= IXON; // Disable XON
 			this->comPortState.c_cflag |= IXOFF; // Disable XON
@@ -153,9 +153,9 @@ public:
 		case 8:this->comPortState.c_cflag |= CS8; break;
 		}
 
-		if (config.stopBits == SPC_STOPB_TWO)
+		if (config.stopBits == SerialAccess::SPC_STOPB_TWO)
 			this->comPortState.c_cflag |= CSTOPB; // Two stop bits
-		else if (config.stopBits == SPC_STOPB_TWO)
+		else if (config.stopBits == SerialAccess::SPC_STOPB_TWO)
 			this->comPortState.c_cflag &= ~CSTOPB; // One stop bit
 		else {
 			printf("Error one half stop bits not supported");
@@ -170,7 +170,7 @@ public:
 		return true;
 	}
 
-	bool getConfig(SerialPortConfig &config) {
+	bool getConfig(SerialAccess::SerialPortConfig &config) {
 		if (this->comPortHandle < 0) return false;
 
 		if (tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
@@ -181,16 +181,16 @@ public:
 		config.baudRate = getBaudValue(cfgetospeed(&this->comPortState));
 
 		if (this->comPortState.c_cflag & PARENB) {
-			config.parity = (this->comPortState.c_cflag & PARODD) ? SPC_PARITY_ODD : SPC_PARITY_EVEN;
+			config.parity = (this->comPortState.c_cflag & PARODD) ? SerialAccess::SPC_PARITY_ODD : SerialAccess::SPC_PARITY_EVEN;
 		} else
-			config.parity = SPC_PARITY_NONE;
+			config.parity = SerialAccess::SPC_PARITY_NONE;
 
 		if ((this->comPortState.c_cflag & IXON) || (this->comPortState.c_cflag & IXOFF))
-			config.flowControl = SPC_FLOW_XON_XOFF;
+			config.flowControl = SerialAccess::SPC_FLOW_XON_XOFF;
 		else if (this->comPortState.c_cflag & CRTSCTS)
-			config.flowControl = SPC_FLOW_RTS_CTS;
+			config.flowControl = SerialAccess::SPC_FLOW_RTS_CTS;
 		else
-			config.flowControl = SPC_FLOW_NONE;
+			config.flowControl = SerialAccess::SPC_FLOW_NONE;
 
 		switch (config.dataBits & CSIZE) {
 		case CS5: config.dataBits = 5; break;
@@ -200,7 +200,7 @@ public:
 		case CS8: config.dataBits = 8; break;
 		}
 
-		config.stopBits = (this->comPortState.c_cflag & CSTOPB) ? SPC_STOPB_TWO : SPC_STOPB_ONE;
+		config.stopBits = (this->comPortState.c_cflag & CSTOPB) ? SerialAccess::SPC_STOPB_TWO : SerialAccess::SPC_STOPB_ONE;
 
 		return true;
 	}
@@ -211,7 +211,7 @@ public:
 		this->comPortHandle = open(this->portFileName, O_RDWR);
 
 		if (isOpen()) {
-			setConfig(DEFAULT_PORT_CONFIGURATION);
+			setConfig(SerialAccess::DEFAULT_PORT_CONFIGURATION);
 			return true;
 		}
 
@@ -319,11 +319,11 @@ public:
 
 };
 
-SerialPort* newSerialPort(const char* portFile) {
+SerialAccess::SerialPort* SerialAccess::newSerialPort(const char* portFile) {
 	return new SerialPortLin(portFile);
 }
 
-SerialPort* newSerialPortS(const std::string& portFile) {
+SerialAccess::SerialPort* SerialAccess::newSerialPortS(const std::string& portFile) {
 	return new SerialPortLin(portFile.c_str());
 }
 

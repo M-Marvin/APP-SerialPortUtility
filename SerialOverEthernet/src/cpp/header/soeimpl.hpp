@@ -11,31 +11,6 @@
 #ifndef SOEIMPL_HPP_
 #define SOEIMPL_HPP_
 
-class Socket;
-
-#define DEFAULT_SOE_PORT 26
-
-#define SERIAL_RX_ENTRY_LEN 1024 		// Buffer for incoming serial payload (individual stack entries)
-#define SERIAL_RX_STACK_LIMIT 32		// Limit for the reception stack, serial reception will hold if this limit is exceeded, and data loss will occur, tx stack on the other end will automatically have the same size, although it can exceed the limit slightly under specific conditions
-#define SERIAL_RX_TIMEOUT 0 			// Time to wait for requested amount of bytes (SERIAL_RX_BUF) before returning with less if nothing more was received
-#define SERIAL_TX_TIMEOUT 1000 			// Time to wait for transmitting serial data before returning with the number of bytes that have been transmitted
-
-/* The control frame operation codes */
-#define OPC_ERROR 0x0
-#define OPC_OPEN 0x1
-#define OPC_OPENED 0x2
-#define OPC_CLOSE 0x3
-#define OPC_CLOSED 0x4
-#define OPC_STREAM 0x5
-#define OPC_TX_CONFIRM 0x6
-#define OPC_RX_CONFIRM 0x7
-
-#define SOE_FRAME_HEADER_LEN 1										// The length of the SOE control frame header
-#define INET_RX_PCKG_LEN SERIAL_RX_ENTRY_LEN + SOE_FRAME_HEADER_LEN	// Buffer for incoming network payload (individual stack entries + package header)
-#define INET_TX_REP_INTERVAL 100									// Interval in which the tx thread checks the rx stacks for data, even if he was not notified about new data, these intervals are used to re-send lost packages
-#define INET_KEEP_ALIVE_TIMEOUT 10000								// Timeout for network connection, if no packages is received within this time, a lost connection is assumed
-#define INET_KEEP_ALIVE_INTERVAL 1000								// Timeout for receiving packages, before sending keep alive package (OPC_STREAM with length 0)
-
 #include <network.hpp>
 #include <serial_port.hpp>
 #include <thread>
@@ -44,8 +19,6 @@ class Socket;
 #include <string>
 #include <condition_variable>
 #include <functional>
-
-using namespace std;
 
 /**
  * SERIAL OVER ETHERNET PROTOCOL
@@ -116,6 +89,31 @@ using namespace std;
  *
  */
 
+namespace SerialOverEthernet {
+
+#define DEFAULT_SOE_PORT 26
+
+#define SERIAL_RX_ENTRY_LEN 1024 		// Buffer for incoming serial payload (individual stack entries)
+#define SERIAL_RX_STACK_LIMIT 32		// Limit for the reception stack, serial reception will hold if this limit is exceeded, and data loss will occur, tx stack on the other end will automatically have the same size, although it can exceed the limit slightly under specific conditions
+#define SERIAL_RX_TIMEOUT 0 			// Time to wait for requested amount of bytes (SERIAL_RX_BUF) before returning with less if nothing more was received
+#define SERIAL_TX_TIMEOUT 1000 			// Time to wait for transmitting serial data before returning with the number of bytes that have been transmitted
+
+/* The control frame operation codes */
+#define OPC_ERROR 0x0
+#define OPC_OPEN 0x1
+#define OPC_OPENED 0x2
+#define OPC_CLOSE 0x3
+#define OPC_CLOSED 0x4
+#define OPC_STREAM 0x5
+#define OPC_TX_CONFIRM 0x6
+#define OPC_RX_CONFIRM 0x7
+
+#define SOE_FRAME_HEADER_LEN 1										// The length of the SOE control frame header
+#define INET_RX_PCKG_LEN SERIAL_RX_ENTRY_LEN + SOE_FRAME_HEADER_LEN	// Buffer for incoming network payload (individual stack entries + package header)
+#define INET_TX_REP_INTERVAL 100									// Interval in which the tx thread checks the rx stacks for data, even if he was not notified about new data, these intervals are used to re-send lost packages
+#define INET_KEEP_ALIVE_TIMEOUT 10000								// Timeout for network connection, if no packages is received within this time, a lost connection is assumed
+#define INET_KEEP_ALIVE_INTERVAL 1000								// Timeout for receiving packages, before sending keep alive package (OPC_STREAM with length 0)
+
 class SOESocketHandler;
 
 class SOEPortHandler {
@@ -127,7 +125,7 @@ public:
 	 * @param newDataCallback The callback to run when new data was received on the RX STACK
 	 * @param txConfirmCallback The callback to call if data from the TX STACK was successfully sent
 	 */
-	SOEPortHandler(SerialPort* port, function<void(void)> newDataCallback, function<void(unsigned int)> txConfirmCallback);
+	SOEPortHandler(SerialAccess::SerialPort* port, std::function<void(void)> newDataCallback, std::function<void(unsigned int)> txConfirmCallback);
 
 	/**
 	 * Closes the serial port, and cleans up all allocated buffer memory
@@ -186,35 +184,35 @@ private:
 	 */
 	void handlePortRX();
 
-	unique_ptr<SerialPort> port;
-	function<void(void)> new_data;
-	function<void(unsigned int)> tx_confirm;
+	std::unique_ptr<SerialAccess::SerialPort> port;
+	std::function<void(void)> new_data;
+	std::function<void(unsigned int)> tx_confirm;
 
 	typedef struct {
 		unsigned long length;
-		unique_ptr<char> payload;
+		std::unique_ptr<char> payload;
 	} tx_entry;
 
-	thread thread_tx;
+	std::thread thread_tx;
 	unsigned int next_txid;					// Next txid that the serial port will try to transmitt
-	mutex tx_stackm;						// Mutex for synchronizing access to transmission stack and condition variable
-	condition_variable tx_waitc;			// TX hold variable, transmission will hold here if the tx stack runs out
-	map<unsigned int, tx_entry> tx_stack;	// The serial transmission stack, holding network received data to transmitt over serial
+	std::mutex tx_stackm;						// Mutex for synchronizing access to transmission stack and condition variable
+	std::condition_variable tx_waitc;			// TX hold variable, transmission will hold here if the tx stack runs out
+	std::map<unsigned int, tx_entry> tx_stack;	// The serial transmission stack, holding network received data to transmitt over serial
 
 	typedef struct  {
 		unsigned long length;
-		unique_ptr<char> payload;
-		chrono::time_point<chrono::steady_clock> time_to_resend;
+		std::unique_ptr<char> payload;
+		std::chrono::time_point<std::chrono::steady_clock> time_to_resend;
 		bool rx_confirmed;
 	} rx_entry;
 
-	thread thread_rx;
+	std::thread thread_rx;
 	unsigned int next_free_rxid;			// Next rxid to use for packages read from serial
 	unsigned int next_transmit_rxid;		// Next not yet transmitted rxid to return when requesting data for network transmission
 	unsigned int last_transmitted_rxid;		// Oldest rxid in the stack which's transmission has not yet been confirmed by the other end
-	mutex rx_stackm;						// Mutex for synchronizing access to reception stack and condition variable
-	condition_variable rx_waitc;			// RX hold condition variable, reception will hold and wait for this if the reception stack size exceeds the limit
-	map<unsigned int, rx_entry> rx_stack;	// The serial reception stack, holding serial received and network transmitted but not yet serial transmitted packages
+	std::mutex rx_stackm;						// Mutex for synchronizing access to reception stack and condition variable
+	std::condition_variable rx_waitc;			// RX hold condition variable, reception will hold and wait for this if the reception stack size exceeds the limit
+	std::map<unsigned int, rx_entry> rx_stack;	// The serial reception stack, holding serial received and network transmitted but not yet serial transmitted packages
 
 };
 
@@ -225,7 +223,7 @@ public:
 	 * Creates a new client network connection handler
 	 * @param socket The socket of the client-server connection
 	 */
-	SOESocketHandler(Socket* socket);
+	SOESocketHandler(NetSocket::Socket* socket);
 
 	/**
 	 * Closes all ports and the socket and cleans all allocated buffer memory
@@ -240,7 +238,7 @@ public:
 	 * @param localPortName The local port name to claim
 	 * @return true if the remote and local port could successfully be claimed and connected, false otherwise
 	 */
-	bool openRemotePort(const INetAddress& remoteAddress, const string& remotePortName, const SerialPortConfiguration& config, const string& localPortName);
+	bool openRemotePort(const NetSocket::INetAddress& remoteAddress, const std::string& remotePortName, const SerialAccess::SerialPortConfiguration& config, const std::string& localPortName);
 
 	/**
 	 * Attempts to release the remote port and the corresponding local port.
@@ -248,14 +246,14 @@ public:
 	 * @param remotePortName The remote port name to release
 	 * @return true if the remote and local port could be released successfully, false otherwise
 	 */
-	bool closeRemotePort(const INetAddress& remoteAddress, const string& remotePortName);
+	bool closeRemotePort(const NetSocket::INetAddress& remoteAddress, const std::string& remotePortName);
 
 	/**
 	 * Attempts to release the remote port and the corresponding local port.
 	 * @param localPortName The local port name to release
 	 * @return true if the remote and local port could be released successfully, false otherwise
 	 */
-	bool closeLocalPort(const string& localPortName);
+	bool closeLocalPort(const std::string& localPortName);
 
 	/**
 	 * Attempts to release the remote port and the corresponding local port.
@@ -289,7 +287,7 @@ private:
 	 * @param length The length of the payload
 	 * @return true if the data could be send successfully, false otherwise
 	 */
-	bool sendFrame(const INetAddress& remoteAddress, char opc, const char* payload, unsigned int length);
+	bool sendFrame(const NetSocket::INetAddress& remoteAddress, char opc, const char* payload, unsigned int length);
 
 	/**
 	 * Assembles and transmits an error frame with the given remote port name and error message.
@@ -297,7 +295,7 @@ private:
 	 * @param portName The remote (server) port name to which this error refers (might be null)
 	 * @param msg The error message
 	 */
-	void sendError(const INetAddress& remoteAddress, const string& portName, const string& msg);
+	void sendError(const NetSocket::INetAddress& remoteAddress, const std::string& portName, const std::string& msg);
 
 	/**
 	 * Assembles and transmits an OPC_OPENED or OPC_CLOSED frame to the other end.
@@ -306,7 +304,7 @@ private:
 	 * @param portName The name of the remote (server) port
 	 * @return true if the data could be send successfully, false otherwise
 	 */
-	bool sendClaimStatus(const INetAddress& remoteAddress, bool claimed, const string& portName);
+	bool sendClaimStatus(const NetSocket::INetAddress& remoteAddress, bool claimed, const std::string& portName);
 
 	/**
 	 * Assembles and transmits an OPC_RX_CONFIRM or OPC_TX_CONFIRM frame to the other end.
@@ -316,7 +314,7 @@ private:
 	 * @param txid The payloads TXID
 	 * @return true if the data could be send successfully, false otherwise
 	 */
-	bool sendConfirm(const INetAddress& remoteAddress, bool transmission, const string& portName, unsigned int txid);
+	bool sendConfirm(const NetSocket::INetAddress& remoteAddress, bool transmission, const std::string& portName, unsigned int txid);
 
 	/**
 	 * Assembles and transmits an OPC_STREAM frame to the other end.
@@ -327,7 +325,7 @@ private:
 	 * @param length The serial payload length
 	 * @return true if the data could be send successfully, false otherwise
 	 */
-	bool sendStream(const INetAddress& remoteAddress, const string& portName, unsigned int rxid, const char* payload, unsigned long length);
+	bool sendStream(const NetSocket::INetAddress& remoteAddress, const std::string& portName, unsigned int rxid, const char* payload, unsigned long length);
 
 	/**
 	 * Assembles and transmits an OPC_OPEN frame to the server.
@@ -337,7 +335,7 @@ private:
 	 * @param baud The baud rate to configure
 	 * @return true if the data could be send successfully, false otherwise
 	 */
-	bool sendOpenRequest(const INetAddress& remoteAddress, const string& portName, const string& remotePortName, const SerialPortConfiguration& config);
+	bool sendOpenRequest(const NetSocket::INetAddress& remoteAddress, const std::string& portName, const std::string& remotePortName, const SerialAccess::SerialPortConfiguration& config);
 
 	/**
 	 * Assembles and transmits an OPC_CLOSE frame to the server.
@@ -345,7 +343,7 @@ private:
 	 * @param portName The name of the remote port to close
 	 * @return true if the data could be send successfully, false otherwise
 	 */
-	bool sendCloseRequest(const INetAddress& remoteAddress, const string& portName);
+	bool sendCloseRequest(const NetSocket::INetAddress& remoteAddress, const std::string& portName);
 
 	/**
 	 * Handles network package reception
@@ -357,30 +355,32 @@ private:
 	void handleClientTX();
 
 	typedef struct {
-		unique_ptr<SOEPortHandler> handler;
-		INetAddress remote_address;
-		string remote_port;
-		chrono::time_point<chrono::steady_clock> point_of_timeout;
-		chrono::time_point<chrono::steady_clock> last_send;
+		std::unique_ptr<SOEPortHandler> handler;
+		NetSocket::INetAddress remote_address;
+		std::string remote_port;
+		std::chrono::time_point<std::chrono::steady_clock> point_of_timeout;
+		std::chrono::time_point<std::chrono::steady_clock> last_send;
 	} port_claim;
 
-	unique_ptr<Socket> socket;
-	shared_timed_mutex portsm;
-	map<string, port_claim> ports;
+	std::unique_ptr<NetSocket::Socket> socket;
+	std::shared_timed_mutex portsm;
+	std::map<std::string, port_claim> ports;
 
-	thread thread_rx;
-	thread thread_tx;
-	mutex tx_waitm;							// Mutex to protect condition variable
-	condition_variable tx_waitc;			// Condition variable, the tx thread whil wait here for new data to transmit over network
+	std::thread thread_rx;
+	std::thread thread_tx;
+	std::mutex tx_waitm;						// Mutex to protect condition variable
+	std::condition_variable tx_waitc;			// Condition variable, the tx thread whil wait here for new data to transmit over network
 
-	map<pair<INetAddress, string>, string> remote2localPort;	// Keeps a list of the remote ports to the local ports
+	std::map<std::pair<NetSocket::INetAddress, std::string>, std::string> remote2localPort;	// Keeps a list of the remote ports to the local ports
 
-	INetAddress remote_address;				// The remote network address of the current open/close sequence
-	string remote_port_name;				// Name of the remote port of the current open/close sequence
-	bool remote_port_status;				// Status for the pending open/close sequence, set before condition variable is released
-	mutex remote_port_waitm;				// Mutex protecting condition variable
-	condition_variable remote_port_waitc;	// Condition variable for pending port open/close sequences, waits for OPC_OPENED or OPC_CLOSED
+	NetSocket::INetAddress remote_address;		// The remote network address of the current open/close sequence
+	std::string remote_port_name;				// Name of the remote port of the current open/close sequence
+	bool remote_port_status;					// Status for the pending open/close sequence, set before condition variable is released
+	std::mutex remote_port_waitm;				// Mutex protecting condition variable
+	std::condition_variable remote_port_waitc;	// Condition variable for pending port open/close sequences, waits for OPC_OPENED or OPC_CLOSED
 
 };
+
+}
 
 #endif /* SOEIMPL_HPP_ */

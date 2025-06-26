@@ -10,7 +10,7 @@
 
 using namespace std;
 
-SOEPortHandler::SOEPortHandler(SerialPort* port, function<void(void)> newDataCallback, function<void(unsigned int)> txConfirmCallback) {
+SerialOverEthernet::SOEPortHandler::SOEPortHandler(SerialAccess::SerialPort* port, function<void(void)> newDataCallback, function<void(unsigned int)> txConfirmCallback) {
 	this->port.reset(port);
 	this->new_data = newDataCallback;
 	this->tx_confirm = txConfirmCallback;
@@ -23,7 +23,7 @@ SOEPortHandler::SOEPortHandler(SerialPort* port, function<void(void)> newDataCal
 	});
 }
 
-SOEPortHandler::~SOEPortHandler() {
+SerialOverEthernet::SOEPortHandler::~SOEPortHandler() {
 	this->port->closePort();
 	{ unique_lock<mutex> lock(this->tx_stackm); }
 	this->tx_waitc.notify_all();
@@ -33,11 +33,11 @@ SOEPortHandler::~SOEPortHandler() {
 	this->thread_rx.join();
 }
 
-bool SOEPortHandler::isOpen() {
+bool SerialOverEthernet::SOEPortHandler::isOpen() {
 	return this->port->isOpen();
 }
 
-bool SOEPortHandler::send(unsigned int txid, const char* buffer, unsigned long length) {
+bool SerialOverEthernet::SOEPortHandler::send(unsigned int txid, const char* buffer, unsigned long length) {
 
 	// Do not insert any data if this port is shutting down
 	if (!this->port->isOpen()) return false;
@@ -66,7 +66,7 @@ bool SOEPortHandler::send(unsigned int txid, const char* buffer, unsigned long l
 
 }
 
-bool SOEPortHandler::read(unsigned int* rxid, const char** buffer, unsigned long* length) {
+bool SerialOverEthernet::SOEPortHandler::read(unsigned int* rxid, const char** buffer, unsigned long* length) {
 
 	// Nothing to send if port is closed
 	if (!this->port->isOpen()) return false;
@@ -109,7 +109,7 @@ bool SOEPortHandler::read(unsigned int* rxid, const char** buffer, unsigned long
 
 }
 
-void SOEPortHandler::confirmReception(unsigned int rxid) {
+void SerialOverEthernet::SOEPortHandler::confirmReception(unsigned int rxid) {
 
 	// Receiving a recption confirmation for an package that was not yet transmitted makes no sense
 	if (rxid >= this->next_free_rxid) return;
@@ -130,7 +130,7 @@ void SOEPortHandler::confirmReception(unsigned int rxid) {
 
 }
 
-void SOEPortHandler::confirmTransmission(unsigned int rxid) {
+void SerialOverEthernet::SOEPortHandler::confirmTransmission(unsigned int rxid) {
 
 	lock_guard<mutex> lock(this->rx_stackm);
 
@@ -150,7 +150,7 @@ void SOEPortHandler::confirmTransmission(unsigned int rxid) {
 
 }
 
-void SOEPortHandler::handlePortTX() {
+void SerialOverEthernet::SOEPortHandler::handlePortTX() {
 	// Init tx variables
 	this->tx_stack = map<unsigned int, tx_entry>();
 	this->next_txid = 0;
@@ -195,7 +195,7 @@ void SOEPortHandler::handlePortTX() {
 	this->tx_stack.clear();
 }
 
-void SOEPortHandler::handlePortRX() {
+void SerialOverEthernet::SOEPortHandler::handlePortRX() {
 
 	// Init rx variables
 	this->next_free_rxid = 0;

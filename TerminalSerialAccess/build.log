@@ -1,23 +1,24 @@
-25.06.2025_12:12:53: [DEBUG] : JVM runtime: 21.0.3
-25.06.2025_12:12:53: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
-25.06.2025_12:12:53: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
-25.06.2025_12:12:53: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
-25.06.2025_12:12:53: [ INFO] Metabuild: - metabuild-cpp.jar
-25.06.2025_12:12:53: [ INFO] Metabuild: - metabuild-java.jar
-25.06.2025_12:12:53: [ INFO] Metabuild: - metabuild-maven.jar
-25.06.2025_12:12:53: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
-25.06.2025_12:12:53: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
-25.06.2025_12:12:53: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build.meta
-25.06.2025_12:12:53: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
-25.06.2025_12:12:53: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
-25.06.2025_12:12:53: [ INFO] /maven_dependency/cppDependenciesWinAMD64: attempt offline cache resolution to verify available dependencies ...
-25.06.2025_12:12:53: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: https://maven.pkg.github.com/m-marvin/library-serialportaccess/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/maven-metadata.xml
-25.06.2025_12:12:53: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: not found: 404 Not Found
-25.06.2025_12:12:53: [ INFO] /maven_dependency/cppDependenciesWinAMD64: -> fully resolved POM: de.m_marvin.serialportaccess:serialportaccess-WinAMD64::pom:2.0-SNAPSHOT
-25.06.2025_12:12:53: [ INFO] /maven_dependency/cppDependenciesWinAMD64: offline cache verified, all dependencies available
-25.06.2025_12:12:53: [ INFO] /compile_cpp/compileCppWinAMD64: located cpp compiler: D:\Programms\toolchains\w64devkit\bin\winamd64-g++.exe
-25.06.2025_12:12:53: [ INFO] Metabuild: skipping build run phase
-25.06.2025_12:12:53: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> FINISH
-25.06.2025_12:12:53: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
-25.06.2025_12:12:53: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
-25.06.2025_12:12:53: [ INFO] Metabuild: TASKS: 3  UP_TO_DATE: 2  FAILED: 0
+26.06.2025_16:22:36: [DEBUG] : JVM runtime: 21.0.3
+26.06.2025_16:22:36: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
+26.06.2025_16:22:36: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+26.06.2025_16:22:36: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+26.06.2025_16:22:36: [ INFO] Metabuild: - metabuild-cpp.jar
+26.06.2025_16:22:36: [ INFO] Metabuild: - metabuild-java.jar
+26.06.2025_16:22:36: [ INFO] Metabuild: - metabuild-maven.jar
+26.06.2025_16:22:36: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
+26.06.2025_16:22:36: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
+26.06.2025_16:22:36: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build.meta
+26.06.2025_16:22:36: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
+26.06.2025_16:22:36: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
+26.06.2025_16:22:36: [ INFO] /maven_dependency/cppDependenciesWinAMD64: attempt offline cache resolution to verify available dependencies ...
+26.06.2025_16:22:36: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: https://maven.pkg.github.com/m-marvin/library-serialportaccess/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/maven-metadata.xml
+26.06.2025_16:22:36: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: not found: 404 Not Found
+26.06.2025_16:22:36: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/maven-metadata.xml
+26.06.2025_16:22:36: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/maven-metadata.xml.md5
+26.06.2025_16:22:36: [ INFO] /maven_dependency/cppDependenciesWinAMD64: -> fully resolved POM: de.m_marvin.serialportaccess:serialportaccess-WinAMD64::pom:2.0-SNAPSHOT
+26.06.2025_16:22:36: [ INFO] /maven_dependency/cppDependenciesWinAMD64: offline cache verified, all dependencies available
+26.06.2025_16:22:36: [ INFO] Metabuild: skipping build run phase
+26.06.2025_16:22:36: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> FINISH
+26.06.2025_16:22:37: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
+26.06.2025_16:22:37: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
+26.06.2025_16:22:37: [ INFO] Metabuild: TASKS: 2  UP_TO_DATE: 2  FAILED: 0

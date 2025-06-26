@@ -10,6 +10,7 @@
 #include <string>
 
 using namespace std;
+using namespace SerialAccess;
 
 JNIEXPORT jlong JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1createSerialPort(JNIEnv* env, jclass clazz, jstring portName)
 {

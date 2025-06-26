@@ -1,64 +1,19 @@
-25.06.2025_15:00:05: [DEBUG] : JVM runtime: 21.0.3
-25.06.2025_15:00:05: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
-25.06.2025_15:00:05: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
-25.06.2025_15:00:05: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
-25.06.2025_15:00:05: [ INFO] Metabuild: - metabuild-cpp.jar
-25.06.2025_15:00:05: [ INFO] Metabuild: - metabuild-java.jar
-25.06.2025_15:00:05: [ INFO] Metabuild: - metabuild-maven.jar
-25.06.2025_15:00:05: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
-25.06.2025_15:00:05: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
-25.06.2025_15:00:05: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\NetworkAccess\build.meta
-25.06.2025_15:00:05: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
-25.06.2025_15:00:05: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
-25.06.2025_15:00:05: [ INFO] /maven_dependency/cppDependenciesWinAMD64: attempt offline cache resolution to verify available dependencies ...
-25.06.2025_15:00:05: [ INFO] /maven_dependency/cppDependenciesWinAMD64: offline cache verified, all dependencies available
-25.06.2025_15:00:05: [ INFO] /compile_cpp/compileCppWinAMD64: located cpp compiler: D:\Programms\toolchains\w64devkit\bin\winamd64-g++.exe
-25.06.2025_15:00:05: [ INFO] /maven_publish/publishMavenLocalWinAMD64: attempt remote resolution to verify already uploaded artifacts ...
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/resolver: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/maven-metadata.xml
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/resolver: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/maven-metadata.xml.md5
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/resolver: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125202-4.pom
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/resolver: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125202-4.pom.md5
-25.06.2025_15:00:05: [ INFO] /maven_publish/publishMavenLocalWinAMD64: => upload to repository required: Repositiry{url=file:/C:/Users/marvi/.m2/repository,credentials=no}
-25.06.2025_15:00:05: [ INFO] /maven_publish/publishMavenLocalWinAMD64: uploads required, request publish task to run
-25.06.2025_15:00:05: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> RUN
-25.06.2025_15:00:05: [ INFO] /maven_publish/publishMavenLocalWinAMD64: attempt remote resolution to verify already uploaded artifacts ...
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/resolver: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/maven-metadata.xml
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/resolver: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/maven-metadata.xml.md5
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/resolver: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125202-4.pom
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/resolver: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125202-4.pom.md5
-25.06.2025_15:00:05: [ INFO] /maven_publish/publishMavenLocalWinAMD64: => upload to repository required: Repositiry{url=file:/C:/Users/marvi/.m2/repository,credentials=no}
-25.06.2025_15:00:05: [ INFO] /maven_publish/publishMavenLocalWinAMD64: uploads required, request publish task to run
-25.06.2025_15:00:05: [ INFO] /maven_publish/publishMavenLocalWinAMD64/publisher: attempt upload 'de.m_marvin.serialportaccess:netsocket-winamd64::pom:1.0-SNAPSHOT' to repository: [Maven Local] file:/C:/Users/marvi/.m2/repository
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/resolver: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/maven-metadata.xml
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/resolver: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/maven-metadata.xml.md5
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/maven-metadata.xml
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/maven-metadata.xml.md5
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/maven-metadata.xml.sha1
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/maven-metadata.xml.sha512
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/maven-metadata.xml.sha256
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5.pom
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5.pom.md5
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5.pom.sha1
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5.pom.sha512
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5.pom.sha256
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5.zip
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5.zip.md5
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5.zip.sha1
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5.zip.sha512
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5.zip.sha256
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5-headers.zip
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5-headers.zip.md5
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5-headers.zip.sha1
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5-headers.zip.sha512
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/1.0-SNAPSHOT/netsocket-winamd64-1.0-20250625-125959-5-headers.zip.sha256
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/resolver: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/maven-matedata.xml
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/resolver: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/maven-matedata.xml.md5
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/maven-matedata.xml
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/maven-matedata.xml.md5
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/maven-matedata.xml.sha1
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/maven-matedata.xml.sha512
-25.06.2025_15:00:05: [DEBUG] /maven_publish/publishMavenLocalWinAMD64/publisher: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/netsocket-winamd64/maven-matedata.xml.sha256
-25.06.2025_15:00:06: [DEBUG] Metabuild: STATE TRANSITION: RUN >>> FINISH
-25.06.2025_15:00:06: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
-25.06.2025_15:00:06: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
-25.06.2025_15:00:06: [ INFO] Metabuild: TASKS: 10  UP_TO_DATE: 10  FAILED: 0
+26.06.2025_16:36:31: [DEBUG] : JVM runtime: 21.0.3
+26.06.2025_16:36:31: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
+26.06.2025_16:36:31: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+26.06.2025_16:36:31: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+26.06.2025_16:36:31: [ INFO] Metabuild: - metabuild-cpp.jar
+26.06.2025_16:36:31: [ INFO] Metabuild: - metabuild-java.jar
+26.06.2025_16:36:31: [ INFO] Metabuild: - metabuild-maven.jar
+26.06.2025_16:36:31: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
+26.06.2025_16:36:31: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
+26.06.2025_16:36:31: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\NetworkAccess\build.meta
+26.06.2025_16:36:31: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
+26.06.2025_16:36:31: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
+26.06.2025_16:36:31: [ INFO] /maven_dependency/cppDependenciesLinAMD64: attempt offline cache resolution to verify available dependencies ...
+26.06.2025_16:36:31: [ INFO] /maven_dependency/cppDependenciesLinAMD64: offline cache verified, all dependencies available
+26.06.2025_16:36:31: [ INFO] Metabuild: skipping build run phase
+26.06.2025_16:36:31: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> FINISH
+26.06.2025_16:36:32: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
+26.06.2025_16:36:32: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
+26.06.2025_16:36:32: [ INFO] Metabuild: TASKS: 2  UP_TO_DATE: 2  FAILED: 0

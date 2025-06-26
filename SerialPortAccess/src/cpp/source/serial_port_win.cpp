@@ -12,13 +12,13 @@ void printError(const char* format) {
 	if (errorCode == 0) return;
 	LPSTR msg;
 	if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msg, 0, NULL) > 0) {
-		setbuf(stdout, NULL);
+		setbuf(stdout, NULL); // Work around for errors printed during JNI
 		printf(format, errorCode, msg);
 		LocalFree(msg);
 	}
 }
 
-class SerialPortWin : public SerialPort {
+class SerialPortWin : public SerialAccess::SerialPort {
 
 private:
 	DCB comPortState;
@@ -40,7 +40,7 @@ public:
 		closePort();
 	}
 
-	bool setConfig(const SerialPortConfig &config) {
+	bool setConfig(const SerialAccess::SerialPortConfig &config) {
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
 
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
@@ -50,34 +50,34 @@ public:
 
 		this->comPortState.BaudRate = config.baudRate;
 		this->comPortState.fBinary = TRUE;
-		this->comPortState.fOutxCtsFlow = (config.flowControl == SPC_FLOW_RTS_CTS);
-		this->comPortState.fOutxDsrFlow = (config.flowControl == SPC_FLOW_DSR_DTR);
-		this->comPortState.fDtrControl = (config.flowControl == SPC_FLOW_DSR_DTR) ? DTR_CONTROL_ENABLE : DTR_CONTROL_DISABLE;
-		this->comPortState.fDsrSensitivity = (config.flowControl == SPC_FLOW_DSR_DTR);
-		this->comPortState.fTXContinueOnXoff = (config.flowControl == SPC_FLOW_NONE);
-		this->comPortState.fOutX = (config.flowControl == SPC_FLOW_XON_XOFF);
-		this->comPortState.fInX = (config.flowControl == SPC_FLOW_XON_XOFF);
+		this->comPortState.fOutxCtsFlow = (config.flowControl == SerialAccess::SPC_FLOW_RTS_CTS);
+		this->comPortState.fOutxDsrFlow = (config.flowControl == SerialAccess::SPC_FLOW_DSR_DTR);
+		this->comPortState.fDtrControl = (config.flowControl == SerialAccess::SPC_FLOW_DSR_DTR) ? DTR_CONTROL_ENABLE : DTR_CONTROL_DISABLE;
+		this->comPortState.fDsrSensitivity = (config.flowControl == SerialAccess::SPC_FLOW_DSR_DTR);
+		this->comPortState.fTXContinueOnXoff = (config.flowControl == SerialAccess::SPC_FLOW_NONE);
+		this->comPortState.fOutX = (config.flowControl == SerialAccess::SPC_FLOW_XON_XOFF);
+		this->comPortState.fInX = (config.flowControl == SerialAccess::SPC_FLOW_XON_XOFF);
 		this->comPortState.fErrorChar = 0;
 		this->comPortState.fNull = 0;
-		this->comPortState.fRtsControl = (config.flowControl == SPC_FLOW_RTS_CTS) ? RTS_CONTROL_TOGGLE : RTS_CONTROL_ENABLE;
+		this->comPortState.fRtsControl = (config.flowControl == SerialAccess::SPC_FLOW_RTS_CTS) ? RTS_CONTROL_TOGGLE : RTS_CONTROL_ENABLE;
 		this->comPortState.fAbortOnError = 0;
 		this->comPortState.XonLim = 2048;
 		this->comPortState.XoffLim = 512;
 		this->comPortState.ByteSize = config.dataBits;
-		this->comPortState.fParity = (config.parity != SPC_PARITY_NONE);
+		this->comPortState.fParity = (config.parity != SerialAccess::SPC_PARITY_NONE);
 		switch (config.parity) {
-		case SPC_PARITY_ODD: this->comPortState.Parity = ODDPARITY; break;
-		case SPC_PARITY_EVEN: this->comPortState.Parity = EVENPARITY; break;
-		case SPC_PARITY_MARK: this->comPortState.Parity = MARKPARITY; break;
-		case SPC_PARITY_SPACE: this->comPortState.Parity = SPACEPARITY; break;
+		case SerialAccess::SPC_PARITY_ODD: this->comPortState.Parity = ODDPARITY; break;
+		case SerialAccess::SPC_PARITY_EVEN: this->comPortState.Parity = EVENPARITY; break;
+		case SerialAccess::SPC_PARITY_MARK: this->comPortState.Parity = MARKPARITY; break;
+		case SerialAccess::SPC_PARITY_SPACE: this->comPortState.Parity = SPACEPARITY; break;
 		default: break;
-		case SPC_PARITY_NONE: this->comPortState.Parity = NOPARITY; break;
+		case SerialAccess::SPC_PARITY_NONE: this->comPortState.Parity = NOPARITY; break;
 		}
 		switch (config.stopBits) {
-		case SPC_STOPB_ONE_HALF: this->comPortState.StopBits = ONE5STOPBITS; break;
-		case SPC_STOPB_TWO: this->comPortState.StopBits = TWOSTOPBITS; break;
+		case SerialAccess::SPC_STOPB_ONE_HALF: this->comPortState.StopBits = ONE5STOPBITS; break;
+		case SerialAccess::SPC_STOPB_TWO: this->comPortState.StopBits = TWOSTOPBITS; break;
 		default: break;
-		case SPC_STOPB_ONE: this->comPortState.StopBits = ONESTOPBIT; break;
+		case SerialAccess::SPC_STOPB_ONE: this->comPortState.StopBits = ONESTOPBIT; break;
 		}
 		this->comPortState.XonChar = 17;
 		this->comPortState.XoffChar = 19;
@@ -93,7 +93,7 @@ public:
 		return true;
 	}
 
-	bool getConfig(SerialPortConfig &config) {
+	bool getConfig(SerialAccess::SerialPortConfig &config) {
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
 
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
@@ -103,28 +103,28 @@ public:
 
 		config.baudRate = this->comPortState.BaudRate;
 		switch (this->comPortState.Parity) {
-		case NOPARITY: config.parity = SPC_PARITY_NONE; break;
-		case ODDPARITY: config.parity = SPC_PARITY_ODD; break;
-		case EVENPARITY: config.parity = SPC_PARITY_EVEN; break;
-		case MARKPARITY: config.parity = SPC_PARITY_MARK; break;
-		case SPACEPARITY: config.parity = SPC_PARITY_SPACE; break;
-		default: config.parity = SPC_PARITY_UNDEFINED; break;
+		case NOPARITY: config.parity = SerialAccess::SPC_PARITY_NONE; break;
+		case ODDPARITY: config.parity = SerialAccess::SPC_PARITY_ODD; break;
+		case EVENPARITY: config.parity = SerialAccess::SPC_PARITY_EVEN; break;
+		case MARKPARITY: config.parity = SerialAccess::SPC_PARITY_MARK; break;
+		case SPACEPARITY: config.parity = SerialAccess::SPC_PARITY_SPACE; break;
+		default: config.parity = SerialAccess::SPC_PARITY_UNDEFINED; break;
 		}
 		config.dataBits = this->comPortState.ByteSize;
 		switch (this->comPortState.StopBits) {
-		case ONESTOPBIT: config.stopBits = SPC_STOPB_ONE; break;
-		case ONE5STOPBITS: config.stopBits = SPC_STOPB_ONE_HALF; break;
-		case TWOSTOPBITS: config.stopBits = SPC_STOPB_TWO; break;
-		default: config.stopBits = SPC_STOPB_UNDEFINED; break;
+		case ONESTOPBIT: config.stopBits = SerialAccess::SPC_STOPB_ONE; break;
+		case ONE5STOPBITS: config.stopBits = SerialAccess::SPC_STOPB_ONE_HALF; break;
+		case TWOSTOPBITS: config.stopBits = SerialAccess::SPC_STOPB_TWO; break;
+		default: config.stopBits = SerialAccess::SPC_STOPB_UNDEFINED; break;
 		}
 		if (this->comPortState.fOutX && this->comPortState.fInX) {
-			config.flowControl = SPC_FLOW_XON_XOFF;
+			config.flowControl = SerialAccess::SPC_FLOW_XON_XOFF;
 		} else if (this->comPortState.fOutxCtsFlow && !this->comPortState.fOutxDsrFlow) {
-			config.flowControl = SPC_FLOW_RTS_CTS;
+			config.flowControl = SerialAccess::SPC_FLOW_RTS_CTS;
 		} else if (!this->comPortState.fOutxCtsFlow && this->comPortState.fOutxDsrFlow) {
-			config.flowControl = SPC_FLOW_DSR_DTR;
+			config.flowControl = SerialAccess::SPC_FLOW_DSR_DTR;
 		} else {
-			config.flowControl = SPC_FLOW_UNDEFINED;
+			config.flowControl = SerialAccess::SPC_FLOW_UNDEFINED;
 		}
 
 		return true;
@@ -136,7 +136,7 @@ public:
 		this->comPortHandle = CreateFileA(this->portFileName, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
 
 		if (isOpen()) {
-			setConfig(DEFAULT_PORT_CONFIGURATION);
+			setConfig(SerialAccess::DEFAULT_PORT_CONFIGURATION);
 			return true;
 		}
 
@@ -236,11 +236,11 @@ public:
 
 };
 
-SerialPort* newSerialPort(const char* portFile) {
+SerialAccess::SerialPort* SerialAccess::newSerialPort(const char* portFile) {
 	return new SerialPortWin(portFile);
 }
 
-SerialPort* newSerialPortS(const std::string& portFile) {
+SerialAccess::SerialPort* SerialAccess::newSerialPortS(const std::string& portFile) {
 	return new SerialPortWin(portFile.c_str());
 }
 
