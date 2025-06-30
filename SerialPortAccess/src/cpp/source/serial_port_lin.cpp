@@ -8,7 +8,9 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <termios.h>
+#include <poll.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 
 void printError(const char* format) {
 	setbuf(stdout, NULL); // Work around for errors printed during JNI
@@ -67,6 +69,10 @@ private:
 	struct termios comPortState;
 	int comPortHandle;
 	const char* portFileName;
+	unsigned int rxTimeout;
+	unsigned int txTimeout;
+	struct pollfd rxPoll;
+	struct pollfd txPoll;
 
 public:
 
@@ -74,6 +80,8 @@ public:
 	{
 		this->portFileName = portFile;
 		this->comPortHandle = -1;
+		this->txTimeout = 1000;
+		this->rxTimeout = 1000;
 	}
 
 	~SerialPortLin() {
@@ -83,7 +91,13 @@ public:
 	bool setConfig(const SerialAccess::SerialPortConfig &config) {
 		if (this->comPortHandle < 0) return false;
 
-		if (tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
+		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
+			printError("Error %i in setConfig:tcgetattr: %s\n");
+			return false;
+		}
+
+		termios alt;
+		if (::tcgetattr(this->comPortHandle, &alt) != 0) {
 			printError("Error %i in setConfig:tcgetattr: %s\n");
 			return false;
 		}
@@ -91,56 +105,53 @@ public:
 		// Default serial prot configuration from https://blog.mbedded.ninja/programming/operating-systems/linux/linux-serial-ports-using-c-cpp/
 		this->comPortState.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
 		this->comPortState.c_cflag &= ~CSTOPB; // Clear stop field, only one stop bit used in communication (most common)
-		this->comPortState.c_cflag &= ~CSIZE; // Clear all the size bits, then use one of the statements below
-		this->comPortState.c_cflag |= CS8; // 8 bits per byte (most common)
-		this->comPortState.c_cflag &= ~CRTSCTS; // Disable RTS/CTS hardware flow control (most common)
 		this->comPortState.c_cflag |= CREAD | CLOCAL; // Turn on READ & ignore ctrl lines (CLOCAL = 1)
-		this->comPortState.c_lflag &= ~ICANON;
+		this->comPortState.c_lflag &= ~ICANON; // Disable canonical mode
 		this->comPortState.c_lflag &= ~ECHO; // Disable echo
 		this->comPortState.c_lflag &= ~ECHOE; // Disable erasure
 		this->comPortState.c_lflag &= ~ECHONL; // Disable new-line echo
 		this->comPortState.c_lflag &= ~ISIG; // Disable interpretation of INTR, QUIT and SUSP
-		this->comPortState.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off s/w flow ctrl
 		this->comPortState.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL); // Disable any special handling of received bytes
 		this->comPortState.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
 		this->comPortState.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
-		// Some fields might get overriden below depending on the configuration
 
-		if (cfsetspeed(&this->comPortState, getBaudCfgValue(config.baudRate)) != 0) {
+		if (	cfsetispeed(&this->comPortState, getBaudCfgValue(config.baudRate)) != 0 ||
+				cfsetospeed(&this->comPortState, getBaudCfgValue(config.baudRate)) != 0) {
 			printError("Error %i in setConfig:cfsetspeed: %s\n");
 			return false;
 		}
 
-		if (config.parity != SerialAccess::SPC_PARITY_NONE)
+		if (config.parity != SerialAccess::SPC_PARITY_NONE) {
 			this->comPortState.c_cflag |= PARENB; // Enable parity
-		else {
-			this->comPortState.c_cflag &= ~PARENB; // Disable parity
-			if (config.parity == SerialAccess::SPC_PARITY_ODD)
+			if (config.parity == SerialAccess::SPC_PARITY_ODD) {
 				this->comPortState.c_cflag |= PARODD;
-			else if (config.parity == SerialAccess::SPC_PARITY_EVEN)
+			} else if (config.parity == SerialAccess::SPC_PARITY_EVEN) {
 				this->comPortState.c_cflag &= ~PARODD;
-			else
+			} else {
 				return false; // mark/space parity not supported
+			}
+		} else {
+			this->comPortState.c_cflag &= ~PARENB; // Disable parity
 		}
 
 		switch (config.flowControl) {
+		case SerialAccess::SPC_PARITY_NONE:
+			this->comPortState.c_cflag &= ~CRTSCTS; // Disable RTS/CTS
+			this->comPortState.c_cflag &= ~IXON; // Disable XON
+			this->comPortState.c_cflag &= ~IXOFF; // Disable XON
+			break;
 		case SerialAccess::SPC_FLOW_XON_XOFF:
-			this->comPortState.c_cflag |= CRTSCTS; // Disable RTS/CTS
-			this->comPortState.c_cflag &= ~IXON; // Enable XON
-			this->comPortState.c_cflag &= ~IXOFF; // Enable XON
+			this->comPortState.c_cflag &= ~CRTSCTS; // Disable RTS/CTS
+			this->comPortState.c_cflag |= IXON; // Enable XON
+			this->comPortState.c_cflag |= IXOFF; // Enable XON
 			break;
 		case SerialAccess::SPC_FLOW_RTS_CTS:
-			this->comPortState.c_cflag &= ~CRTSCTS; // Enable RTS/CTS
-			this->comPortState.c_cflag |= IXON; // Disable XON
-			this->comPortState.c_cflag |= IXOFF; // Disable XON
+			this->comPortState.c_cflag |= CRTSCTS; // Enable RTS/CTS
+			this->comPortState.c_cflag &= ~IXON; // Disable XON
+			this->comPortState.c_cflag &= ~IXOFF; // Disable XON
 			break;
 		default:
 			return false; // RTS/DTS flow control not supported
-		case SerialAccess::SPC_PARITY_NONE:
-			this->comPortState.c_cflag |= CRTSCTS; // Disable RTS/CTS
-			this->comPortState.c_cflag |= IXON; // Disable XON
-			this->comPortState.c_cflag |= IXOFF; // Disable XON
-			break;
 		}
 
 		this->comPortState.c_cflag &= ~CSIZE;
@@ -148,23 +159,24 @@ public:
 		case 5: this->comPortState.c_cflag |= CS5; break;
 		case 6: this->comPortState.c_cflag |= CS6; break;
 		case 7:	this->comPortState.c_cflag |= CS7; break;
+		case 8: this->comPortState.c_cflag |= CS8; break;
 		default:
 			return false; // data size not supported
-		case 8:this->comPortState.c_cflag |= CS8; break;
 		}
 
-		if (config.stopBits == SerialAccess::SPC_STOPB_TWO)
+		if (config.stopBits == SerialAccess::SPC_STOPB_TWO) {
 			this->comPortState.c_cflag |= CSTOPB; // Two stop bits
-		else if (config.stopBits == SerialAccess::SPC_STOPB_TWO)
+		} else if (config.stopBits == SerialAccess::SPC_STOPB_ONE) {
 			this->comPortState.c_cflag &= ~CSTOPB; // One stop bit
-		else {
-			printf("Error one half stop bits not supported");
-			this->comPortState.c_cflag &= ~CSTOPB; // One stop bit
+		} else {
+			printf("Error one half stop bits not supported\n");
+			return false;
 		}
 
+		// Save this->comPortHandle settings, also checking for error
 		if (tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
-			printError("Error %i in setConfig:tcsetattr: %s\n");
-			return false;
+		  printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
+		  return 1;
 		}
 
 		return true;
@@ -173,7 +185,7 @@ public:
 	bool getConfig(SerialAccess::SerialPortConfig &config) {
 		if (this->comPortHandle < 0) return false;
 
-		if (tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
+		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
 			printError("Error %i in getConfig:tcgetattr: %s\n");
 			return false;
 		}
@@ -208,9 +220,14 @@ public:
 	bool openPort()
 	{
 		if (this->comPortHandle >= 0) return false;
-		this->comPortHandle = open(this->portFileName, O_RDWR);
+		this->comPortHandle = ::open(this->portFileName, O_RDWR);
 
 		if (isOpen()) {
+			this->rxPoll.fd = this->comPortHandle;
+			this->rxPoll.events = POLLIN;
+			this->txPoll.fd = this->comPortHandle;
+			this->txPoll.events = POLLOUT;
+
 			setConfig(SerialAccess::DEFAULT_PORT_CONFIGURATION);
 			return true;
 		}
@@ -234,17 +251,17 @@ public:
 	{
 		if (this->comPortHandle < 0) return false;
 
-		if (tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
+		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
 			printError("Error %i in setBaud:tcgetattr: %s\n");
 			return false;
 		}
 
-		if (cfsetspeed(&this->comPortState, getBaudCfgValue(baud)) != 0) {
+		if (::cfsetspeed(&this->comPortState, getBaudCfgValue(baud)) != 0) {
 			printError("Error %i in setBaud:cfsetspeed: %s\n");
 			return false;
 		}
 
-		if (tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
+		if (::tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
 			printError("Error %i in setBaud:tcsetattr: %s\n");
 			return false;
 		}
@@ -256,7 +273,7 @@ public:
 	{
 		if (this->comPortHandle < 0) return 0;
 
-		if (tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
+		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
 			printError("Error %i in getBaud:tcgetattr: %s\n");
 			return 0;
 		}
@@ -268,7 +285,10 @@ public:
 	{
 		if (this->comPortHandle < 0) return false;
 
-		if (tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
+		this->txTimeout = writeTimeout;
+		this->rxTimeout = readTimeout;
+
+		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
 			printError("Error %i in setTimeouts:tcgetattr: %s\n");
 			return false;
 		}
@@ -276,7 +296,7 @@ public:
 		this->comPortState.c_cc[VMIN] = 0;
 		this->comPortState.c_cc[VTIME] = (unsigned char) (readTimeout / 100); // Convert ms in ds
 
-		if (tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
+		if (::tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
 			printError("Error %i in setTimeouts:tcsetattr: %s\n");
 			return false;
 		}
@@ -287,7 +307,15 @@ public:
 	unsigned long readBytes(char* buffer, unsigned long bufferCapacity)
 	{
 		if (this->comPortHandle < 0) return 0;
-		unsigned long receivedBytes = read(this->comPortHandle, buffer, bufferCapacity);
+
+		if (this->rxTimeout >= 0) {
+			this->rxPoll.revents = 0;
+			int result = ::poll(&this->rxPoll, 1, this->rxTimeout);
+			if (result == 0) return 0;
+		}
+
+		unsigned long receivedBytes = ::read(this->comPortHandle, buffer, bufferCapacity);
+
 		return receivedBytes;
 	}
 
@@ -313,7 +341,14 @@ public:
 	unsigned long writeBytes(const char* buffer, unsigned long bufferLength)
 	{
 		if (this->comPortHandle < 0) return 0;
-		unsigned long writtenBytes = write(this->comPortHandle, buffer, bufferLength);
+
+		if (this->txTimeout >= 0) {
+			this->txPoll.revents = 0;
+			int result = ::poll(&txPoll, 1, this->txTimeout);
+			if (result == 0) return 0;
+		}
+
+		unsigned long writtenBytes = ::write(this->comPortHandle, buffer, bufferLength);
 		return writtenBytes;
 	}
 

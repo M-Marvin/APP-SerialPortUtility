@@ -10,6 +10,7 @@
  */
 
 #include <stdexcept>
+#include <cstring>
 #include "soeimpl.hpp"
 
 // Initializes a new client handler for the supplied network socket
@@ -60,7 +61,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientTX() {
 					std::string address;
 					unsigned int port = 0;
 					remoteAddress.tostr(address, &port);
-					printf("connection timed out, close port: local %s : remote %s %u\n", localPortName.c_str(), address.c_str(), port);
+					printf("[!] connection timed out, close port: local %s : remote %s %u\n", localPortName.c_str(), address.c_str(), port);
 
 					// Close port
 					lock.unlock();
@@ -114,7 +115,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientTX() {
 					std::string address;
 					unsigned int port = 0;
 					remoteAddress.tostr(address, &port);
-					printf("transmission error, close port: remote %s @ %s %u\n", remotePortName.c_str(), address, port);
+					printf("[!] transmission error, close port: remote %s @ %s %u\n", remotePortName.c_str(), address.c_str(), port);
 
 				}
 
@@ -156,12 +157,12 @@ void SerialOverEthernet::SOESocketHandler::handleClientRX() {
 	while (this->socket->isOpen()) {
 
 		if (!this->socket->receivefrom(remoteAddress, pckgBuffer, INET_RX_PCKG_LEN, &pckgLen)) {
-			printf("network socket was closed, shutdown connection\n");
+			printf("[!] network socket was closed, shutdown connection\n");
 			break;
 		}
 
 		if (pckgLen < SOE_FRAME_HEADER_LEN) {
-			printf("received incomplete control frame header, discard package\n");
+			printf("[!] received incomplete control frame header, discard package\n");
 			continue;
 		}
 
@@ -242,9 +243,11 @@ void SerialOverEthernet::SOESocketHandler::handleClientRX() {
 				delete serialPort;
 				break;
 			}
-
-			serialPort->setConfig(config);
-			serialPort->setTimeouts(SERIAL_RX_TIMEOUT, SERIAL_TX_TIMEOUT);
+			if (!serialPort->setConfig(config) || !serialPort->setTimeouts(SERIAL_RX_TIMEOUT, SERIAL_TX_TIMEOUT)) {
+				sendError(remoteAddress, localPortName, "failed to configure port");
+				delete serialPort;
+				break;
+			}
 
 			SerialOverEthernet::SOEPortHandler* portHandler = new SerialOverEthernet::SOEPortHandler(serialPort, [this] { this->notifySerialData(); }, [this, remoteAddress, localPortName](unsigned int txid) {
 				if (!this->sendConfirm(remoteAddress, true, localPortName, txid)) {
@@ -277,7 +280,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientRX() {
 			std::string address;
 			unsigned int port = 0;
 			remoteAddress.tostr(address, &port);
-			printf("opened port from remote: local %s : remote %s @ %s %u\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
+			printf("[i] opened port from remote: local %s : remote %s @ %s %u\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
 
 			break;
 		}
@@ -328,7 +331,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientRX() {
 				std::string address;
 				unsigned int port = 0;
 				remoteAddress.tostr(address, &port);
-				printf("closed port from remote: local %s : remote %s @ %s %u\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
+				printf("[i] closed port from remote: local %s : remote %s @ %s %u\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
 
 			} catch (std::out_of_range& e) {
 				// This side does not know about this port link
@@ -392,7 +395,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientRX() {
 					std::string address;
 					unsigned int port = 0;
 					remoteAddress.tostr(address, &port);
-					printf("port already closed: local %s : remote %s @ %s %u\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
+					printf("[i] port already closed: local %s : remote %s @ %s %u\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
 
 					break;
 				}
@@ -554,7 +557,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientRX() {
 
 				// Check message length
 				if (msgStrLen > payloadLen - portStrLen - 4) {
-					printf("received invalid ERROR payload\n");
+					printf("[!] received invalid ERROR payload\n");
 					break;
 				}
 
@@ -571,7 +574,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientRX() {
 					std::string address;
 					unsigned int port = 0;
 					remoteAddress.tostr(address, &port);
-					printf("received error frame: local %s : remote %s @ %s %u : %s\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port, message.c_str());
+					printf("[!] received error frame: local %s : remote %s @ %s %u : %s\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port, message.c_str());
 
 					// Check if this matches an ongoing port claim
 					if (!this->remote_port_name.empty() && this->remote_port_name == remotePortName && this->remote_address == remoteAddress) {
@@ -598,7 +601,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientRX() {
 				std::string address;
 				unsigned int port = 0;
 				remoteAddress.tostr(address, &port);
-				printf("received error frame: local N/A : remote N/A @ %s %u : %s\n", address.c_str(), port, message.c_str());
+				printf("[!] received error frame: local N/A : remote N/A @ %s %u : %s\n", address.c_str(), port, message.c_str());
 			}
 
 			break;
@@ -695,7 +698,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientRX() {
 						std::string address;
 						unsigned int port = 0;
 						remoteAddress.tostr(address, &port);
-						printf("remote port closed, close local: local %s : remote %s @ %s %u1\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
+						printf("[!] remote port closed, close local: local %s : remote %s @ %s %u1\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
 					}
 
 				}
@@ -719,7 +722,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientRX() {
 	// Release all ports
 	std::unique_lock<std::shared_timed_mutex> lock(this->portsm);
 	for (auto entry = this->ports.cbegin(); entry != this->ports.cend(); entry++) {
-		printf("auto close port: %s\n", entry->first.c_str());
+		printf("[i] auto close port: %s\n", entry->first.c_str());
 	}
 	this->ports.clear();
 
@@ -729,7 +732,7 @@ bool SerialOverEthernet::SOESocketHandler::openRemotePort(const NetSocket::INetA
 
 	// Check for name conflicts with existing port claims
 	if (this->ports.count(localPortName)) {
-		printf("failed to initialize connection, conflict with existing link: %s\n", remotePortName.c_str());
+		printf("[!] failed to initialize connection, conflict with existing link: %s\n", remotePortName.c_str());
 		return false;
 	}
 
@@ -750,11 +753,9 @@ bool SerialOverEthernet::SOESocketHandler::openRemotePort(const NetSocket::INetA
 
 	// If no response, attempt close port
 	if (status == std::cv_status::timeout) {
-		printf("failed to claim remote port %s, connection timed out\n", remotePortName.c_str());
-		if (!closeRemotePort(remoteAddress, remotePortName)) {
-			printf("failed to close remote port %s, port might still be open on server\n", remotePortName.c_str());
-		}
-		this->remote2localPort.erase(std::make_pair(remoteAddress, remotePortName));
+		printf("[!] failed to claim remote port %s, connection timed out\n", remotePortName.c_str());
+		if (!closeRemotePort(remoteAddress, remotePortName))
+			printf("[!] failed to close remote port %s, port might still be open on server\n", remotePortName.c_str());
 		return false;
 	}
 
@@ -766,25 +767,29 @@ bool SerialOverEthernet::SOESocketHandler::openRemotePort(const NetSocket::INetA
 
 	// Attempt to open local port
 	SerialAccess::SerialPort* port = SerialAccess::newSerialPortS(localPortName);
+	bool error = false;
 	if (!port->openPort()) {
-		printf("failed to claim local port %s, close remote port %s\n", localPortName.c_str(), remotePortName.c_str());
+		printf("[!] failed to claim local port %s, close remote port %s\n", localPortName.c_str(), remotePortName.c_str());
+		error = true;
+	}
+	if (!error && !port->setConfig(config)) {
+		printf("[!] failed to configure local port %s, close remote port %s\n", localPortName.c_str(), remotePortName.c_str());
+		error = true;
+	}
+	if (!error && !port->setTimeouts(SERIAL_RX_TIMEOUT, SERIAL_TX_TIMEOUT)) {
+		error = true;
+	}
+	if (error) {
 		delete port;
-
-		if (!closeRemotePort(remoteAddress, remotePortName)) {
-			printf("close remote port %s failed, port might still be open on server\n", remotePortName.c_str());
-		}
-
-		this->remote2localPort.erase(std::make_pair(remoteAddress, remotePortName));
+		if (!closeRemotePort(remoteAddress, remotePortName))
+			printf("[!] close remote port %s failed, port might still be open on server\n", remotePortName.c_str());
 		return false;
 	}
-	port->setConfig(config);
-	port->setTimeouts(SERIAL_RX_TIMEOUT, SERIAL_TX_TIMEOUT);
 
 	// Register new port link handler
 	SOEPortHandler* portHandler = new SOEPortHandler(port, [this] { this->notifySerialData(); }, [this, remoteAddress, localPortName](unsigned int txid) {
-		if (!this->sendConfirm(remoteAddress, true, localPortName, txid)) {
+		if (!this->sendConfirm(remoteAddress, true, localPortName, txid))
 			this->sendError(remoteAddress, localPortName, "failed to transmit TX_CONFIRM");
-		}
 	});
 	std::unique_lock<std::shared_timed_mutex> lock(this->portsm);
 	this->ports[localPortName] = {
@@ -805,7 +810,7 @@ void SerialOverEthernet::SOESocketHandler::listAllPorts() {
 		std::string address;
 		unsigned int port = 0;
 		entry->second.remote_address.tostr(address, &port);
-		printf("open link: local %s <-> remote %s @ %s %u\n", entry->first.c_str(), entry->second.remote_port.c_str(), address.c_str(), port);
+		printf("[i] open link: local %s <-> remote %s @ %s %u\n", entry->first.c_str(), entry->second.remote_port.c_str(), address.c_str(), port);
 
 	}
 
@@ -814,8 +819,11 @@ void SerialOverEthernet::SOESocketHandler::listAllPorts() {
 bool SerialOverEthernet::SOESocketHandler::closeAllPorts() {
 
 	bool error = false;
-	for (auto entry = this->ports.begin(); entry != this->ports.end(); entry++) {
-		if (!closeLocalPort(entry->first))
+	std::vector<std::string> localPorts;
+	for (auto entry = this->ports.begin(); entry != this->ports.end(); entry++)
+		localPorts.emplace_back(entry->first);
+	for (auto port = localPorts.begin(); port != localPorts.end(); port++) {
+		if (!closeLocalPort(*port))
 			error = true;
 	}
 	return !error;
@@ -838,7 +846,7 @@ bool SerialOverEthernet::SOESocketHandler::closeLocalPort(const std::string& loc
 
 bool SerialOverEthernet::SOESocketHandler::closeRemotePort(const NetSocket::INetAddress& remoteAddress, const std::string& remotePortName) {
 
-	// Attempt and wait for port close
+	// Attempt and wait for remote port close
 	std::cv_status status;
 	std::string localPortName;
 	try {
@@ -851,27 +859,27 @@ bool SerialOverEthernet::SOESocketHandler::closeRemotePort(const NetSocket::INet
 		status = this->remote_port_waitc.wait_for(lock, std::chrono::milliseconds(INET_KEEP_ALIVE_INTERVAL));
 		this->remote_port_name.clear();
 	} catch (std::out_of_range& e) {
-		printf("the remote port %s is unknown\n", remotePortName.c_str());
+		printf("[!] the remote port %s is unknown\n", remotePortName.c_str());
 		return false;
 	}
 
-	// If no response, failed
-	if (status == std::cv_status::timeout) return false;
-
-	// If error response received, the port is still closed, so just log it and return success
+	// If error response received, the port is still closed, so just log it and continue
 	if (!this->remote_port_status) {
-		printf("remote port %s close failed on server, port probably already closed\n", remotePortName.c_str());
+		printf("[!] remote port %s close failed on server, port probably already closed\n", remotePortName.c_str());
 	}
 
 	// Attempt to find and close local port, if no port registered, skip this step
-	try {
+	{
 		std::unique_lock<std::shared_timed_mutex> lock(this->portsm);
-		this->ports.erase(localPortName);
-		this->remote2localPort.erase(make_pair(remoteAddress, remotePortName));
-		return true;
-	} catch (const std::out_of_range& e) {
-		return true; // for whatever reason the entry was already deleted, no reason to panic
+		try {
+			this->ports.erase(localPortName);
+		} catch (const std::out_of_range& e) {} // for whatever reason the entry was already deleted, no reason to panic
+		try {
+			this->remote2localPort.erase(make_pair(remoteAddress, remotePortName));
+		} catch (const std::out_of_range& e) {} // for whatever reason the entry was already deleted, no reason to panic
 	}
+
+	return true;
 
 }
 
@@ -890,7 +898,7 @@ bool SerialOverEthernet::SOESocketHandler::sendFrame(const NetSocket::INetAddres
 
 	// Transmit frame
 	if (!this->socket->sendto(remoteAddress, buffer, frameLen)) {
-		printf("FRAME ERROR: failed to transmit frame\n");
+		printf("[!] FRAME ERROR: failed to transmit frame\n");
 		return false;
 	}
 

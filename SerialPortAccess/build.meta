@@ -9,6 +9,8 @@ import de.m_marvin.metabuild.maven.types.Repository;
 import de.m_marvin.metabuild.maven.types.Repository.Credentials;
 
 public class Buildfile extends CppMultiTargetBuildScript {
+
+	boolean debugging = false; // set to true to compile with debug info
 	
 	String version = "2.0-SNAPSHOT";
 	
@@ -18,30 +20,35 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		projectName = "serialportaccess";
 		
 		// platform windows AMD 64
-		var target = makeTarget("WinAMD64", "serialportaccess_x64.dll");
+		var target = makeTarget("WinAMD64", "libserialportaccess_x64.dll");
+		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
 		target.compileCpp.define("PLATFORM_WIN");
-		target.linkCpp.linker = target.compileCpp.compiler = "winamd64-g++";
+		target.compileCpp.options.add("-g");
+		target.linkCpp.libraries.add("Ws2_32");
 		target.linkCpp.options.add("-shared");
+		target.linkCpp.options.add("-static-libgcc");
+		target.linkCpp.options.add("-static-libstdc++");
 		
 		// platform linux AMD 64
-		target = makeTarget("LinAMD64", "serialportaccess_x64.so");
+		target = makeTarget("LinAMD64", "libserialportaccess_x64.so");
+		target.linkCpp.linker = target.compileCpp.compiler = "lin-amd-64-g++";
 		target.compileCpp.define("PLATFORM_LIN");
 		target.linkCpp.options.add("-shared");
-		target.linkCpp.linker = target.compileCpp.compiler = "linamd64-g++";
+		target.compileCpp.options.add("-fPIC");
+		target.compileCpp.options.add("-fno-stack-protector");
+
+		// platform linux ARM 64
+		target = makeTarget("LinARM64", "libserialportaccess_arm64.so");
+		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-64-g++";
+		target.compileCpp.define("PLATFORM_LIN");
+		target.linkCpp.options.add("-shared");
 		target.compileCpp.options.add("-fPIC");
 		
-		// platform linux ARM 32 (raspberry pi)
-		target = makeTarget("LinARM32", "serialportaccess_arm32.so");
+		// platform linux ARM 32
+		target = makeTarget("LinARM32", "libserialportaccess_arm32.so");
+		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-32-g++";
 		target.compileCpp.define("PLATFORM_LIN");
 		target.linkCpp.options.add("-shared");
-		target.linkCpp.linker = target.compileCpp.compiler = "linarm32-g++";
-		target.compileCpp.options.add("-fPIC");
-		
-		// platform linux ARM 64 (raspberry pi)
-		target = makeTarget("LinARM64", "serialportaccess_arm64.so");
-		target.compileCpp.define("PLATFORM_LIN");
-		target.linkCpp.options.add("-shared");
-		target.linkCpp.linker = target.compileCpp.compiler = "linarm64-g++";
 		target.compileCpp.options.add("-fPIC");
 		
 		super.init();
@@ -51,37 +58,42 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		buildJni.group = "build";
 		
 		// platform windows AMD 64 with JNI
-		target = makeTarget("WinAMD64jniapi", "jni/serialportaccess_jni_x64.dll");
+		target = makeTarget("WinAMD64jniapi", "jni/libserialportaccess_jni_x64.dll");
+		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++-15.1.0";
 		target.compileCpp.define("PLATFORM_WIN");
 		target.compileCpp.define("INCLUDE_JNIAPI");
-		target.linkCpp.linker = target.compileCpp.compiler = "winamd64-g++";
+		if (debugging) target.compileCpp.options.add("-g");
+		target.linkCpp.libraries.add("Ws2_32");
 		target.linkCpp.options.add("-shared");
-		target.build.dependencyOf(buildJni);
-
-		// platform linux AMD 64 with JNI
-		target = makeTarget("LinAMD64jniapi", "jni/serialportaccess_jni_x64.so");
-		target.compileCpp.define("PLATFORM_LIN");
-		target.compileCpp.define("INCLUDE_JNIAPI");
-		target.linkCpp.options.add("-shared");
-		target.linkCpp.linker = target.compileCpp.compiler = "linamd64-g++";
-		target.compileCpp.options.add("-fPIC");
-		target.build.dependencyOf(buildJni);
-
-		// platform linux ARM 32 (raspberry pi) with JNI
-		target = makeTarget("LinARM32jniapi", "jni/serialportaccess_jni_arm32.so");
-		target.compileCpp.define("PLATFORM_LIN");
-		target.compileCpp.define("INCLUDE_JNIAPI");
-		target.linkCpp.options.add("-shared");
-		target.linkCpp.linker = target.compileCpp.compiler = "linarm32-g++";
-		target.compileCpp.options.add("-fPIC");
+		target.linkCpp.options.add("-static-libgcc");
+		target.linkCpp.options.add("-static-libstdc++");
 		target.build.dependencyOf(buildJni);
 		
-		// platform linux ARM 64 (raspberry pi) with JNI
-		target = makeTarget("LinARM64jniapi", "jni/serialportaccess_jni_arm64.so");
+		// platform linux AMD 64 with JNI
+		target = makeTarget("LinAMD64jniapi", "jni/serialportaccess_jni_x64.so");
+		target.linkCpp.linker = target.compileCpp.compiler = "lin-amd-64-g++";
 		target.compileCpp.define("PLATFORM_LIN");
 		target.compileCpp.define("INCLUDE_JNIAPI");
 		target.linkCpp.options.add("-shared");
-		target.linkCpp.linker = target.compileCpp.compiler = "linarm64-g++";
+		target.compileCpp.options.add("-fPIC");
+		target.compileCpp.options.add("-fno-stack-protector");
+		target.build.dependencyOf(buildJni);
+
+		// platform linux ARM 64 with JNI
+		target = makeTarget("LinARM64jniapi", "jni/libserialportaccess_jni_arm64.so");
+		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-64-g++";
+		target.compileCpp.define("PLATFORM_LIN");
+		target.compileCpp.define("INCLUDE_JNIAPI");
+		target.linkCpp.options.add("-shared");
+		target.compileCpp.options.add("-fPIC");
+		target.build.dependencyOf(buildJni);
+
+		// platform linux ARM 32 with JNI
+		target = makeTarget("LinARM32jniapi", "jni/libserialportaccess_jni_arm32.so");
+		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-32-g++";
+		target.compileCpp.define("PLATFORM_LIN");
+		target.compileCpp.define("INCLUDE_JNIAPI");
+		target.linkCpp.options.add("-shared");
 		target.compileCpp.options.add("-fPIC");
 		target.build.dependencyOf(buildJni);
 		

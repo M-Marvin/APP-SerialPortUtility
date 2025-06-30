@@ -112,7 +112,7 @@ bool NetSocket::INetAddress::tostr(std::string& addressStr, unsigned int* port) 
 	if (this->implData->addr.sockaddr.sa_family == AF_INET) {
 		char addrStr[INET_ADDRSTRLEN];
 		if (inet_ntop(AF_INET, &this->implData->addr.sockaddr4.sin_addr, addrStr, INET_ADDRSTRLEN) == 0) {
-			printError("INetAddress:tostr:inet_ntop() failed: %s\n");
+			printError("Error %lu in INetAddress:tostr:inet_ntop(): %s\n");
 			return false;
 		}
 		*port = htons(this->implData->addr.sockaddr4.sin_port);
@@ -121,7 +121,7 @@ bool NetSocket::INetAddress::tostr(std::string& addressStr, unsigned int* port) 
 	} else if (this->implData->addr.sockaddr.sa_family == AF_INET6) {
 		char addrStr[INET6_ADDRSTRLEN];
 		if (inet_ntop(this->implData->addr.sockaddr6.sin6_family, &this->implData->addr.sockaddr6.sin6_addr, addrStr, INET6_ADDRSTRLEN) == 0) {
-			printError("INetAddress:tostr:inet_ntop() failed: %s\n");
+			printError("Error %lu in INetAddress:tostr:inet_ntop(): %s\n");
 			return false;
 		}
 		*port = htons(this->implData->addr.sockaddr6.sin6_port);
@@ -142,7 +142,7 @@ bool NetSocket::resolveInet(const std::string& hostStr, const std::string& portS
 
 	struct addrinfo *info = 0, *ptr = 0;
 	if (::getaddrinfo(hostStr.c_str(), portStr.c_str(), &hints, &info) != 0) {
-		printError("Socket:resolveInet:getaddrinfo() failed: %s\n");
+		printError("Error %lu in Socket:resolveInet:getaddrinfo(): %s\n");
 		return false;
 	}
 
@@ -181,13 +181,13 @@ bool NetSocket::Socket::listen(const NetSocket::INetAddress& address) {
 	this->implData->addrType = address.implData->addr.sockaddr.sa_family;
 	this->implData->handle = ::socket(address.implData->addr.sockaddr.sa_family, SOCK_STREAM, IPPROTO_TCP);
 	if (this->implData->handle == INVALID_SOCKET) {
-		printError("Socket:listen:socket() failed: %s\n");
+		printError("Error %lu in Socket:listen:socket(): %s\n");
 		return false;
 	}
 
 	int result = ::bind(this->implData->handle, &address.implData->addr.sockaddr, address.implData->addr.sockaddr.sa_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6));
 	if (result == SOCKET_ERROR) {
-		printError("Socket:listen:bind() failed: %s\n");
+		printError("Error %lu in Socket:listen:bind(): %s\n");
 		::closesocket(this->implData->handle);
 		this->implData->handle = INVALID_SOCKET;
 		return false;
@@ -195,7 +195,7 @@ bool NetSocket::Socket::listen(const NetSocket::INetAddress& address) {
 
 	result = ::listen(this->implData->handle, SOMAXCONN);
 	if (result == SOCKET_ERROR) {
-		printError("Socket:listen:listen() failed: %s\n");
+		printError("Error %lu in Socket:listen:listen(): %s\n");
 		::closesocket(this->implData->handle);
 		this->implData->handle = INVALID_SOCKET;
 		return false;
@@ -214,13 +214,12 @@ bool NetSocket::Socket::bind(NetSocket::INetAddress& address) {
 	this->implData->addrType = address.implData->addr.sockaddr.sa_family;
 	this->implData->handle = ::socket(address.implData->addr.sockaddr.sa_family, SOCK_DGRAM, IPPROTO_UDP);
 	if (this->implData->handle == INVALID_SOCKET) {
-		printError("Socket:bind:socket() failed: %s\n");
+		printError("Error %lu in Socket:bind:socket(): %s\n");
 		return false;
 	}
 
-	int result = ::bind(this->implData->handle, &address.implData->addr.sockaddr, address.implData->addr.sockaddr.sa_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6));
-	if (result == SOCKET_ERROR) {
-		printError("Socket:bind:bind() failed: %s\n");
+	if (::bind(this->implData->handle, &address.implData->addr.sockaddr, address.implData->addr.sockaddr.sa_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6)) == SOCKET_ERROR) {
+		printError("Error %lu in Socket:bind:bind(): %s\n");
 		::closesocket(this->implData->handle);
 		this->implData->handle = INVALID_SOCKET;
 		return false;
@@ -244,7 +243,7 @@ bool NetSocket::Socket::accept(Socket &socket) {
 	if (clientSocket == INVALID_SOCKET) {
 		int error = WSAGetLastError();
 		if (error != 10004) // Ignore the error message for "socket was closed" since this means it was intentional
-			printError("Socket:accept:accept() failed: %s\n");
+			printError("Error %lu in Socket:accept:accept(): %s\n");
 		return false;
 	}
 
@@ -262,13 +261,13 @@ bool NetSocket::Socket::connect(const NetSocket::INetAddress& address) {
 
 	this->implData->handle = ::socket(address.implData->addr.sockaddr.sa_family, SOCK_STREAM, IPPROTO_TCP);
 	if (this->implData->handle == INVALID_SOCKET) {
-		printError("Socket:connect:socket() failed: %s\n");
+		printError("Error %lu in Socket:connect:socket(): %s\n");
 		return false;
 	}
 
 	int result = ::connect(this->implData->handle, &address.implData->addr.sockaddr, address.implData->addr.sockaddr.sa_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6));
 	if (result == SOCKET_ERROR) {
-		printError("Socket:connect:connect() failed: %s\n");
+		printError("Error %lu in Socket:connect:connect(): %s\n");
 		::closesocket(this->implData->handle);
 		this->implData->handle = INVALID_SOCKET;
 		return false;
@@ -300,7 +299,7 @@ bool NetSocket::Socket::send(const char* buffer, unsigned int length) {
 
 	int result = ::send(this->implData->handle, buffer, length, 0);
 	if (result == SOCKET_ERROR) {
-		printError("Socket:send:send() failed: %s\n");
+		printError("Error %lu in Socket:send:send(): %s\n");
 		close();
 		return false;
 	}
@@ -320,7 +319,8 @@ bool NetSocket::Socket::receive(char* buffer, unsigned int length, unsigned int*
 	int result = ::recv(this->implData->handle, buffer, length, 0);
 	if (result < 0) {
 		int error = WSAGetLastError();
-		if (error != 10004) printError("Socket:receive:recv() failed: %s\n");
+		if (error != 10004)
+			printError("Error %lu in Socket:receive:recv(): %s\n");
 		close();
 		return false;
 	} else {
@@ -347,7 +347,7 @@ bool NetSocket::Socket::receivefrom(NetSocket::INetAddress& address, char* buffe
 	if (result == SOCKET_ERROR) {
 		int error = WSAGetLastError();
 		if (error != 10004)
-			printError("Socket:receivefrom:recvfrom() failed: %s\n");
+			printError("Error %lu in Socket:receivefrom:recvfrom(): %s\n");
 		close();
 		return false;
 	}
@@ -373,7 +373,7 @@ bool NetSocket::Socket::sendto(const NetSocket::INetAddress& address, const char
 
 	int result = ::sendto(this->implData->handle, buffer, length, 0, &address.implData->addr.sockaddr, address.implData->addr.sockaddr.sa_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6));
 	if (result == SOCKET_ERROR) {
-		printError("Socket:sendto:sendto() failed: %s\n");
+		printError("Error %lu in Socket:sendto:sendto(): %s\n");
 		close();
 		return false;
 	}

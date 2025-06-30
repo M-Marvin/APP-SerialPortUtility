@@ -10,12 +10,10 @@
 #include <stdio.h>
 #include <iostream>
 #include <thread>
-#include <filesystem>
-#include <condition_variable>
-#include <mutex>
-#include <chrono>
 
+#ifdef PLATFORM_WIN
 #include <windows.h>
+#endif
 #include "serialportterminal.h"
 #include <serial_port.hpp>
 
@@ -29,7 +27,9 @@ static bool lineEditing = false;
 static char sendLineEnd = 0;
 static SerialAccess::SerialPortConfiguration portConfiguration(SerialAccess::DEFAULT_PORT_CONFIGURATION);
 static SerialAccess::SerialPort* port;
+#ifdef PLATFORM_WIN
 static HANDLE console = 0;
+#endif
 
 int main(int argc, const char** argv) {
 
@@ -38,9 +38,9 @@ int main(int argc, const char** argv) {
 
 	// print help if no arguments
 	if (argc == 1) {
-		std::filesystem::path executable(argv[0]);
-		std::string executableName = executable.filename().string();
-		printf("%s [port name] <options ...>\n", executableName.c_str());
+		std::string exec(argv[0]);
+		std::string execName = exec.substr(exec.find_last_of("/\\") + 1);
+		printf("%s [port name] <options ...>\n", execName.c_str());
 		printf("options:\n");
 		printf(" -baud [baud]\n");
 		printf(" -bits [data bits]\n");
@@ -141,6 +141,7 @@ int main(int argc, const char** argv) {
 	char inputChar;
 	while (!shouldTerminate) {
 		if (!lineEditing) {
+#ifdef PLATFORM_WIN
 			unsigned long int read;
 			if (ReadConsole(console, &inputChar, 1, &read, NULL)) {
 				port->writeBytes(&inputChar, 1);
@@ -148,6 +149,9 @@ int main(int argc, const char** argv) {
 				printf("[!] failed to get raw console access, fallback to line mode\n");
 				lineEditing = true;
 			}
+#else
+			break;
+#endif
 		} else {
 			std::string line;
 			getline(std::cin, line);
@@ -168,6 +172,8 @@ int main(int argc, const char** argv) {
 	return 0;
 }
 
+#ifdef PLATFORM_WIN
+
 void printError() {
 	DWORD errorCode = GetLastError();
 	if (errorCode == 0) return;
@@ -186,6 +192,14 @@ bool setupConsole(bool lineInput) {
 	}
 	return true;
 }
+
+#else
+
+bool setupConsole(bool lineInput) {
+	return lineInput;
+}
+
+#endif
 
 void receptionLoop() {
 	char receptionBuffer[BUFFER_SIZE];

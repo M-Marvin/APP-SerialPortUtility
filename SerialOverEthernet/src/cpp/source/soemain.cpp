@@ -10,7 +10,6 @@
 
 #include <iostream>
 #include <string.h>
-#include <filesystem>
 #include "soeimpl.hpp"
 
 bool openPort(SerialOverEthernet::SOESocketHandler& handler, const std::string& host, const std::string& port, const std::string& remotePort, const std::string& localPort, const SerialAccess::SerialPortConfiguration& config) {
@@ -18,7 +17,7 @@ bool openPort(SerialOverEthernet::SOESocketHandler& handler, const std::string& 
 	NetSocket::resolveInet(host, port, true, addresses);
 	for (NetSocket::INetAddress address : addresses) {
 		if (handler.openRemotePort(address, remotePort, config, localPort)) {
-			printf("link established: %s %s <-> %s\n", host.c_str(), remotePort.c_str(), localPort.c_str());
+			printf("[i] link established: %s %s <-> %s\n", host.c_str(), remotePort.c_str(), localPort.c_str());
 			return true;
 		}
 	}
@@ -41,7 +40,7 @@ void interpretFlags(SerialOverEthernet::SOESocketHandler& handler, const std::ve
 		if (*flag == "-link" || *flag == "-unlink") {
 			if (link) {
 				if (remoteHost.empty() || remotePort.empty() || remoteSerial.empty() || localSerial.empty()) {
-					printf("not enough arguments for connection\n");
+					printf("[!] not enough arguments for connection\n");
 					continue;
 				}
 				link = false;
@@ -116,14 +115,15 @@ void interpretFlags(SerialOverEthernet::SOESocketHandler& handler, const std::ve
 	}
 }
 
-int mainCPP(std::filesystem::path& exec, std::vector<std::string>& args) {
+int mainCPP(std::string& exec, std::vector<std::string>& args) {
 
 	// Disable output caching
 	setbuf(stdout, NULL);
 
 	// Print help when no arguments supplied
 	if (args.size() == 0) {
-		printf("%s <options ...> <-link <link options ...> ...>\n", exec.filename().string().c_str());
+		std::string execName = exec.substr(exec.find_last_of("/\\") + 1);
+		printf("%s <options ...> <-link <link options ...> ...>\n", execName.c_str());
 		printf("options:\n");
 		printf(" -addr [local IP]\n");
 		printf(" -port [local network port]\n");
@@ -134,7 +134,6 @@ int mainCPP(std::filesystem::path& exec, std::vector<std::string>& args) {
 		printf(" -lser [serial port]\n");
 		printf(" -baud [serial baud]\n");
 		printf(" -stops [serial stop bits]\n");
-		printf(" -");
 		return 1;
 	}
 
@@ -163,7 +162,7 @@ int mainCPP(std::filesystem::path& exec, std::vector<std::string>& args) {
 
 	// Initialize networking
 	if (!NetSocket::InetInit()) {
-		printf("failed to initialize network!\n");
+		printf("[!] failed to initialize network!\n");
 		return -1;
 	}
 
@@ -180,7 +179,7 @@ int mainCPP(std::filesystem::path& exec, std::vector<std::string>& args) {
 			std::string localAddress;
 			unsigned int localPort;
 			address.tostr(localAddress, &localPort);
-			printf("serial over ethernet/IP, open client port on: %s %d\n", localAddress.c_str(), localPort);
+			printf("[i] serial over ethernet/IP, open client port on: %s %d\n", localAddress.c_str(), localPort);
 
 			{
 				// Start socket handler
@@ -217,18 +216,19 @@ int mainCPP(std::filesystem::path& exec, std::vector<std::string>& args) {
 					}
 
 				}
+
 			}
 
 			// Cleanup network and exit
 			NetSocket::InetCleanup();
-			printf("client shutdown complete\n");
+			printf("[i] client shutdown complete\n");
 			return 0;
 
 		}
 
 	}
 
-	printf("unable to bind to address: %s %s\n", host.c_str(), port.c_str());
+	printf("[!] unable to bind to address: %s %s\n", host.c_str(), port.c_str());
 
 	NetSocket::InetCleanup();
 	return -1;
@@ -237,7 +237,7 @@ int mainCPP(std::filesystem::path& exec, std::vector<std::string>& args) {
 
 int main(int argc, const char** argv) {
 
-	std::filesystem::path exec(argv[0]);
+	std::string exec(argv[0]);
 	std::vector<std::string> args;
 	for (unsigned int i1 = 1; i1 < argc; i1++)
 		args.emplace_back(argv[i1]);

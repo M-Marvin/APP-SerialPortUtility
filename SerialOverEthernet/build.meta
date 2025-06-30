@@ -8,6 +8,8 @@ import de.m_marvin.metabuild.maven.tasks.MavenResolveTask;
 
 public class Buildfile extends CppMultiTargetBuildScript {
 	
+	boolean debugging = false; // set to true to compile with debug info
+	
 	@Override
 	public void init() {
 		
@@ -15,11 +17,53 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		
 		// Platform windows AMD 64 Client
 		var target = makeTarget("WinAMD64", "soe.exe");
-		target.linkCpp.linker = target.compileCpp.compiler = "winamd64-g++";
+		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
+		target.compileCpp.define("PLATFORM_WIN");
+		if (debugging) {
+			target.compileCpp.define("DEBUG_PRINTS");
+			target.compileCpp.options.add("-g");
+		}
 		target.linkCpp.libraries.add("serialportaccess_x64");
 		target.linkCpp.libraries.add("netsocket_x64");
-//		target.compileCpp.define("DEBUG_PRINTS");
-//		target.compileCpp.options.add("-g");
+		target.linkCpp.options.add("-static-libgcc");
+		target.linkCpp.options.add("-static-libstdc++");
+
+		// Platform linux AMD 64 Client
+		target = makeTarget("LinAMD64", "soe");
+		target.linkCpp.linker = target.compileCpp.compiler = "lin-amd-64-g++";
+		target.compileCpp.define("PLATFORM_LIN");
+		if (debugging) {
+			target.compileCpp.define("DEBUG_PRINTS");
+			target.compileCpp.options.add("-g");
+		}
+		target.linkCpp.libraries.add("serialportaccess_x64");
+		target.linkCpp.libraries.add("netsocket_x64");
+		target.linkCpp.libraries.add("pthread");
+		target.compileCpp.options.add("-fno-stack-protector");
+
+		// Platform linux ARM 64 Client
+		target = makeTarget("LinARM64", "soe");
+		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-64-g++";
+		target.compileCpp.define("PLATFORM_LIN");
+		if (debugging) {
+			target.compileCpp.define("DEBUG_PRINTS");
+			target.compileCpp.options.add("-g");
+		}
+		target.linkCpp.libraries.add("serialportaccess_arm64");
+		target.linkCpp.libraries.add("netsocket_arm64");
+		target.linkCpp.libraries.add("pthread");
+
+		// Platform linux ARM 32 Client
+		target = makeTarget("LinARM32", "soe");
+		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-32-g++";
+		target.compileCpp.define("PLATFORM_LIN");
+		if (debugging) {
+			target.compileCpp.define("DEBUG_PRINTS");
+			target.compileCpp.options.add("-g");
+		}
+		target.linkCpp.libraries.add("serialportaccess_arm32");
+		target.linkCpp.libraries.add("netsocket_arm32");
+		target.linkCpp.libraries.add("pthread");
 		
 		super.init();
 		

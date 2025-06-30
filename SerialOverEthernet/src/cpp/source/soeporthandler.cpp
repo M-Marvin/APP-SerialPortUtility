@@ -6,28 +6,27 @@
  */
 
 #include <stdexcept>
+#include <cstring>
 #include "soeimpl.hpp"
 
-using namespace std;
-
-SerialOverEthernet::SOEPortHandler::SOEPortHandler(SerialAccess::SerialPort* port, function<void(void)> newDataCallback, function<void(unsigned int)> txConfirmCallback) {
+SerialOverEthernet::SOEPortHandler::SOEPortHandler(SerialAccess::SerialPort* port, std::function<void(void)> newDataCallback, std::function<void(unsigned int)> txConfirmCallback) {
 	this->port.reset(port);
 	this->new_data = newDataCallback;
 	this->tx_confirm = txConfirmCallback;
 
-	this->thread_tx = thread([this]() -> void {
+	this->thread_tx = std::thread([this]() -> void {
 		handlePortTX();
 	});
-	this->thread_rx = thread([this]() -> void {
+	this->thread_rx = std::thread([this]() -> void {
 		handlePortRX();
 	});
 }
 
 SerialOverEthernet::SOEPortHandler::~SOEPortHandler() {
 	this->port->closePort();
-	{ unique_lock<mutex> lock(this->tx_stackm); }
+	{ std::unique_lock<std::mutex> lock(this->tx_stackm); }
 	this->tx_waitc.notify_all();
-	{ unique_lock<mutex> lock(this->rx_stackm); }
+	{ std::unique_lock<std::mutex> lock(this->rx_stackm); }
 	this->rx_waitc.notify_all();
 	this->thread_tx.join();
 	this->thread_rx.join();
@@ -52,8 +51,8 @@ bool SerialOverEthernet::SOEPortHandler::send(unsigned int txid, const char* buf
 	char* stackBuffer = new char[length];
 	memcpy(stackBuffer, buffer, length);
 	{
-		lock_guard<mutex> lock(this->tx_stackm);
-		this->tx_stack[txid] = {length, unique_ptr<char>(stackBuffer)};
+		std::lock_guard<std::mutex> lock(this->tx_stackm);
+		this->tx_stack[txid] = {length, std::unique_ptr<char>(stackBuffer)};
 
 #ifdef DEBUG_PRINTS
 		printf("DEBUG: serial <- [tx stack] <- |network| : [tx %u] size %llu len: %lu\n", txid, this->tx_stack.size(), length);
@@ -71,7 +70,7 @@ bool SerialOverEthernet::SOEPortHandler::read(unsigned int* rxid, const char** b
 	// Nothing to send if port is closed
 	if (!this->port->isOpen()) return false;
 
-	lock_guard<mutex> lock(this->rx_stackm);
+	std::lock_guard<std::mutex> lock(this->rx_stackm);
 
 	// Get element from rx stack and increment next free rxid to write data to
 	if (this->rx_stack.count(this->next_transmit_rxid)) {
@@ -82,7 +81,7 @@ bool SerialOverEthernet::SOEPortHandler::read(unsigned int* rxid, const char** b
 			*length = stackEntry.length;
 
 			// Update time to resend the package in case reception is not confirmed first
-			stackEntry.time_to_resend = chrono::steady_clock::now() + chrono::milliseconds(INET_TX_REP_INTERVAL);
+			stackEntry.time_to_resend = std::chrono::steady_clock::now() + std::chrono::milliseconds(INET_TX_REP_INTERVAL);
 
 			if (this->next_free_rxid < this->next_transmit_rxid)
 				this->next_free_rxid = this->next_transmit_rxid;
@@ -94,13 +93,13 @@ bool SerialOverEthernet::SOEPortHandler::read(unsigned int* rxid, const char** b
 	for (unsigned int id = this->last_transmitted_rxid; id < this->next_transmit_rxid; id++) {
 		if (this->rx_stack.count(id)) {
 			rx_entry& stackEntry = this->rx_stack.at(id);
-			if (stackEntry.rx_confirmed || stackEntry.time_to_resend >= chrono::steady_clock::now()) continue;
+			if (stackEntry.rx_confirmed || stackEntry.time_to_resend >= std::chrono::steady_clock::now()) continue;
 			*rxid = id;
 			*buffer = stackEntry.payload.get();
 			*length = stackEntry.length;
 
 			// Update time to resend the package in case reception is not confirmed first
-			stackEntry.time_to_resend = chrono::steady_clock::now() + chrono::milliseconds(INET_TX_REP_INTERVAL);
+			stackEntry.time_to_resend = std::chrono::steady_clock::now() + std::chrono::milliseconds(INET_TX_REP_INTERVAL);
 
 			return true;
 		}
@@ -116,7 +115,7 @@ void SerialOverEthernet::SOEPortHandler::confirmReception(unsigned int rxid) {
 
 	// Get entry from stack and mark as received
 	try {
-		lock_guard<mutex> lock(this->rx_stackm);
+		std::lock_guard<std::mutex> lock(this->rx_stackm);
 		rx_entry& stackEntry = this->rx_stack.at(rxid);
 
 		// Mark package reception confirmed
@@ -132,7 +131,7 @@ void SerialOverEthernet::SOEPortHandler::confirmReception(unsigned int rxid) {
 
 void SerialOverEthernet::SOEPortHandler::confirmTransmission(unsigned int rxid) {
 
-	lock_guard<mutex> lock(this->rx_stackm);
+	std::lock_guard<std::mutex> lock(this->rx_stackm);
 
 	// Remove all packages before and including rxid, this ensures even packges whos tx confirm might be lost are cleared from the stack
 	for (unsigned int i = this->last_transmitted_rxid; i != rxid + 1; i++) {
@@ -152,14 +151,14 @@ void SerialOverEthernet::SOEPortHandler::confirmTransmission(unsigned int rxid) 
 
 void SerialOverEthernet::SOEPortHandler::handlePortTX() {
 	// Init tx variables
-	this->tx_stack = map<unsigned int, tx_entry>();
+	this->tx_stack = std::map<unsigned int, tx_entry>();
 	this->next_txid = 0;
 
 	// Start tx loop
 	while (this->port->isOpen()) {
 
 		// If not available, wait for more data
-		unique_lock<mutex> lock(this->tx_stackm);
+		std::unique_lock<std::mutex> lock(this->tx_stackm);
 		if (!this->tx_stack.count(this->next_txid)) {
 			this->tx_waitc.wait(lock, [this] { return this->tx_stack.count(this->next_txid) || !this->port->isOpen(); });
 			if (!this->port->isOpen()) continue;
@@ -184,7 +183,7 @@ void SerialOverEthernet::SOEPortHandler::handlePortTX() {
 
 		// Remove entry from tx stack and increment last txid
 		{
-			unique_lock<mutex> lock(this->tx_stackm);
+			std::unique_lock<std::mutex> lock(this->tx_stackm);
 			this->tx_stack.erase(next_txid);
 			this->next_txid++;
 		}
@@ -201,18 +200,18 @@ void SerialOverEthernet::SOEPortHandler::handlePortRX() {
 	this->next_free_rxid = 0;
 	this->next_transmit_rxid = 0;
 	this->last_transmitted_rxid = 0;
-	this->rx_stack = map<unsigned int, rx_entry>();
+	this->rx_stack = std::map<unsigned int, rx_entry>();
 
 	// Start rx loop
 	while (this->port->isOpen()) {
 
 		// Try read payload from serial, append on next free rx stack entry
 		{
-			unique_lock<mutex> lock(this->rx_stackm);
+			std::unique_lock<std::mutex> lock(this->rx_stackm);
 
 			// If next free entry does not yet exist, create
 			if (!this->rx_stack.count(this->next_free_rxid)) {
-				this->rx_stack[this->next_free_rxid] = {0UL, unique_ptr<char>(new char[SERIAL_RX_ENTRY_LEN] {0}), chrono::steady_clock::now(), false};
+				this->rx_stack[this->next_free_rxid] = {0UL, std::unique_ptr<char>(new char[SERIAL_RX_ENTRY_LEN] {0}), std::chrono::steady_clock::now(), false};
 			// Else, if the element has reached its limit, create new entry
 			} else if (this->rx_stack[this->next_free_rxid].length >= SERIAL_RX_ENTRY_LEN) {
 				// If the RX STACK has reached its limit, hold reception
@@ -222,12 +221,12 @@ void SerialOverEthernet::SOEPortHandler::handlePortRX() {
 #endif
 					this->rx_waitc.wait(lock, [this]() { return this->rx_stack.size() < SERIAL_RX_STACK_LIMIT || !this->port->isOpen(); });
 				}
-				this->rx_stack[++this->next_free_rxid] = {0UL, unique_ptr<char>(new char[SERIAL_RX_ENTRY_LEN] {0}), chrono::steady_clock::now(), false};
+				this->rx_stack[++this->next_free_rxid] = {0UL, std::unique_ptr<char>(new char[SERIAL_RX_ENTRY_LEN] {0}), std::chrono::steady_clock::now(), false};
 			}
 
 			// Read from serial into free rx entry, append to existing data
 			rx_entry& stackEntry = this->rx_stack[this->next_free_rxid];
-			lock.unlock(); // ! Free the RX STACK to prent it being blocked while waiting for data
+			lock.unlock(); // ! Free the RX STACK to prevent it being blocked while waiting for data
 			unsigned long received = this->port->readBytes(stackEntry.payload.get() + stackEntry.length, SERIAL_RX_ENTRY_LEN - stackEntry.length);
 #ifdef DEBUG_PRINTS
 			if (received != 0) printf("DEBUG: |serial| -> [rx stack] -> network -> serial : [rx %u] size %llu len: %lu + %lu\n", this->next_free_rxid, this->rx_stack.size(), stackEntry.length, received);
