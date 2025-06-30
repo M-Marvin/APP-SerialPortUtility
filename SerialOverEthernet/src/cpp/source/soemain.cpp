@@ -12,10 +12,11 @@
 #include <string.h>
 #include "soeimpl.hpp"
 
+
 bool openPort(SerialOverEthernet::SOESocketHandler& handler, const std::string& host, const std::string& port, const std::string& remotePort, const std::string& localPort, const SerialAccess::SerialPortConfiguration& config) {
 	std::vector<NetSocket::INetAddress> addresses;
 	NetSocket::resolveInet(host, port, true, addresses);
-	for (NetSocket::INetAddress address : addresses) {
+	for (auto address : addresses) {
 		if (handler.openRemotePort(address, remotePort, config, localPort)) {
 			printf("[i] link established: %s %s <-> %s\n", host.c_str(), remotePort.c_str(), localPort.c_str());
 			return true;
@@ -171,7 +172,7 @@ int mainCPP(std::string& exec, std::vector<std::string>& args) {
 	NetSocket::resolveInet(host, port, true, localAddresses);
 
 	// Attempt to bind to first available local host address
-	NetSocket::Socket* socket = new NetSocket::Socket();
+	NetSocket::Socket* socket = NetSocket::newSocket();
 	for (NetSocket::INetAddress& address : localAddresses) {
 
 		if (socket->bind(address)) {
@@ -196,7 +197,7 @@ int mainCPP(std::string& exec, std::vector<std::string>& args) {
 				printf(" -close - to close all connections\n");
 				printf(" -list - to view all currently open port links\n");
 				std::string cmdline;
-				while (true) {
+				while (socket->isOpen()) {
 
 					// Read command and arguments
 					std::getline(std::cin, cmdline);

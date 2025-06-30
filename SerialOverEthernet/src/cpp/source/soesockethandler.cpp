@@ -49,7 +49,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientTX() {
 			std::shared_lock<std::shared_timed_mutex> lock(this->portsm);
 
 			std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
-			for (auto entry = this->ports.begin(); entry != this->ports.end(); entry++) {
+			for (auto entry = this->ports.begin(); entry != this->ports.end(); ) {
 
 				NetSocket::INetAddress remoteAddress = entry->second.remote_address;
 				std::string remotePortName = entry->second.remote_port;
@@ -61,21 +61,22 @@ void SerialOverEthernet::SOESocketHandler::handleClientTX() {
 					std::string address;
 					unsigned int port = 0;
 					remoteAddress.tostr(address, &port);
-					printf("[!] connection timed out, close port: local %s : remote %s %u\n", localPortName.c_str(), address.c_str(), port);
+					printf("[!] connection timed out, close port: local %s : remote %s @ %s %u\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
 
 					// Close port
 					lock.unlock();
 					{
 						std::unique_lock<std::shared_timed_mutex> lock(this->portsm);
-						this->ports.erase(entry--);
+						this->ports.erase(entry++);
 						this->remote2localPort.erase(std::make_pair(remoteAddress, remotePortName));
 					}
 					if (!sendClaimStatus(remoteAddress, false, localPortName)) {
 						// If the error report fails too ... don't care at this point ...
 						sendError(remoteAddress, localPortName, "failed to transmit CLOSE notification");
 					}
-					immediateWork = true;
-					break;
+					//immediateWork = true;
+					//break;
+					continue;
 				}
 
 				// Request data from stack
@@ -92,6 +93,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientTX() {
 						printf("DEBUG: send keep alive: %s -> %s\n", localPortName.c_str(), remotePortName.c_str());
 #endif
 					} else {
+						entry++;
 						continue;
 					}
 				}
@@ -100,30 +102,31 @@ void SerialOverEthernet::SOESocketHandler::handleClientTX() {
 				if (!sendStream(remoteAddress, localPortName, rxid, payload, length)) {
 					sendError(remoteAddress, localPortName, "failed to transmit STREAM frame, close port");
 
+					std::string address;
+					unsigned int port = 0;
+					remoteAddress.tostr(address, &port);
+					printf("[!] transmission error, close port: remote %s @ %s %u\n", remotePortName.c_str(), address.c_str(), port);
+
 					// Close port
 					lock.unlock();
 					{
 						std::unique_lock<std::shared_timed_mutex> lock(this->portsm);
-						this->ports.erase(localPortName);
+						this->ports.erase(entry++);
 						this->remote2localPort.erase(make_pair(remoteAddress, remotePortName));
 					}
 					if (!sendClaimStatus(remoteAddress, false, localPortName)) {
 						// If the error report fails too ... don't care at this point ...
 						sendError(remoteAddress, localPortName, "failed to transmit CLOSE notification");
 					}
-
-					std::string address;
-					unsigned int port = 0;
-					remoteAddress.tostr(address, &port);
-					printf("[!] transmission error, close port: remote %s @ %s %u\n", remotePortName.c_str(), address.c_str(), port);
-
+					continue;
 				}
 
 				// Update last send timeout
 				entry->second.last_send = now + std::chrono::microseconds(INET_KEEP_ALIVE_INTERVAL);
 
+				// Data was send, so skip waiting, more data is likely to be available
 				immediateWork = true;
-
+				entry++;
 			}
 		}
 
@@ -267,6 +270,10 @@ void SerialOverEthernet::SOESocketHandler::handleClientRX() {
 				this->remote2localPort[make_pair(remoteAddress, remotePortName)] = localPortName;
 			}
 
+			std::string address;
+			unsigned int port = 0;
+			remoteAddress.tostr(address, &port);
+
 			// Confirm that the port has been opened, close port if this fails, to avoid unused open ports
 			if (!sendClaimStatus(remoteAddress, true, localPortName)) {
 				sendError(remoteAddress, localPortName, "failed to complete OPENED confirmation, close port");
@@ -275,11 +282,10 @@ void SerialOverEthernet::SOESocketHandler::handleClientRX() {
 					this->ports.erase(localPortName);
 					this->remote2localPort.erase(make_pair(remoteAddress, remotePortName));
 				}
+				printf("[!] unable to complete handshake, ports not opened: local %s : remote %s @ %s %u\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
+				break;
 			}
 
-			std::string address;
-			unsigned int port = 0;
-			remoteAddress.tostr(address, &port);
 			printf("[i] opened port from remote: local %s : remote %s @ %s %u\n", localPortName.c_str(), remotePortName.c_str(), address.c_str(), port);
 
 			break;
@@ -933,7 +939,9 @@ void SerialOverEthernet::SOESocketHandler::sendError(const NetSocket::INetAddres
 	}
 
 	// Transmit payload in ERROR frame, ignore result, we don't care about an error-error ...
-	sendFrame(remoteAddress, OPC_ERROR, buffer, payloadLen);
+	if (!sendFrame(remoteAddress, OPC_ERROR, buffer, payloadLen)) {
+		printf("[!] FRAME ERROR: failed to transmit ERROR frame\n");
+	}
 
 }
 
@@ -956,7 +964,11 @@ bool SerialOverEthernet::SOESocketHandler::sendClaimStatus(const NetSocket::INet
 	memcpy(buffer + 2, remotePortName.c_str(), portLen);
 
 	// Transmit payload in OPENED or ERROR frame
-	return sendFrame(remoteAddress, claimed ? OPC_OPENED : OPC_CLOSED, buffer, payloadLen);
+	if (!sendFrame(remoteAddress, claimed ? OPC_OPENED : OPC_CLOSED, buffer, payloadLen)) {
+		printf("[!] FRAME ERROR: failed to transmit OPENED/CLOSED frame\n");
+		return false;
+	}
+	return true;
 
 }
 
@@ -985,8 +997,11 @@ bool SerialOverEthernet::SOESocketHandler::sendConfirm(const NetSocket::INetAddr
 	buffer[5 + portLen] = (txid >> 0) & 0xFF;
 
 	// Transmit payload in RX_CONFIRM or TX_CONFIRM frame
-	return sendFrame(remoteAddress, transmission ? OPC_TX_CONFIRM : OPC_RX_CONFIRM, buffer, payloadLen);
-
+	if (!sendFrame(remoteAddress, transmission ? OPC_TX_CONFIRM : OPC_RX_CONFIRM, buffer, payloadLen)) {
+		printf("[!] FRAME ERROR: failed to transmit TX/RX_CONFIRM frame\n");
+		return false;
+	}
+	return true;
 }
 
 // Send payload stream frame
@@ -1017,7 +1032,11 @@ bool SerialOverEthernet::SOESocketHandler::sendStream(const NetSocket::INetAddre
 	memcpy(buffer + 6 + portLen, payload, length);
 
 	// Transmit payload in STREAM frame
-	return sendFrame(remoteAddress, OPC_STREAM, buffer, payloadLen);
+	if (!sendFrame(remoteAddress, OPC_STREAM, buffer, payloadLen)) {
+		printf("[!] FRAME ERROR: failed to transmit STREAM frame\n");
+		return false;
+	}
+	return true;
 
 }
 
@@ -1068,7 +1087,11 @@ bool SerialOverEthernet::SOESocketHandler::sendOpenRequest(const NetSocket::INet
 	memcpy(buffer + 21 + portLen, remotePortName.c_str(), remotePortLen);
 
 	// Transmit payload in OPENED or ERROR frame
-	return sendFrame(remoteAddress, OPC_OPEN, buffer, payloadLen);
+	if (!sendFrame(remoteAddress, OPC_OPEN, buffer, payloadLen)) {
+		printf("[!] FRAME ERROR: failed to transmit OPEN frame\n");
+		return false;
+	}
+	return true;
 
 }
 
@@ -1091,6 +1114,10 @@ bool SerialOverEthernet::SOESocketHandler::sendCloseRequest(const NetSocket::INe
 	memcpy(buffer + 2, portName.c_str(), portLen);
 
 	// Transmit payload in OPENED or ERROR frame
-	return sendFrame(remoteAddress, OPC_CLOSE, buffer, payloadLen);
+	if (!sendFrame(remoteAddress, OPC_CLOSE, buffer, payloadLen)) {
+		printf("[!] FRAME ERROR: failed to transmit CLOSE frame\n");
+		return false;
+	}
+	return true;
 
 }

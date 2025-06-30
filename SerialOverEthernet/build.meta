@@ -8,7 +8,7 @@ import de.m_marvin.metabuild.maven.tasks.MavenResolveTask;
 
 public class Buildfile extends CppMultiTargetBuildScript {
 	
-	boolean debugging = false; // set to true to compile with debug info
+	boolean debugging = true; // set to true to compile with debug info
 	
 	@Override
 	public void init() {

@@ -22,4 +22,5 @@
 		<pathentry include="E:/GitHub/LIBRARY-SerialPortAccess/SerialOverEthernet/src/cpp/header" kind="inc" path="" system="true"/>
 		<pathentry kind="mac" name="PLATFORM_WIN" path="" value=""/>
 	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 </cproject>

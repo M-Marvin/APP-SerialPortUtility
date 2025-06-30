@@ -91,7 +91,7 @@ public class NativeLoader {
 		return nativeFile;
 	}
 	
-	public static void extractNative(String nativeLocation, String targetLocation, String targetFileName) throws IOException {
+	public static File extractNative(String nativeLocation, File targetLocation) throws IOException {
 		try {
 			InputStream archiveStream = NativeLoader.class.getResourceAsStream(nativeLocation);
 			if (archiveStream == null) {
@@ -106,15 +106,16 @@ public class NativeLoader {
 			try {
 				MessageDigest md = MessageDigest.getInstance("MD5");
 				String hash = HexFormat.of().formatHex(md.digest(bufferStream.toByteArray()));
-				targetNativeFile = new File(targetLocation, hash + "/" + targetFileName);
+				targetNativeFile = new File(targetLocation, hash + "/" + new File(nativeLocation).getName());
 			} catch (NoSuchAlgorithmException e) {
-				targetNativeFile = new File(targetLocation, targetFileName);
+				targetNativeFile = new File(targetLocation, new File(nativeLocation).getName());
 			}
 			
 			targetNativeFile.getParentFile().mkdirs();
 			OutputStream fileStream = new FileOutputStream(targetNativeFile);
 			fileStream.write(bufferStream.toByteArray());
 			fileStream.close();
+			return targetNativeFile;
 		} catch (IOException e) {
 			throw new IOException("Unable to extract native library: " + nativeLocation, e);
 		}
@@ -124,16 +125,13 @@ public class NativeLoader {
 		
 		if (!libMap.containsKey(nativeName)) {
 			try {
-				String nativeFilePath = getNativeForArchitecture(nativeName);
-				if (nativeFilePath == null) {
-					System.err.println("NativeLoader: Unable to extract native " + nativeFilePath + "!");
+				String nativeLocation = getNativeForArchitecture(nativeName);
+				if (nativeLocation == null) {
+					System.err.println("NativeLoader: Unable to extract native " + nativeLocation + "!");
 					return null;
 				}
-				String fileName = new File(nativeFilePath).getName();
-				File tempLocation = new File(tempLibFolder, fileName);
-				libMap.put(nativeName, tempLocation);
-				
-				extractNative(nativeFilePath, tempLibFolder, fileName);
+				File tempFilePath = extractNative(nativeLocation, new File(tempLibFolder));
+				libMap.put(nativeName, tempFilePath);
 			} catch (IOException e) {
 				throw new LinkageError("Unable to get native: " + nativeName, e);
 			}

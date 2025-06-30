@@ -10,31 +10,38 @@
 
 #include <string>
 #include <vector>
+#include <memory>
+
+/** FIXME
+ * Sockets seem to terminate randomly by some certain errors, leaving the
+ * stype field in an invalid state
+ */
 
 namespace NetSocket {
 
-/** Platform Specific Data **/
-struct SocketImplData;
-struct INetAddrImplData;
+bool InetInit();
+void InetCleanup();
 
 class INetAddress {
 
 public:
+	void* addr;
+
 	INetAddress();
 	INetAddress(const INetAddress& other);
 	~INetAddress();
-
 	bool fromstr(std::string& addressStr, unsigned int port);
 	bool tostr(std::string& addressStr, unsigned int* port) const;
+	int compare(const INetAddress& other) const;
 
 	INetAddress& operator=(const INetAddress& other);
 	bool operator<(const INetAddress& other) const;
 	bool operator>(const INetAddress& other) const;
 	bool operator==(const INetAddress& other) const;
 
-	INetAddrImplData* implData;
-
 };
+
+typedef INetAddress inetaddr;
 
 /**
  * Resolves the supplied host string into a list of network addresses.
@@ -56,15 +63,14 @@ enum SocketType {
 class Socket {
 
 public:
-	Socket();
-	~Socket();
+	virtual ~Socket() = default;
 
 	/**
-	 * Creates a new TCP port that can accept incomming connections usign the accept() function
+	 * Creates a new TCP port that can accept incoming connections usign the accept() function
 	 * @param localAddress The local address to bind the socket to
 	 * @return true if the port was successfully bound, false otherwise
 	 */
-	bool listen(const INetAddress& localAddress);
+	virtual bool listen(const inetaddr& localAddress) = 0;
 
 	/**
 	 * Attempts to accept an incomming connection and initializes the supplied (unbound) socket for it as TCP stream socket.
@@ -72,14 +78,14 @@ public:
 	 * @param clientSocket The unbound socket to use for the incomming connection
 	 * @return true if an connection was accepted and the socket was initialized successfully, false otherwise
 	 */
-	bool accept(Socket &clientSocket);
+	virtual bool accept(Socket &clientSocket) = 0;
 
 	/**
 	 * Attempts to establish a connection to an TCP listen socket at the specified address.
 	 * @param remoteAddress The address to connect to
 	 * @return true if an connection was successfully established, false otherwise
 	 */
-	bool connect(const INetAddress& remoteAddress);
+	virtual bool connect(const inetaddr& remoteAddress) = 0;
 
 	/**
 	 * Sends data trough the TCP connection.
@@ -87,7 +93,7 @@ public:
 	 * @param length The length of the data
 	 * @return true if the data was sent successfully, false otherwise
 	 */
-	bool send(const char* buffer, unsigned int length);
+	virtual bool send(const char* buffer, unsigned int length) = 0;
 
 	/**
 	 * Receives data trough the TCP connection.
@@ -98,13 +104,13 @@ public:
 	 * @param received The actual number of bytes received
 	 * @return true if the function did return normally (no error occurred), false otherwise
 	 */
-	bool receive(char* buffer, unsigned int length, unsigned int* received);
+	virtual bool receive(char* buffer, unsigned int length, unsigned int* received) = 0;
 
 	/**
 	 * Creates and new socket configured for UDP transmissions
 	 * @return true if the port was successfully bound, false otherwise
 	 */
-	bool bind(INetAddress& localAddress);
+	virtual bool bind(const inetaddr& localAddress) = 0;
 
 	/**
 	 * Receives data trough UDP transmissions.
@@ -116,7 +122,7 @@ public:
 	 * @param received The actual number of bytes received
 	 * @return true if the function did return normally (no error occurred), false otherwise
 	 */
-	bool receivefrom(INetAddress& remoteAddress, char* buffer, unsigned int length, unsigned int* received);
+	virtual bool receivefrom(inetaddr& remoteAddress, char* buffer, unsigned int length, unsigned int* received) = 0;
 
 	/**
 	 * Sends data trough the UDP transmissions
@@ -125,31 +131,24 @@ public:
 	 * @param length The length of the data
 	 * @return true if the data was sent successfully, false otherwise
 	 */
-	bool sendto(const INetAddress& remoteAddress, const char* buffer, unsigned int length);
+	virtual bool sendto(const inetaddr& remoteAddress, const char* buffer, unsigned int length) = 0;
 
 	/**
 	 * Closes the port.
 	 */
-	void close();
+	virtual void close() = 0;
 
 	/**
-	 * Checks if the port is still open and operaitional.
+	 * Checks if the port is still open and operational.
 	 * @return true if the port is still open, false otherwise
 	 */
-	bool isOpen();
+	virtual bool isOpen() = 0;
 
-	SocketType type() {
-		return this->stype;
-	}
-
-private:
-	SocketType stype;
-	SocketImplData* implData;
+	virtual SocketType type() = 0;
 
 };
 
-bool InetInit();
-void InetCleanup();
+NetSocket::Socket* newSocket();
 
 }
 

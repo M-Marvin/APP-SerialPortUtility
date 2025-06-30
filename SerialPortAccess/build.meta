@@ -59,7 +59,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		
 		// platform windows AMD 64 with JNI
 		target = makeTarget("WinAMD64jniapi", "jni/libserialportaccess_jni_x64.dll");
-		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++-15.1.0";
+		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
 		target.compileCpp.define("PLATFORM_WIN");
 		target.compileCpp.define("INCLUDE_JNIAPI");
 		if (debugging) target.compileCpp.options.add("-g");
@@ -70,7 +70,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.build.dependencyOf(buildJni);
 		
 		// platform linux AMD 64 with JNI
-		target = makeTarget("LinAMD64jniapi", "jni/serialportaccess_jni_x64.so");
+		target = makeTarget("LinAMD64jniapi", "jni/libserialportaccess_jni_x64.so");
 		target.linkCpp.linker = target.compileCpp.compiler = "lin-amd-64-g++";
 		target.compileCpp.define("PLATFORM_LIN");
 		target.compileCpp.define("INCLUDE_JNIAPI");

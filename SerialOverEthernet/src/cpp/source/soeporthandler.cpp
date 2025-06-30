@@ -89,7 +89,7 @@ bool SerialOverEthernet::SOEPortHandler::read(unsigned int* rxid, const char** b
 		}
 	}
 
-	// If currently no new data available, look for packages whichs reception might have failed
+	// If currently no new data available, look for packages which's reception might have failed
 	for (unsigned int id = this->last_transmitted_rxid; id < this->next_transmit_rxid; id++) {
 		if (this->rx_stack.count(id)) {
 			rx_entry& stackEntry = this->rx_stack.at(id);

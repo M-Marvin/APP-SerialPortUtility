@@ -19,7 +19,7 @@ void printError(const char* format) {
 	printf(format, errorCode, strerror(errorCode));
 }
 
-unsigned int getBaudCfgValue(unsigned long baud) {
+int getBaudCfgValue(unsigned long baud) {
 	switch (baud) {
 	case 0: return B0; break;
 	case 50: return B50; break;
@@ -37,11 +37,26 @@ unsigned int getBaudCfgValue(unsigned long baud) {
 	case 9600: return B9600; break;
 	case 19200: return B19200; break;
 	case 38400: return B38400; break;
-	default: return 0;
+	case 57600: return B57600; break;
+	case 115200: return B115200; break;
+	case 230400: return B230400; break;
+	case 460800: return B460800; break;
+	case 500000: return B500000; break;
+	case 576000: return B576000; break;
+	case 921600: return B921600; break;
+	case 1000000: return B1000000; break;
+	case 1152000: return B1152000; break;
+	case 1500000: return B1500000; break;
+	case 2000000: return B2000000; break;
+	case 2500000: return B2500000; break;
+	case 3000000: return B3000000; break;
+	case 3500000: return B3500000; break;
+	case 4000000: return B4000000; break;
+	default: return -1;
 	}
 }
 
-unsigned long getBaudValue(unsigned int baudCfg) {
+long getBaudValue(unsigned int baudCfg) {
 	switch (baudCfg) {
 	case B0: return 0; break;
 	case B50: return 50; break;
@@ -59,7 +74,22 @@ unsigned long getBaudValue(unsigned int baudCfg) {
 	case B9600: return 9600; break;
 	case B19200: return 19200; break;
 	case B38400: return 38400; break;
-	default: return 0;
+	case B57600: return 57600; break;
+	case B115200: return 115200; break;
+	case B230400: return 230400; break;
+	case B460800: return 460800; break;
+	case B500000: return 500000; break;
+	case B576000: return 576000; break;
+	case B921600: return 921600; break;
+	case B1000000: return 1000000; break;
+	case B1152000: return 1152000; break;
+	case B1500000: return 1500000; break;
+	case B2000000: return 2000000; break;
+	case B2500000: return 2500000; break;
+	case B3000000: return 3000000; break;
+	case B3500000: return 3500000; break;
+	case B4000000: return 4000000; break;
+	default: return -1;
 	}
 }
 
@@ -96,12 +126,6 @@ public:
 			return false;
 		}
 
-		termios alt;
-		if (::tcgetattr(this->comPortHandle, &alt) != 0) {
-			printError("Error %i in setConfig:tcgetattr: %s\n");
-			return false;
-		}
-
 		// Default serial prot configuration from https://blog.mbedded.ninja/programming/operating-systems/linux/linux-serial-ports-using-c-cpp/
 		this->comPortState.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
 		this->comPortState.c_cflag &= ~CSTOPB; // Clear stop field, only one stop bit used in communication (most common)
@@ -114,12 +138,6 @@ public:
 		this->comPortState.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL); // Disable any special handling of received bytes
 		this->comPortState.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
 		this->comPortState.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
-
-		if (	cfsetispeed(&this->comPortState, getBaudCfgValue(config.baudRate)) != 0 ||
-				cfsetospeed(&this->comPortState, getBaudCfgValue(config.baudRate)) != 0) {
-			printError("Error %i in setConfig:cfsetspeed: %s\n");
-			return false;
-		}
 
 		if (config.parity != SerialAccess::SPC_PARITY_NONE) {
 			this->comPortState.c_cflag |= PARENB; // Enable parity
@@ -170,6 +188,13 @@ public:
 			this->comPortState.c_cflag &= ~CSTOPB; // One stop bit
 		} else {
 			printf("Error one half stop bits not supported\n");
+			return false;
+		}
+
+		int baudCfg = getBaudCfgValue(config.baudRate);
+		if (baudCfg < 0) return false;
+		if (::cfsetspeed(&this->comPortState, baudCfg) != 0) {
+			printError("Error %i in setConfig:cfsetspeed: %s\n");
 			return false;
 		}
 
@@ -314,8 +339,8 @@ public:
 			if (result == 0) return 0;
 		}
 
-		unsigned long receivedBytes = ::read(this->comPortHandle, buffer, bufferCapacity);
-
+		ssize_t receivedBytes = ::read(this->comPortHandle, buffer, bufferCapacity);
+		if (receivedBytes < 0) return 0;
 		return receivedBytes;
 	}
 
@@ -348,7 +373,8 @@ public:
 			if (result == 0) return 0;
 		}
 
-		unsigned long writtenBytes = ::write(this->comPortHandle, buffer, bufferLength);
+		ssize_t writtenBytes = ::write(this->comPortHandle, buffer, bufferLength);
+		if (writtenBytes < 0) return 0;
 		return writtenBytes;
 	}
 

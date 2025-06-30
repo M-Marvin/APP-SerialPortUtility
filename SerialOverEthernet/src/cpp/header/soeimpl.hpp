@@ -177,39 +177,42 @@ public:
 private:
 	/**
 	 * Handle serial transmission
+	 * Attempts to writes data from the TX stack to the serial port when notified by the socket handler.
 	 */
 	void handlePortTX();
 	/**
 	 * Handles serial reception
+	 * Listens to the port and puts the received data on the RX stack, calls the callback
+	 * function to notify the socket handler about the new data.
 	 */
 	void handlePortRX();
 
-	std::unique_ptr<SerialAccess::SerialPort> port;
-	std::function<void(void)> new_data;
-	std::function<void(unsigned int)> tx_confirm;
+	std::unique_ptr<SerialAccess::SerialPort> port;	// The serial port to handle
+	std::function<void(void)> new_data;				// The new data callback to the socket handler about new data on the RX stack
+	std::function<void(unsigned int)> tx_confirm;	// The transmission confirm callback to notify the socket handler that data on the TX stack has been transmitted
 
 	typedef struct {
-		unsigned long length;
-		std::unique_ptr<char> payload;
+		unsigned long length;					// The length of the payload
+		std::unique_ptr<char> payload;			// The payload buffer
 	} tx_entry;
 
 	std::thread thread_tx;
-	unsigned int next_txid;					// Next txid that the serial port will try to transmitt
+	unsigned int next_txid;						// Next txid that the serial port will try to transmitt
 	std::mutex tx_stackm;						// Mutex for synchronizing access to transmission stack and condition variable
 	std::condition_variable tx_waitc;			// TX hold variable, transmission will hold here if the tx stack runs out
 	std::map<unsigned int, tx_entry> tx_stack;	// The serial transmission stack, holding network received data to transmitt over serial
 
 	typedef struct  {
-		unsigned long length;
-		std::unique_ptr<char> payload;
-		std::chrono::time_point<std::chrono::steady_clock> time_to_resend;
-		bool rx_confirmed;
+		unsigned long length;												// Length of the payload
+		std::unique_ptr<char> payload;										// The payload buffer
+		std::chrono::time_point<std::chrono::steady_clock> time_to_resend;	// When the payload times out and should be re sent
+		bool rx_confirmed;													// If the reception was confirmed by the server
 	} rx_entry;
 
 	std::thread thread_rx;
-	unsigned int next_free_rxid;			// Next rxid to use for packages read from serial
-	unsigned int next_transmit_rxid;		// Next not yet transmitted rxid to return when requesting data for network transmission
-	unsigned int last_transmitted_rxid;		// Oldest rxid in the stack which's transmission has not yet been confirmed by the other end
+	unsigned int next_free_rxid;				// Next rxid to use for packages read from serial
+	unsigned int next_transmit_rxid;			// Next not yet transmitted rxid to return when requesting data for network transmission
+	unsigned int last_transmitted_rxid;			// Oldest rxid in the stack which's transmission has not yet been confirmed by the other end
 	std::mutex rx_stackm;						// Mutex for synchronizing access to reception stack and condition variable
 	std::condition_variable rx_waitc;			// RX hold condition variable, reception will hold and wait for this if the reception stack size exceeds the limit
 	std::map<unsigned int, rx_entry> rx_stack;	// The serial reception stack, holding serial received and network transmitted but not yet serial transmitted packages
@@ -374,10 +377,10 @@ private:
 	std::map<std::pair<NetSocket::INetAddress, std::string>, std::string> remote2localPort;	// Keeps a list of the remote ports to the local ports
 
 	NetSocket::INetAddress remote_address;		// The remote network address of the current open/close sequence
-	std::string remote_port_name;				// Name of the remote port of the current open/close sequence
-	bool remote_port_status;					// Status for the pending open/close sequence, set before condition variable is released
-	std::mutex remote_port_waitm;				// Mutex protecting condition variable
-	std::condition_variable remote_port_waitc;	// Condition variable for pending port open/close sequences, waits for OPC_OPENED or OPC_CLOSED
+	std::string remote_port_name;								// Name of the remote port of the current open/close sequence
+	bool remote_port_status;									// Status for the pending open/close sequence, set before condition variable is released
+	std::mutex remote_port_waitm;								// Mutex protecting condition variable
+	std::condition_variable remote_port_waitc;					// Condition variable for pending port open/close sequences, waits for OPC_OPENED or OPC_CLOSED
 
 };
 
