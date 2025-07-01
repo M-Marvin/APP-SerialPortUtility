@@ -54,12 +54,12 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	public TargetConfig makeTarget(String config, String excutableName) {
 		var target = super.makeTarget(config, excutableName);
 		
-		var copyLibs = new FileTask("copyLibs" + config, de.m_marvin.metabuild.core.tasks.FileTask.Action.COPY, target.binaryUnzip.output, new File("build/bin/" + config + "/"), true);
+		var copyLibs = new FileTask("copyLibs" + config, de.m_marvin.metabuild.core.tasks.FileTask.Action.COPY, target.binaryUnzip.output, new File("../bin/" + config + "/"), true);
 		copyLibs.group = "platform";
 		copyLibs.dependencyOf(target.build);
 		copyLibs.dependsOn(target.binaryUnzip);
 		
-		target.linkCpp.outputFile = new File("build/bin/" + config + "/" + excutableName);
+		target.linkCpp.outputFile = new File("../bin/" + config + "/" + excutableName);
 		
 		return target;
 	}

@@ -74,9 +74,9 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		
 		var target = super.makeTarget(config, executableName);
 		
-		target.linkCpp.outputFile = new File("build/bin/" + config + "/" + executableName);
+		target.linkCpp.outputFile = new File("../bin/" + config + "/" + executableName);
 		
-		var copyLibs = new FileTask("copyLibs" + config, Action.COPY, target.binaryUnzip.output, new File("build/bin/" + config), true);
+		var copyLibs = new FileTask("copyLibs" + config, Action.COPY, target.binaryUnzip.output, new File("../bin/" + config), true);
 		copyLibs.group = "platform";
 		copyLibs.dependsOn(target.binaryUnzip);
 		copyLibs.dependencyOf(target.build);
