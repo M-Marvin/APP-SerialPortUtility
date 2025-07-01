@@ -168,6 +168,10 @@ public:
 		return this->stype;
 	}
 
+	int lastError() override {
+		return errno;
+	}
+
 	bool listen(const NetSocket::INetAddress& address) override {
 		if (this->stype != NetSocket::UNBOUND) {
 			printf("tried to call listen() on already bound socket!\n");
@@ -235,9 +239,7 @@ public:
 
 		int clientSocket = ::accept(this->handle, NULL, NULL);
 		if (clientSocket == -1) {
-			int error = errno;
-			if (error != 10004) // Ignore the error message for "socket was closed" since this means it was intentional
-				printError("Error %d in Socket:accept:accept(): %s\n");
+			printError("Error %d in Socket:accept:accept(): %s\n");
 			return false;
 		}
 
@@ -292,7 +294,6 @@ public:
 
 		if (::send(this->handle, buffer, length, 0) == -1) {
 			printError("Error %d in Socket:send:send(): %s\n");
-			close();
 			return false;
 		}
 
@@ -323,17 +324,11 @@ public:
 
 		result = ::recv(this->handle, buffer, length, 0);
 		if (result < 0) {
-			int error = errno;
-			if (error != 10004)
-				printError("Error %d in Socket:receive:recv(): %s\n");
-			close();
+			printError("Error %d in Socket:receive:recv(): %s\n");
 			return false;
 		} else {
 			*received = result;
 		}
-
-		// Receiving zero bytes means the connection was closed
-		if (result == 0) close();
 
 		return true;
 	}
@@ -367,14 +362,12 @@ public:
 		socklen_t senderAdressLen = sizeof(sockaddr_in6);
 		result = ::recvfrom(this->handle, buffer, length, 0, &((addr_t*) address.addr)->sockaddrU, &senderAdressLen);
 		if (result == -1) {
-			int error = errno;
-			if (error != 10004)
-				printError("Error %d in Socket:receivefrom:recvfrom(): %s\n");
-			close();
+			printError("Error %d in Socket:receivefrom:recvfrom(): %s\n");
 			return false;
+		} else {
+			*received = result;
 		}
 
-		*received = result;
 		return true;
 
 	}
@@ -396,7 +389,6 @@ public:
 		int result = ::sendto(this->handle, buffer, length, 0, &((addr_t*) address.addr)->sockaddrU, ((addr_t*) address.addr)->sockaddrU.sa_family == AF_INET ? sizeof(sockaddr_in) : sizeof(sockaddr_in6));
 		if (result == -1) {
 			printError("Error %d in Socket:sendto:sendto(): %s\n");
-			close();
 			return false;
 		}
 

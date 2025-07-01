@@ -5,9 +5,10 @@
  *      Author: marvi
  */
 
-#include <stdexcept>
 #include <cstring>
+#include <stdexcept>
 #include "soeimpl.hpp"
+#include "dbgprintf.h"
 
 SerialOverEthernet::SOEPortHandler::SOEPortHandler(SerialAccess::SerialPort* port, std::function<void(void)> newDataCallback, std::function<void(unsigned int)> txConfirmCallback) {
 	this->port.reset(port);
@@ -53,11 +54,7 @@ bool SerialOverEthernet::SOEPortHandler::send(unsigned int txid, const char* buf
 	{
 		std::lock_guard<std::mutex> lock(this->tx_stackm);
 		this->tx_stack[txid] = {length, std::unique_ptr<char>(stackBuffer)};
-
-#ifdef DEBUG_PRINTS
-		printf("DEBUG: serial <- [tx stack] <- |network| : [tx %u] size %llu len: %lu\n", txid, this->tx_stack.size(), length);
-#endif
-
+		dbgprintf("[DBG] serial <- [tx stack] <- |network| : [tx %u] size %llu len: %lu\n", txid, this->tx_stack.size(), length);
 		this->tx_waitc.notify_all();
 	}
 
@@ -121,10 +118,7 @@ void SerialOverEthernet::SOEPortHandler::confirmReception(unsigned int rxid) {
 		// Mark package reception confirmed
 		stackEntry.rx_confirmed = true;
 
-#ifdef DEBUG_PRINTS
-		printf("DEBUG: serial -> |rx stack| -> [network] -> serial : [rx %u] size %llu len: %lu\n", rxid, this->rx_stack.size(), stackEntry.length);
-#endif
-
+		dbgprintf("[DBG] serial -> |rx stack| -> [network] -> serial : [rx %u] size %llu len: %lu\n", rxid, this->rx_stack.size(), stackEntry.length);
 	} catch (std::out_of_range& e) {} // The entry did not exist, ignore
 
 }
@@ -136,11 +130,7 @@ void SerialOverEthernet::SOEPortHandler::confirmTransmission(unsigned int rxid) 
 	// Remove all packages before and including rxid, this ensures even packges whos tx confirm might be lost are cleared from the stack
 	for (unsigned int i = this->last_transmitted_rxid; i != rxid + 1; i++) {
 		this->rx_stack.erase(i);
-
-#ifdef DEBUG_PRINTS
-		printf("DEBUG: serial -> rx stack -> |network| -> [serial] : [rx %u] size %llu\n", i, this->rx_stack.size());
-#endif
-
+		dbgprintf("[DBG] serial -> rx stack -> |network| -> [serial] : [rx %u] size %llu\n", i, this->rx_stack.size());
 	}
 	this->last_transmitted_rxid = rxid + 1;
 
@@ -167,10 +157,7 @@ void SerialOverEthernet::SOEPortHandler::handlePortTX() {
 		// Get next element from tx stack
 		tx_entry* stackEntry = &this->tx_stack.at(this->next_txid);
 		lock.unlock();
-
-#ifdef DEBUG_PRINTS
-		printf("DEBUG: [serial] <- |tx stack| <- network : [tx %u] size %llu len: %lu\n", this->next_txid, this->tx_stack.size(), stackEntry->length);
-#endif
+		dbgprintf("[DBG] [serial] <- |tx stack| <- network : [tx %u] size %llu len: %lu\n", this->next_txid, this->tx_stack.size(), stackEntry->length);
 
 		// Transmit data over serial
 		unsigned long transmitted = 0;
@@ -216,9 +203,7 @@ void SerialOverEthernet::SOEPortHandler::handlePortRX() {
 			} else if (this->rx_stack[this->next_free_rxid].length >= SERIAL_RX_ENTRY_LEN) {
 				// If the RX STACK has reached its limit, hold reception
 				if (this->rx_stack.size() >= SERIAL_RX_STACK_LIMIT) {
-#ifdef DEBUG_PRINTS
-					printf("DEBUG: [!] rx stack limit reached, reception hold: %llu entries\n", this->rx_stack.size());
-#endif
+					dbgprintf("[DBG] rx stack limit reached, reception hold: %llu entries\n", this->rx_stack.size());
 					this->rx_waitc.wait(lock, [this]() { return this->rx_stack.size() < SERIAL_RX_STACK_LIMIT || !this->port->isOpen(); });
 				}
 				this->rx_stack[++this->next_free_rxid] = {0UL, std::unique_ptr<char>(new char[SERIAL_RX_ENTRY_LEN] {0}), std::chrono::steady_clock::now(), false};
@@ -228,11 +213,8 @@ void SerialOverEthernet::SOEPortHandler::handlePortRX() {
 			rx_entry& stackEntry = this->rx_stack[this->next_free_rxid];
 			lock.unlock(); // ! Free the RX STACK to prevent it being blocked while waiting for data
 			unsigned long received = this->port->readBytes(stackEntry.payload.get() + stackEntry.length, SERIAL_RX_ENTRY_LEN - stackEntry.length);
-#ifdef DEBUG_PRINTS
-			if (received != 0) printf("DEBUG: |serial| -> [rx stack] -> network -> serial : [rx %u] size %llu len: %lu + %lu\n", this->next_free_rxid, this->rx_stack.size(), stackEntry.length, received);
-#endif
+			if (received != 0) dbgprintf("[DBG] |serial| -> [rx stack] -> network -> serial : [rx %u] size %llu len: %lu + %lu\n", this->next_free_rxid, this->rx_stack.size(), stackEntry.length, received);
 			stackEntry.length += received;
-
 		}
 
 		// Notify client TX thread that new data is available

@@ -174,6 +174,10 @@ public:
 		return this->stype;
 	}
 
+	int lastError() override {
+		return GetLastError();
+	}
+
 	bool listen(const NetSocket::INetAddress& address) override {
 		if (this->stype != NetSocket::UNBOUND) {
 			printf("tried to call listen() on already bound socket!\n");
@@ -183,13 +187,13 @@ public:
 		this->addrType = ((addr_t*) address.addr)->sockaddrU.sa_family;
 		this->handle = ::socket(((addr_t*) address.addr)->sockaddrU.sa_family, SOCK_STREAM, IPPROTO_TCP);
 		if (this->handle == INVALID_SOCKET) {
-			printError("Error %lu in Socket:listen:socket(): %s\n");
+			printError("error %d in Socket:listen:socket(): %s\n");
 			return false;
 		}
 
 		int result = ::bind(this->handle, &((addr_t*) address.addr)->sockaddrU, ((addr_t*) address.addr)->sockaddrU.sa_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6));
 		if (result == SOCKET_ERROR) {
-			printError("Error %lu in Socket:listen:bind(): %s\n");
+			printError("error %d in Socket:listen:bind(): %s\n");
 			::closesocket(this->handle);
 			this->handle = INVALID_SOCKET;
 			return false;
@@ -197,7 +201,7 @@ public:
 
 		result = ::listen(this->handle, SOMAXCONN);
 		if (result == SOCKET_ERROR) {
-			printError("Error %lu in Socket:listen:listen(): %s\n");
+			printError("error %d in Socket:listen:listen(): %s\n");
 			::closesocket(this->handle);
 			this->handle = INVALID_SOCKET;
 			return false;
@@ -216,12 +220,12 @@ public:
 		this->addrType = ((addr_t*) address.addr)->sockaddrU.sa_family;
 		this->handle = ::socket(((addr_t*) address.addr)->sockaddrU.sa_family, SOCK_DGRAM, IPPROTO_UDP);
 		if (this->handle == INVALID_SOCKET) {
-			printError("Error %lu in Socket:bind:socket(): %s\n");
+			printError("error %d in Socket:bind:socket(): %s\n");
 			return false;
 		}
 
 		if (::bind(this->handle, &((addr_t*) address.addr)->sockaddrU, ((addr_t*) address.addr)->sockaddrU.sa_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6)) == SOCKET_ERROR) {
-			printError("Error %lu in Socket:bind:bind(): %s\n");
+			printError("error %d in Socket:bind:bind(): %s\n");
 			::closesocket(this->handle);
 			this->handle = INVALID_SOCKET;
 			return false;
@@ -243,9 +247,7 @@ public:
 
 		SOCKET clientSocket = ::accept(this->handle, NULL, NULL);
 		if (clientSocket == INVALID_SOCKET) {
-			int error = WSAGetLastError();
-			if (error != 10004) // Ignore the error message for "socket was closed" since this means it was intentional
-				printError("Error %lu in Socket:accept:accept(): %s\n");
+			printError("error %d in Socket:accept:accept(): %s\n");
 			return false;
 		}
 
@@ -263,13 +265,13 @@ public:
 
 		this->handle = ::socket(((addr_t*) address.addr)->sockaddrU.sa_family, SOCK_STREAM, IPPROTO_TCP);
 		if (this->handle == INVALID_SOCKET) {
-			printError("Error %lu in Socket:connect:socket(): %s\n");
+			printError("error %d in Socket:connect:socket(): %s\n");
 			return false;
 		}
 
 		int result = ::connect(this->handle, &((addr_t*) address.addr)->sockaddrU, ((addr_t*) address.addr)->sockaddrU.sa_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6));
 		if (result == SOCKET_ERROR) {
-			printError("Error %lu in Socket:connect:connect(): %s\n");
+			printError("error %d in Socket:connect:connect(): %s\n");
 			::closesocket(this->handle);
 			this->handle = INVALID_SOCKET;
 			return false;
@@ -301,8 +303,7 @@ public:
 
 		int result = ::send(this->handle, buffer, length, 0);
 		if (result == SOCKET_ERROR) {
-			printError("Error %lu in Socket:send:send(): %s\n");
-			close();
+			printError("error %d in Socket:send:send(): %s\n");
 			return false;
 		}
 
@@ -319,18 +320,12 @@ public:
 		}
 
 		int result = ::recv(this->handle, buffer, length, 0);
-		if (result < 0) {
-			int error = WSAGetLastError();
-			if (error != 10004)
-				printError("Error %lu in Socket:receive:recv(): %s\n");
-			close();
+		if (result == SOCKET_ERROR) {
+			printError("error %d in Socket:sendto:sendto(): %s\n");
 			return false;
 		} else {
 			*received = result;
 		}
-
-		// Receiving zero bytes means the connection was closed
-		if (result == 0) close();
 
 		return true;
 	}
@@ -347,14 +342,12 @@ public:
 		int senderAdressLen = sizeof(SOCKADDR_IN6);
 		int result = ::recvfrom(this->handle, buffer, length, 0, &((addr_t*) address.addr)->sockaddrU, &senderAdressLen);
 		if (result == SOCKET_ERROR) {
-			int error = WSAGetLastError();
-			if (error != 10004)
-				printError("Error %lu in Socket:receivefrom:recvfrom(): %s\n");
-			close();
+			printError("error %d in Socket:sendto:sendto(): %s\n");
 			return false;
+		} else {
+			*received = result;
 		}
 
-		*received = result;
 		return true;
 
 	}
@@ -375,8 +368,7 @@ public:
 
 		int result = ::sendto(this->handle, buffer, length, 0, &((addr_t*) address.addr)->sockaddrU, ((addr_t*) address.addr)->sockaddrU.sa_family == AF_INET ? sizeof(SOCKADDR_IN) : sizeof(SOCKADDR_IN6));
 		if (result == SOCKET_ERROR) {
-			printError("Error %lu in Socket:sendto:sendto(): %s\n");
-			close();
+			printError("error %d in Socket:sendto:sendto(): %s\n");
 			return false;
 		}
 

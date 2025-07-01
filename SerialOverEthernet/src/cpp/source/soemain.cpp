@@ -11,7 +11,7 @@
 #include <iostream>
 #include <string.h>
 #include "soeimpl.hpp"
-
+#include "dbgprintf.h"
 
 bool openPort(SerialOverEthernet::SOESocketHandler& handler, const std::string& host, const std::string& port, const std::string& remotePort, const std::string& localPort, const SerialAccess::SerialPortConfiguration& config) {
 	std::vector<NetSocket::INetAddress> addresses;
@@ -85,9 +85,9 @@ void interpretFlags(SerialOverEthernet::SOESocketHandler& handler, const std::ve
 			} else if (*flag == "-unlink") {
 				flag++;
 				if (!handler.closeLocalPort(*flag)) {
-					printf("unable to close port: %s\n", flag->c_str());
+					printf("[!] unable to close port: %s\n", flag->c_str());
 				} else {
-					printf("link closed: %s\n", flag->c_str());
+					printf("[i] link closed: %s\n", flag->c_str());
 				}
 			}
 		}
@@ -97,9 +97,9 @@ void interpretFlags(SerialOverEthernet::SOESocketHandler& handler, const std::ve
 			link = true;
 		} else if (*flag == "-close") {
 			if (!handler.closeAllPorts()) {
-				printf("some ports failed to close and might still be open\n");
+				printf("[!] some ports failed to close and might still be open\n");
 			} else {
-				printf("all links closed\n");
+				printf("[i] all links closed\n");
 			}
 		} else if (*flag == "-list") {
 			handler.listAllPorts();
@@ -108,7 +108,7 @@ void interpretFlags(SerialOverEthernet::SOESocketHandler& handler, const std::ve
 
 	if (link) {
 		if (remoteHost.empty() || remotePort.empty() || remoteSerial.empty() || localSerial.empty()) {
-			printf("not enough arguments for connection\n");
+			printf("[!] not enough arguments for connection\n");
 			return;
 		}
 
@@ -120,6 +120,7 @@ int mainCPP(std::string& exec, std::vector<std::string>& args) {
 
 	// Disable output caching
 	setbuf(stdout, NULL);
+	dbgprintf("[DBG] test dbg output\n");
 
 	// Print help when no arguments supplied
 	if (args.size() == 0) {

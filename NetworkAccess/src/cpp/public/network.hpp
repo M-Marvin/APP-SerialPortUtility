@@ -145,6 +145,7 @@ public:
 	virtual bool isOpen() = 0;
 
 	virtual SocketType type() = 0;
+	virtual int lastError() = 0;
 
 };
 

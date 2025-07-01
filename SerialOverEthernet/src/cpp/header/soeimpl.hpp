@@ -338,7 +338,7 @@ private:
 	 * @param baud The baud rate to configure
 	 * @return true if the data could be send successfully, false otherwise
 	 */
-	bool sendOpenRequest(const NetSocket::INetAddress& remoteAddress, const std::string& portName, const std::string& remotePortName, const SerialAccess::SerialPortConfiguration& config);
+	bool sendOpen(const NetSocket::INetAddress& remoteAddress, const std::string& portName, const std::string& remotePortName, const SerialAccess::SerialPortConfiguration& config);
 
 	/**
 	 * Assembles and transmits an OPC_CLOSE frame to the server.
@@ -346,7 +346,13 @@ private:
 	 * @param portName The name of the remote port to close
 	 * @return true if the data could be send successfully, false otherwise
 	 */
-	bool sendCloseRequest(const NetSocket::INetAddress& remoteAddress, const std::string& portName);
+	bool sendClose(const NetSocket::INetAddress& remoteAddress, const std::string& portName);
+
+	/**
+	 * Handles the supplied message payload, parsing its conent, taking action to complete the request, and send an response-
+	 *
+	 */
+	void handleRequest(char opc, NetSocket::INetAddress& remoteAddress, std::string& remotePortName, const char* payload, unsigned int payloadLen);
 
 	/**
 	 * Handles network package reception

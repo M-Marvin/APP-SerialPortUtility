@@ -8,7 +8,7 @@ import de.m_marvin.metabuild.maven.tasks.MavenResolveTask;
 
 public class Buildfile extends CppMultiTargetBuildScript {
 	
-	boolean debugging = true; // set to true to compile with debug info
+	boolean debugging = false; // set to true to compile with debug info
 	
 	@Override
 	public void init() {
@@ -20,7 +20,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
 		target.compileCpp.define("PLATFORM_WIN");
 		if (debugging) {
-			target.compileCpp.define("DEBUG_PRINTS");
+			target.compileCpp.define("ENBL_DBGPRINT");
 			target.compileCpp.options.add("-g");
 		}
 		target.linkCpp.libraries.add("serialportaccess_x64");
@@ -33,7 +33,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.linker = target.compileCpp.compiler = "lin-amd-64-g++";
 		target.compileCpp.define("PLATFORM_LIN");
 		if (debugging) {
-			target.compileCpp.define("DEBUG_PRINTS");
+			target.compileCpp.define("ENBL_DBGPRINT");
 			target.compileCpp.options.add("-g");
 		}
 		target.linkCpp.libraries.add("serialportaccess_x64");
@@ -46,7 +46,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-64-g++";
 		target.compileCpp.define("PLATFORM_LIN");
 		if (debugging) {
-			target.compileCpp.define("DEBUG_PRINTS");
+			target.compileCpp.define("ENBL_DBGPRINT");
 			target.compileCpp.options.add("-g");
 		}
 		target.linkCpp.libraries.add("serialportaccess_arm64");
@@ -58,7 +58,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-32-g++";
 		target.compileCpp.define("PLATFORM_LIN");
 		if (debugging) {
-			target.compileCpp.define("DEBUG_PRINTS");
+			target.compileCpp.define("ENBL_DBGPRINT");
 			target.compileCpp.options.add("-g");
 		}
 		target.linkCpp.libraries.add("serialportaccess_arm32");

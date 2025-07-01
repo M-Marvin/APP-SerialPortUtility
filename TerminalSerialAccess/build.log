@@ -1,22 +1,22 @@
-30.06.2025_22:06:42: [DEBUG] : JVM runtime: 21.0.3
-30.06.2025_22:06:42: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
-30.06.2025_22:06:42: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
-30.06.2025_22:06:42: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
-30.06.2025_22:06:42: [ INFO] Metabuild: - metabuild-cpp.jar
-30.06.2025_22:06:42: [ INFO] Metabuild: - metabuild-java.jar
-30.06.2025_22:06:42: [ INFO] Metabuild: - metabuild-maven.jar
-30.06.2025_22:06:42: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
-30.06.2025_22:06:42: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
-30.06.2025_22:06:42: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build.meta
-30.06.2025_22:06:42: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
-30.06.2025_22:06:42: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
-30.06.2025_22:06:42: [ INFO] /maven_dependency/cppDependenciesWinAMD64: attempt offline cache resolution to verify available dependencies ...
-30.06.2025_22:06:42: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: https://maven.pkg.github.com/m-marvin/library-serialportaccess/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/maven-metadata.xml
-30.06.2025_22:06:44: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: not found: 401 Unauthorized
-30.06.2025_22:06:44: [ INFO] /maven_dependency/cppDependenciesWinAMD64: -> fully resolved POM: de.m_marvin.serialportaccess:serialportaccess-WinAMD64::pom:2.0-SNAPSHOT
-30.06.2025_22:06:44: [ INFO] /maven_dependency/cppDependenciesWinAMD64: offline cache incomplete, COMPILETIME filepath mismatch, request remote resolution
-30.06.2025_22:06:44: [ INFO] Metabuild: skipping build run phase
-30.06.2025_22:06:44: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> FINISH
-30.06.2025_22:06:45: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
-30.06.2025_22:06:45: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
-30.06.2025_22:06:45: [ INFO] Metabuild: TASKS: 2  UP_TO_DATE: 1  FAILED: 0
+01.07.2025_13:21:48: [DEBUG] : JVM runtime: 21.0.3
+01.07.2025_13:21:48: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
+01.07.2025_13:21:48: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+01.07.2025_13:21:48: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+01.07.2025_13:21:48: [ INFO] Metabuild: - metabuild-cpp.jar
+01.07.2025_13:21:48: [ INFO] Metabuild: - metabuild-java.jar
+01.07.2025_13:21:48: [ INFO] Metabuild: - metabuild-maven.jar
+01.07.2025_13:21:48: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
+01.07.2025_13:21:48: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
+01.07.2025_13:21:48: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build.meta
+01.07.2025_13:21:48: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
+01.07.2025_13:21:48: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
+01.07.2025_13:21:48: [ INFO] /maven_dependency/cppDependenciesWinAMD64: attempt offline cache resolution to verify available dependencies ...
+01.07.2025_13:21:48: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: https://maven.pkg.github.com/m-marvin/library-serialportaccess/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/maven-metadata.xml
+01.07.2025_13:21:50: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: not found: 401 Unauthorized
+01.07.2025_13:21:50: [ INFO] /maven_dependency/cppDependenciesWinAMD64: -> fully resolved POM: de.m_marvin.serialportaccess:serialportaccess-WinAMD64::pom:2.0-SNAPSHOT
+01.07.2025_13:21:50: [ INFO] /maven_dependency/cppDependenciesWinAMD64: offline cache incomplete, COMPILETIME filepath mismatch, request remote resolution
+01.07.2025_13:21:50: [ INFO] Metabuild: skipping build run phase
+01.07.2025_13:21:50: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> FINISH
+01.07.2025_13:21:51: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
+01.07.2025_13:21:51: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
+01.07.2025_13:21:51: [ INFO] Metabuild: TASKS: 2  UP_TO_DATE: 1  FAILED: 0
