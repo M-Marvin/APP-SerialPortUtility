@@ -40,6 +40,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.libraries.add("netsocket_x64");
 		target.linkCpp.libraries.add("pthread");
 		target.compileCpp.options.add("-fno-stack-protector");
+		target.linkCpp.options.add("-Wl,-rpath,./");
 
 		// Platform linux ARM 64 Client
 		target = makeTarget("LinARM64", "soe");
@@ -52,6 +53,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.libraries.add("serialportaccess_arm64");
 		target.linkCpp.libraries.add("netsocket_arm64");
 		target.linkCpp.libraries.add("pthread");
+		target.linkCpp.options.add("-Wl,-rpath,./");
 
 		// Platform linux ARM 32 Client
 		target = makeTarget("LinARM32", "soe");
@@ -64,6 +66,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.libraries.add("serialportaccess_arm32");
 		target.linkCpp.libraries.add("netsocket_arm32");
 		target.linkCpp.libraries.add("pthread");
+		target.linkCpp.options.add("-Wl,-rpath,./");
 		
 		super.init();
 		
