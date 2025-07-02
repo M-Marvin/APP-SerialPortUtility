@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.Map;
 
-/* NativeLoader v1.0 */
+/* NativeLoader v1.1 */
 public class NativeLoader {
 	
 	private static String libLoadConfig = "/libload.cfg";

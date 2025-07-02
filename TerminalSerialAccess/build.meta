@@ -11,6 +11,8 @@ import de.m_marvin.metabuild.maven.types.Repository.Credentials;
 
 public class Buildfile extends CppMultiTargetBuildScript {
 	
+	String version = "2.0-SNAPSHOT";
+	
 	@Override
 	public void init() {
 		
@@ -23,6 +25,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.libraries.add("serialportaccess_x64");
 		target.linkCpp.options.add("-static-libgcc");
 		target.linkCpp.options.add("-static-libstdc++");
+		target.compileCpp.define("BUILD_VERSION", version);
 
 		// Platform linux AMD 64 Client
 		target = makeTarget("LinAMD64", "serial");
@@ -32,6 +35,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.libraries.add("pthread");
 		target.compileCpp.options.add("-fno-stack-protector");
 		target.linkCpp.options.add("-Wl,-rpath,./");
+		target.compileCpp.define("BUILD_VERSION", version);
 
 		// Platform linux ARM 64 Client
 		target = makeTarget("LinARM64", "serial");
@@ -40,6 +44,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.libraries.add("serialportaccess_arm64");
 		target.linkCpp.libraries.add("pthread");
 		target.linkCpp.options.add("-Wl,-rpath,./");
+		target.compileCpp.define("BUILD_VERSION", version);
 
 		// Platform linux ARM 32 Client
 		target = makeTarget("LinARM32", "serial");
@@ -48,7 +53,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.libraries.add("serialportaccess_arm32");
 		target.linkCpp.libraries.add("pthread");
 		target.linkCpp.options.add("-Wl,-rpath,./");
-		
+		target.compileCpp.define("BUILD_VERSION", version);
+
 		super.init();
 		
 	}

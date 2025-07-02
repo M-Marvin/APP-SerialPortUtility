@@ -13,6 +13,13 @@
 #include "soeimpl.hpp"
 #include "dbgprintf.h"
 
+#ifndef BUILD_VERSION
+#define BUILD_VERSION N/A
+#endif
+// neccessary because of an weird toolchain bug not allowing quotes in -D flags
+#define STRINGIZE(x) #x
+#define ASSTRING(x) STRINGIZE(x)
+
 bool openPort(SerialOverEthernet::SOESocketHandler& handler, const std::string& host, const std::string& port, const std::string& remotePort, const std::string& localPort, const SerialAccess::SerialPortConfiguration& config) {
 	std::vector<NetSocket::INetAddress> addresses;
 	NetSocket::resolveInet(host, port, true, addresses);
@@ -136,6 +143,7 @@ int mainCPP(std::string& exec, std::vector<std::string>& args) {
 		printf(" -lser [serial port]\n");
 		printf(" -baud [serial baud]\n");
 		printf(" -stops [serial stop bits]\n");
+		printf("serial over ethernet version: " ASSTRING(BUILD_VERSION) "\n");
 		return 1;
 	}
 

@@ -1,0 +1,8 @@
+activeConfig=lin_amd64_jni
+eclipse.preferences.version=1
+metaTaskConfig/lin_amd64=\:headersUnzipLinAMD64
+metaTaskConfig/lin_amd64_jni=\:headersUnzipLinAMD64
+metaTaskConfig/lin_arm32_jni=\:compileCppLinARM32jniapi;\:cppDependenciesLinARM32jniapi
+metaTaskConfig/lin_arm64_jni=\:compileCppLinARM64jniapi;\:cppDependenciesLinARM64jniapi
+metaTaskConfig/win_amd64=\:headersUnzipWinAMD64
+metaTaskConfig/win_amd64_jni=\:headersUnzipWinAMD64jniapi

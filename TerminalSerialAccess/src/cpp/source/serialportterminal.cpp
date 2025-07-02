@@ -17,6 +17,13 @@
 #include "serialportterminal.h"
 #include <serial_port.hpp>
 
+#ifndef BUILD_VERSION
+#define BUILD_VERSION N/A
+#endif
+// neccessary because of an weird toolchain bug not allowing quotes in -D flags
+#define STRINGIZE(x) #x
+#define ASSTRING(x) STRINGIZE(x)
+
 #define BUFFER_SIZE 128
 #define CONSECUTIVE_DELAY 10
 #define TRANSMISSION_TIMEOUT 1000
@@ -48,6 +55,7 @@ int main(int argc, const char** argv) {
 		printf(" -parity [parity] : none|even|odd|mark|space\n");
 		printf(" -flowctrl [flow control] : none|xonxoff|rtscts|dsrdtr\n");
 		printf(" -lineedit (send new line) : sendlf|sendcr\n");
+		printf("serial terminal version: " ASSTRING(BUILD_VERSION) "\n");
 		return 1;
 	}
 

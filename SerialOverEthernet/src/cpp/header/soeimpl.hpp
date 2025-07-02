@@ -11,7 +11,7 @@
 #ifndef SOEIMPL_HPP_
 #define SOEIMPL_HPP_
 
-#include <network.hpp>
+#include <netsocket.hpp>
 #include <serial_port.hpp>
 #include <thread>
 #include <map>
