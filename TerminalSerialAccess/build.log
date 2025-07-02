@@ -1,96 +1,18 @@
-02.07.2025_14:00:54: [DEBUG] : JVM runtime: 21.0.3
-02.07.2025_14:00:54: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
-02.07.2025_14:00:54: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
-02.07.2025_14:00:54: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
-02.07.2025_14:00:54: [ INFO] Metabuild: - metabuild-cpp.jar
-02.07.2025_14:00:54: [ INFO] Metabuild: - metabuild-java.jar
-02.07.2025_14:00:54: [ INFO] Metabuild: - metabuild-maven.jar
-02.07.2025_14:00:54: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
-02.07.2025_14:00:54: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
-02.07.2025_14:00:54: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build.meta
-02.07.2025_14:00:54: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
-02.07.2025_14:00:54: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
-02.07.2025_14:00:54: [ INFO] /maven_dependency/cppDependenciesWinAMD64: attempt offline cache resolution to verify available dependencies ...
-02.07.2025_14:00:54: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: https://maven.pkg.github.com/m-marvin/library-serialportaccess/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/maven-metadata.xml
-02.07.2025_14:00:55: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: not found: 401 Unauthorized
-02.07.2025_14:00:55: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/maven-metadata.xml
-02.07.2025_14:00:55: [DEBUG] /maven_dependency/cppDependenciesWinAMD64: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/serialportaccess-WinAMD64/2.0-SNAPSHOT/maven-metadata.xml.md5
-02.07.2025_14:00:55: [ INFO] /maven_dependency/cppDependenciesWinAMD64: -> fully resolved POM: de.m_marvin.serialportaccess:serialportaccess-WinAMD64::pom:2.0-SNAPSHOT
-02.07.2025_14:00:55: [ INFO] /maven_dependency/cppDependenciesWinAMD64: offline cache incomplete, COMPILETIME filepath mismatch, request remote resolution
-02.07.2025_14:00:55: [ INFO] /compile_cpp/compileCppWinAMD64: located cpp compiler: D:\Programms\toolchains\mingw64-msvcrt\bin\win-amd-64-g++.exe
-02.07.2025_14:00:55: [ INFO] /maven_dependency/cppDependenciesLinAMD64: attempt offline cache resolution to verify available dependencies ...
-02.07.2025_14:00:55: [DEBUG] /maven_dependency/cppDependenciesLinAMD64: access URL: https://maven.pkg.github.com/m-marvin/library-serialportaccess/de/m_marvin/serialportaccess/serialportaccess-LinAMD64/2.0-SNAPSHOT/maven-metadata.xml
-02.07.2025_14:00:56: [DEBUG] /maven_dependency/cppDependenciesLinAMD64: not found: 401 Unauthorized
-02.07.2025_14:00:56: [DEBUG] /maven_dependency/cppDependenciesLinAMD64: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/serialportaccess-LinAMD64/2.0-SNAPSHOT/maven-metadata.xml
-02.07.2025_14:00:56: [DEBUG] /maven_dependency/cppDependenciesLinAMD64: access URL: file:/C:/Users/marvi/.m2/repository/de/m_marvin/serialportaccess/serialportaccess-LinAMD64/2.0-SNAPSHOT/maven-metadata.xml.md5
-02.07.2025_14:00:56: [ INFO] /maven_dependency/cppDependenciesLinAMD64: -> fully resolved POM: de.m_marvin.serialportaccess:serialportaccess-LinAMD64::pom:2.0-SNAPSHOT
-02.07.2025_14:00:56: [ INFO] /maven_dependency/cppDependenciesLinAMD64: offline cache incomplete, COMPILETIME filepath mismatch, request remote resolution
-02.07.2025_14:00:56: [ INFO] /compile_cpp/compileCppLinAMD64: located cpp compiler: D:\Programms\toolchains\SysGCC-linux\bin\lin-amd-64-g++.exe
-02.07.2025_14:00:56: [ INFO] /maven_dependency/cppDependenciesLinARM64: attempt offline cache resolution to verify available dependencies ...
-02.07.2025_14:00:56: [DEBUG] /maven_dependency/cppDependenciesLinARM64: access URL: https://maven.pkg.github.com/m-marvin/library-serialportaccess/de/m_marvin/serialportaccess/serialportaccess-LinARM64/2.0-SNAPSHOT/maven-metadata.xml
-02.07.2025_14:00:58: [DEBUG] /maven_dependency/cppDependenciesLinARM64: not found: 401 Unauthorized
-02.07.2025_14:00:58: [ INFO] /maven_dependency/cppDependenciesLinARM64: -> fully resolved POM: de.m_marvin.serialportaccess:serialportaccess-LinARM64::pom:2.0-SNAPSHOT
-02.07.2025_14:00:58: [ INFO] /maven_dependency/cppDependenciesLinARM64: offline cache verified, all dependencies available
-02.07.2025_14:00:58: [ INFO] /compile_cpp/compileCppLinARM64: located cpp compiler: D:\Programms\toolchains\SysGCC-linux\bin\lin-arm-64-g++.exe
-02.07.2025_14:00:58: [ INFO] /maven_dependency/cppDependenciesLinARM32: attempt offline cache resolution to verify available dependencies ...
-02.07.2025_14:00:58: [DEBUG] /maven_dependency/cppDependenciesLinARM32: access URL: https://maven.pkg.github.com/m-marvin/library-serialportaccess/de/m_marvin/serialportaccess/serialportaccess-LinARM32/2.0-SNAPSHOT/maven-metadata.xml
-02.07.2025_14:00:59: [DEBUG] /maven_dependency/cppDependenciesLinARM32: not found: 401 Unauthorized
-02.07.2025_14:00:59: [ INFO] /maven_dependency/cppDependenciesLinARM32: -> fully resolved POM: de.m_marvin.serialportaccess:serialportaccess-LinARM32::pom:2.0-SNAPSHOT
-02.07.2025_14:00:59: [ INFO] /maven_dependency/cppDependenciesLinARM32: offline cache incomplete, COMPILETIME filepath mismatch, request remote resolution
-02.07.2025_14:00:59: [ INFO] /compile_cpp/compileCppLinARM32: located cpp compiler: D:\Programms\toolchains\SysGCC-linux\bin\lin-arm-32-g++.exe
-02.07.2025_14:00:59: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> RUN
-02.07.2025_14:00:59: [ INFO] /maven_dependency/cppDependenciesLinARM32: attempt offline cache resolution to verify available dependencies ...
-02.07.2025_14:00:59: [ INFO] /maven_dependency/cppDependenciesLinARM32: offline cache incomplete, COMPILETIME filepath mismatch, request remote resolution
-02.07.2025_14:00:59: [ INFO] /make_archive/headersZipLinARM32: make archive from files: build\LinARM32\bin\serial-headers.zip
-02.07.2025_14:00:59: [ INFO] /maven_dependency/cppDependenciesWinAMD64: attempt offline cache resolution to verify available dependencies ...
-02.07.2025_14:00:59: [ INFO] /maven_dependency/cppDependenciesWinAMD64: offline cache incomplete, COMPILETIME filepath mismatch, request remote resolution
-02.07.2025_14:00:59: [ INFO] /make_archive/headersZipWinAMD64: make archive from files: build\WinAMD64\bin\serial-headers.zip
-02.07.2025_14:00:59: [ INFO] /maven_dependency/cppDependenciesLinAMD64: attempt offline cache resolution to verify available dependencies ...
-02.07.2025_14:00:59: [ INFO] /maven_dependency/cppDependenciesLinAMD64: offline cache incomplete, COMPILETIME filepath mismatch, request remote resolution
-02.07.2025_14:00:59: [ INFO] /make_archive/headersZipLinAMD64: make archive from files: build\LinAMD64\bin\serial-headers.zip
-02.07.2025_14:00:59: [DEBUG] /extract_archive/headersUnzipLinARM32: unpack archive files: C:\Users\marvi\.meta\files\rrp_cbf2121a7940579828308e5b8003467d\de\m_marvin\serialportaccess\serialportaccess-LinARM32\2.0-SNAPSHOT\serialportaccess-LinARM32-2.0-20250702-114400-83-headers.zip -> build\LinARM32\includeHeaders
-02.07.2025_14:00:59: [DEBUG] /extract_archive/headersUnzipLinARM32: extracting entry: serial_port.hpp
-02.07.2025_14:00:59: [DEBUG] /extract_archive/binaryUnzipLinARM32: unpack archive files: C:\Users\marvi\.meta\files\rrp_cbf2121a7940579828308e5b8003467d\de\m_marvin\serialportaccess\serialportaccess-LinARM32\2.0-SNAPSHOT\serialportaccess-LinARM32-2.0-20250702-114400-83.zip -> build\LinARM32\includeLibraries
-02.07.2025_14:00:59: [DEBUG] /extract_archive/binaryUnzipLinARM32: extracting entry: libserialportaccess_arm32.so
-02.07.2025_14:00:59: [DEBUG] /extract_archive/headersUnzipWinAMD64: unpack archive files: C:\Users\marvi\.meta\files\rrp_cbf2121a7940579828308e5b8003467d\de\m_marvin\serialportaccess\serialportaccess-WinAMD64\2.0-SNAPSHOT\serialportaccess-WinAMD64-2.0-20250702-114400-91-headers.zip -> build\WinAMD64\includeHeaders
-02.07.2025_14:00:59: [DEBUG] /extract_archive/headersUnzipWinAMD64: extracting entry: serial_port.hpp
-02.07.2025_14:00:59: [DEBUG] /extract_archive/binaryUnzipWinAMD64: unpack archive files: C:\Users\marvi\.meta\files\rrp_cbf2121a7940579828308e5b8003467d\de\m_marvin\serialportaccess\serialportaccess-WinAMD64\2.0-SNAPSHOT\serialportaccess-WinAMD64-2.0-20250702-114400-91.zip -> build\WinAMD64\includeLibraries
-02.07.2025_14:00:59: [DEBUG] /extract_archive/binaryUnzipWinAMD64: extracting entry: libserialportaccess_x64.dll
-02.07.2025_14:00:59: [DEBUG] /extract_archive/binaryUnzipLinAMD64: unpack archive files: C:\Users\marvi\.meta\files\rrp_cbf2121a7940579828308e5b8003467d\de\m_marvin\serialportaccess\serialportaccess-LinAMD64\2.0-SNAPSHOT\serialportaccess-LinAMD64-2.0-20250702-114400-82.zip -> build\LinAMD64\includeLibraries
-02.07.2025_14:00:59: [DEBUG] /extract_archive/binaryUnzipLinAMD64: extracting entry: libserialportaccess_x64.so
-02.07.2025_14:00:59: [DEBUG] /extract_archive/headersUnzipLinAMD64: unpack archive files: C:\Users\marvi\.meta\files\rrp_cbf2121a7940579828308e5b8003467d\de\m_marvin\serialportaccess\serialportaccess-LinAMD64\2.0-SNAPSHOT\serialportaccess-LinAMD64-2.0-20250702-114400-82-headers.zip -> build\LinAMD64\includeHeaders
-02.07.2025_14:00:59: [DEBUG] /extract_archive/headersUnzipLinAMD64: extracting entry: serial_port.hpp
-02.07.2025_14:01:00: [ INFO] /compile_cpp/compileCppLinARM32: located cpp compiler: D:\Programms\toolchains\SysGCC-linux\bin\lin-arm-32-g++.exe
-02.07.2025_14:01:00: [ INFO] /compile_cpp/compileCppLinARM32: compiling source file: E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\source\serialportterminal.cpp
-02.07.2025_14:01:00: [DEBUG] /compile_cpp/compileCppLinARM32: cmd: D:\Programms\toolchains\SysGCC-linux\bin\lin-arm-32-g++.exe -o E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\LinARM32\objects\cpp\serialportterminal.o E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\source\serialportterminal.cpp -c -D PLATFORM_LIN -I "E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\LinARM32\includeHeaders" -I "E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\header"
-02.07.2025_14:01:00: [ INFO] /undefined/copyLibsLinARM32: copy files: build\LinARM32\includeLibraries -> ..\bin\LinARM32
-02.07.2025_14:01:00: [ INFO] /compile_cpp/compileCppWinAMD64: located cpp compiler: D:\Programms\toolchains\mingw64-msvcrt\bin\win-amd-64-g++.exe
-02.07.2025_14:01:00: [ INFO] /compile_cpp/compileCppWinAMD64: compiling source file: E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\source\serialportterminal.cpp
-02.07.2025_14:01:00: [DEBUG] /compile_cpp/compileCppWinAMD64: cmd: D:\Programms\toolchains\mingw64-msvcrt\bin\win-amd-64-g++.exe -o E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\WinAMD64\objects\cpp\serialportterminal.o E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\source\serialportterminal.cpp -c -D PLATFORM_WIN -I "E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\WinAMD64\includeHeaders" -I "E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\header"
-02.07.2025_14:01:02: [ INFO] /undefined/copyLibsWinAMD64: copy files: build\WinAMD64\includeLibraries -> ..\bin\WinAMD64
-02.07.2025_14:01:02: [ INFO] /undefined/copyLibsLinAMD64: copy files: build\LinAMD64\includeLibraries -> ..\bin\LinAMD64
-02.07.2025_14:01:02: [ INFO] /compile_cpp/compileCppLinAMD64: located cpp compiler: D:\Programms\toolchains\SysGCC-linux\bin\lin-amd-64-g++.exe
-02.07.2025_14:01:02: [ INFO] /compile_cpp/compileCppLinAMD64: compiling source file: E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\source\serialportterminal.cpp
-02.07.2025_14:01:02: [DEBUG] /compile_cpp/compileCppLinAMD64: cmd: D:\Programms\toolchains\SysGCC-linux\bin\lin-amd-64-g++.exe -o E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\LinAMD64\objects\cpp\serialportterminal.o E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\source\serialportterminal.cpp -c -fno-stack-protector -D PLATFORM_LIN -I "E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\LinAMD64\includeHeaders" -I "E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\header"
-E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\source\serialportterminal.cpp: In function 'void receptionLoop()':
-E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\src\cpp\source\serialportterminal.cpp:211:14: warning: field precision specifier '.*' expects argument of type 'int', but argument 2 has type 'long unsigned int' [-Wformat=]
-  211 |    printf("%.*s", receptionLen, receptionBuffer);
-      |            ~~^~   ~~~~~~~~~~~~
-      |              |    |
-      |              int  long unsigned int
-02.07.2025_14:01:03: [ INFO] /link_cpp/linkCppLinARM32: linking objects in: C:\Windows\system32\build\LinARM32\objects\cpp
-02.07.2025_14:01:03: [ INFO] /link_cpp/linkCppLinARM32: located cpp compiler: D:\Programms\toolchains\SysGCC-linux\bin\lin-arm-32-g++.exe
-02.07.2025_14:01:03: [DEBUG] /link_cpp/linkCppLinARM32: cmd: D:\Programms\toolchains\SysGCC-linux\bin\lin-arm-32-g++.exe E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\LinARM32\objects\cpp\serialportterminal.o -o E:\GitHub\LIBRARY-SerialPortAccess\bin\LinARM32\serial -Wl,-rpath,./ -L"E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\LinARM32\includeLibraries" -lpthread -lserialportaccess_arm32
-02.07.2025_14:01:04: [ INFO] /link_cpp/linkCppWinAMD64: linking objects in: C:\Windows\system32\build\WinAMD64\objects\cpp
-02.07.2025_14:01:04: [ INFO] /link_cpp/linkCppWinAMD64: located cpp compiler: D:\Programms\toolchains\mingw64-msvcrt\bin\win-amd-64-g++.exe
-02.07.2025_14:01:04: [DEBUG] /link_cpp/linkCppWinAMD64: cmd: D:\Programms\toolchains\mingw64-msvcrt\bin\win-amd-64-g++.exe E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\WinAMD64\objects\cpp\serialportterminal.o -o E:\GitHub\LIBRARY-SerialPortAccess\bin\WinAMD64\serial.exe -static-libgcc -static-libstdc++ -L"E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\WinAMD64\includeLibraries" -lserialportaccess_x64
-02.07.2025_14:01:05: [ INFO] /link_cpp/linkCppLinAMD64: linking objects in: C:\Windows\system32\build\LinAMD64\objects\cpp
-02.07.2025_14:01:05: [ INFO] /link_cpp/linkCppLinAMD64: located cpp compiler: D:\Programms\toolchains\SysGCC-linux\bin\lin-amd-64-g++.exe
-02.07.2025_14:01:05: [DEBUG] /link_cpp/linkCppLinAMD64: cmd: D:\Programms\toolchains\SysGCC-linux\bin\lin-amd-64-g++.exe E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\LinAMD64\objects\cpp\serialportterminal.o -o E:\GitHub\LIBRARY-SerialPortAccess\bin\LinAMD64\serial -Wl,-rpath,./ -L"E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build\LinAMD64\includeLibraries" -lpthread -lserialportaccess_x64
-02.07.2025_14:01:05: [ INFO] /make_archive/binaryZipLinARM32: make archive from files: build\LinARM32\bin\serial.zip
-02.07.2025_14:01:05: [ INFO] /make_archive/binaryZipWinAMD64: make archive from files: build\WinAMD64\bin\serial.zip
-02.07.2025_14:01:05: [ INFO] /make_archive/binaryZipLinAMD64: make archive from files: build\LinAMD64\bin\serial.zip
-02.07.2025_14:01:05: [DEBUG] Metabuild: STATE TRANSITION: RUN >>> FINISH
-02.07.2025_14:01:06: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
-02.07.2025_14:01:06: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
-02.07.2025_14:01:06: [ INFO] Metabuild: TASKS: 37  UP_TO_DATE: 37  FAILED: 0
+03.07.2025_00:19:29: [DEBUG] : JVM runtime: 21.0.3
+03.07.2025_00:19:29: [DEBUG] : Meta runtime: 0.5-beta-SNAPSHOT
+03.07.2025_00:19:29: [DEBUG] : Meta home: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+03.07.2025_00:19:29: [ INFO] Metabuild: search system plugins: C:\Users\marvi\.meta\versions\meta-0.5-beta-SNAPSHOT
+03.07.2025_00:19:29: [ INFO] Metabuild: - metabuild-cpp.jar
+03.07.2025_00:19:29: [ INFO] Metabuild: - metabuild-java.jar
+03.07.2025_00:19:29: [ INFO] Metabuild: - metabuild-maven.jar
+03.07.2025_00:19:29: [DEBUG] Metabuild: STATE TRANSITION: PREINIT >>> IDLE
+03.07.2025_00:19:29: [DEBUG] Metabuild: STATE TRANSITION: IDLE >>> INIT
+03.07.2025_00:19:29: [ INFO] Metabuild: loaded buildfile: E:\GitHub\LIBRARY-SerialPortAccess\TerminalSerialAccess\build.meta
+03.07.2025_00:19:29: [DEBUG] Metabuild: STATE TRANSITION: INIT >>> READY
+03.07.2025_00:19:29: [DEBUG] Metabuild: STATE TRANSITION: READY >>> PREPARE
+03.07.2025_00:19:29: [DEBUG] Metabuild: STATE TRANSITION: PREPARE >>> RUN
+03.07.2025_00:19:29: [ INFO] /undefined/clean: delete files: build
+03.07.2025_00:19:30: [DEBUG] Metabuild: STATE TRANSITION: RUN >>> FINISH
+03.07.2025_00:19:30: [DEBUG] Metabuild: STATE TRANSITION: FINISH >>> SHUTDOWN
+03.07.2025_00:19:30: [DEBUG] Metabuild: STATE TRANSITION: SHUTDOWN >>> READY
+03.07.2025_00:19:30: [ INFO] Metabuild: TASKS: 1  UP_TO_DATE: 1  FAILED: 0
