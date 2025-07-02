@@ -44,7 +44,7 @@ public:
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
 
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("Error %lu in setConfig:GetCommState: %s\n");
+			printError("error %lu in SerialPort:setConfig:GetCommState: %s\n");
 			return false;
 		}
 
@@ -86,7 +86,7 @@ public:
 		this->comPortState.EvtChar = 0;
 
 		if (!SetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("Error %lu in setConfig:SetCommState: %s\n");
+			printError("error %lu in SerialPort:setConfig:SetCommState: %s\n");
 			return false;
 		}
 
@@ -97,7 +97,7 @@ public:
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
 
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("Error %lu in getConfig:GetCommState: %s\n");
+			printError("error %lu in SerialPort:getConfig:GetCommState: %s\n");
 			return false;
 		}
 
@@ -159,12 +159,12 @@ public:
 	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("Error %lu in setBaud:GetCommState: %s\n");
+			printError("error %lu in SerialPort:setBaud:GetCommState: %s\n");
 			return false;
 		}
 		this->comPortState.BaudRate = baud;
 		if (!SetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("Error %lu in setBaud:SetCommState: %s\n");
+			printError("error %lu in SerialPort:setBaud:SetCommState: %s\n");
 			return false;
 		}
 		return true;
@@ -174,7 +174,7 @@ public:
 	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return 0;
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("Error %lu in getBaud:GetCommState: %s\n");
+			printError("error %lu in SerialPort:getBaud:GetCommState: %s\n");
 			return 0;
 		}
 		return this->comPortState.BaudRate;
@@ -183,7 +183,7 @@ public:
 	bool setTimeouts(unsigned int readTimeout, unsigned int writeTimeout)
 	{
 		if (!GetCommTimeouts(this->comPortHandle, &this->comPortTimeouts)) {
-			printError("Error %lu in setTimeouts:GetCommTimeouts: %s\n");
+			printError("error %lu in SerialPort:setTimeouts:GetCommTimeouts: %s\n");
 			return false;
 		}
 		this->comPortTimeouts.ReadIntervalTimeout = readTimeout == 0 ? MAXDWORD : 0;
@@ -192,7 +192,7 @@ public:
 		this->comPortTimeouts.WriteTotalTimeoutConstant = writeTimeout;
 		this->comPortTimeouts.WriteTotalTimeoutMultiplier = 0;
 		if (!SetCommTimeouts(this->comPortHandle, &this->comPortTimeouts)) {
-			printError("Error %lu in setTimeouts:SetCommTimeouts: %s\n");
+			printError("error %lu in SerialPort:setTimeouts:SetCommTimeouts: %s\n");
 			return false;
 		}
 		return true;

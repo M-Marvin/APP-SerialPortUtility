@@ -7,19 +7,18 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <termios.h>
 #include <poll.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
+#include <termios.h>
 
-void printError(const char* format) {
+void printerror(const char* format) {
 	setbuf(stdout, NULL); // Work around for errors printed during JNI
 	int errorCode = errno;
 	if (errorCode == 0) return;
 	printf(format, errorCode, strerror(errorCode));
 }
 
-int getBaudCfgValue(unsigned long baud) {
+int getBaudCfgValue(int baud) {
 	switch (baud) {
 	case 0: return B0; break;
 	case 50: return B50; break;
@@ -56,7 +55,7 @@ int getBaudCfgValue(unsigned long baud) {
 	}
 }
 
-long getBaudValue(unsigned int baudCfg) {
+int getBaudValue(unsigned int baudCfg) {
 	switch (baudCfg) {
 	case B0: return 0; break;
 	case B50: return 50; break;
@@ -122,11 +121,12 @@ public:
 		if (this->comPortHandle < 0) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printError("Error %i in setConfig:tcgetattr: %s\n");
+			printerror("error %i in SerialPort:setConfig:tcgetattr: %s\n");
 			return false;
 		}
 
 		// Default serial prot configuration from https://blog.mbedded.ninja/programming/operating-systems/linux/linux-serial-ports-using-c-cpp/
+		this->comPortState.c_cflag &= ~CBAUD;
 		this->comPortState.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
 		this->comPortState.c_cflag &= ~CSTOPB; // Clear stop field, only one stop bit used in communication (most common)
 		this->comPortState.c_cflag |= CREAD | CLOCAL; // Turn on READ & ignore ctrl lines (CLOCAL = 1)
@@ -187,20 +187,19 @@ public:
 		} else if (config.stopBits == SerialAccess::SPC_STOPB_ONE) {
 			this->comPortState.c_cflag &= ~CSTOPB; // One stop bit
 		} else {
-			printf("Error one half stop bits not supported\n");
+			printf("error one half stop bits not supported\n");
 			return false;
 		}
 
 		int baudCfg = getBaudCfgValue(config.baudRate);
-		if (baudCfg < 0) return false;
-		if (::cfsetspeed(&this->comPortState, baudCfg) != 0) {
-			printError("Error %i in setConfig:cfsetspeed: %s\n");
+		if (baudCfg < 0 || ::cfsetspeed(&this->comPortState, baudCfg) != 0) {
+			printerror("error %i in SerialPort:setConfig:cfsetspeed: %s\n");
 			return false;
 		}
 
 		// Save this->comPortHandle settings, also checking for error
 		if (tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
-		  printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
+		  printf("error %i from tcsetattr: %s\n", errno, strerror(errno));
 		  return 1;
 		}
 
@@ -211,11 +210,12 @@ public:
 		if (this->comPortHandle < 0) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printError("Error %i in getConfig:tcgetattr: %s\n");
+			printerror("error %i in SerialPort:getConfig:tcgetattr: %s\n");
 			return false;
 		}
 
-		config.baudRate = getBaudValue(cfgetospeed(&this->comPortState));
+		int baudRate = getBaudValue(cfgetospeed(&this->comPortState));
+		config.baudRate = baudRate < 0 ? 0 : baudRate;
 
 		if (this->comPortState.c_cflag & PARENB) {
 			config.parity = (this->comPortState.c_cflag & PARODD) ? SerialAccess::SPC_PARITY_ODD : SerialAccess::SPC_PARITY_EVEN;
@@ -277,17 +277,18 @@ public:
 		if (this->comPortHandle < 0) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printError("Error %i in setBaud:tcgetattr: %s\n");
+			printerror("error %i in SerialPort:setBaud:tcgetattr: %s\n");
 			return false;
 		}
 
-		if (::cfsetspeed(&this->comPortState, getBaudCfgValue(baud)) != 0) {
-			printError("Error %i in setBaud:cfsetspeed: %s\n");
+		int baudCfg = getBaudCfgValue(baud);
+		if (baudCfg < 0 || ::cfsetspeed(&this->comPortState, baudCfg) != 0) {
+			printerror("error %i in SerialPort:setBaud:cfsetspeed: %s\n");
 			return false;
 		}
 
 		if (::tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
-			printError("Error %i in setBaud:tcsetattr: %s\n");
+			printerror("error %i in SerialPort:setBaud:tcsetattr: %s\n");
 			return false;
 		}
 
@@ -299,11 +300,12 @@ public:
 		if (this->comPortHandle < 0) return 0;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printError("Error %i in getBaud:tcgetattr: %s\n");
+			printerror("error %i in SerialPort:getBaud:tcgetattr: %s\n");
 			return 0;
 		}
 
-		return getBaudValue(cfgetospeed(&this->comPortState));
+		int baudRate = getBaudValue(cfgetospeed(&this->comPortState));
+		return baudRate < 0 ? 0 : baudRate;
 	}
 
 	bool setTimeouts(unsigned int readTimeout, unsigned int writeTimeout)
@@ -314,7 +316,7 @@ public:
 		this->rxTimeout = readTimeout;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printError("Error %i in setTimeouts:tcgetattr: %s\n");
+			printerror("error %i in SerialPort:setTimeouts:tcgetattr: %s\n");
 			return false;
 		}
 
@@ -322,7 +324,7 @@ public:
 		this->comPortState.c_cc[VTIME] = (unsigned char) (readTimeout / 100); // Convert ms in ds
 
 		if (::tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
-			printError("Error %i in setTimeouts:tcsetattr: %s\n");
+			printerror("error %i in SerialPort:setTimeouts:tcsetattr: %s\n");
 			return false;
 		}
 
