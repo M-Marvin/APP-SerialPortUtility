@@ -12,7 +12,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	
 	boolean debugging = false; // set to true to compile with debug info
 	
-	String version = "1.1-SNAPSHOT";
+	String version = "1.1";
 	
 	@Override
 	public void init() {

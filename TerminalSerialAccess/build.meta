@@ -11,7 +11,7 @@ import de.m_marvin.metabuild.maven.types.Repository.Credentials;
 
 public class Buildfile extends CppMultiTargetBuildScript {
 	
-	String version = "2.0-SNAPSHOT";
+	String version = "2.0";
 	
 	@Override
 	public void init() {
