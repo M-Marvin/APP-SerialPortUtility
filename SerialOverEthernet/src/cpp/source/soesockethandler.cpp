@@ -254,7 +254,7 @@ bool SerialOverEthernet::SOESocketHandler::openRemotePort(const NetSocket::INetA
 		printf("[!] failed to configure local port %s, close remote port %s\n", localPortName.c_str(), remotePortName.c_str());
 		error = true;
 	}
-	if (!error && !port->setTimeouts(SERIAL_RX_TIMEOUT, SERIAL_TX_TIMEOUT)) {
+	if (!error && !port->setTimeouts(0, SERIAL_TX_TIMEOUT)) {
 		error = true;
 	}
 	if (error) {

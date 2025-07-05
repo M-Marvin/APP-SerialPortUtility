@@ -22,5 +22,6 @@
 		<pathentry include="E:/GitHub/LIBRARY-SerialPortAccess/TerminalSerialAccess/build/WinAMD64/includeHeaders" kind="inc" path="" system="true"/>
 		<pathentry include="E:/GitHub/LIBRARY-SerialPortAccess/TerminalSerialAccess/src/cpp/header" kind="inc" path="" system="true"/>
 		<pathentry kind="mac" name="PLATFORM_WIN" path="" value=""/>
+		<pathentry kind="mac" name="BUILD_VERSION" path="" value="2.0-SNAPSHOT"/>
 	</storageModule>
 </cproject>

@@ -83,7 +83,7 @@ public:
 
 	/**
 	 * Sets the read write timeouts for the port.
-	 * Zero means no timeout (warning, this might cause read methods on closed ports to block indefinitely).
+	 * Zero means no timeout (instant return if no data is available)
 	 * The port has to be open for this to work.
 	 * @param readTimeout The read timeout, if the requested amount of data is not received within this time, it returns with what it has (might be zero)
 	 * @param writeTimeout The write timeout, if the supplied data could not be written within this time, it returns with the ammount of data that could be written (might be zero)

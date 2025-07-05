@@ -23,5 +23,7 @@
 		<pathentry include="E:/GitHub/LIBRARY-SerialPortAccess/SerialOverEthernet/build/LinAMD64/includeHeaders" kind="inc" path="" system="true"/>
 		<pathentry include="E:/GitHub/LIBRARY-SerialPortAccess/SerialOverEthernet/src/cpp/header" kind="inc" path="" system="true"/>
 		<pathentry kind="mac" name="PLATFORM_LIN" path="" value=""/>
+		<pathentry kind="mac" name="BUILD_VERSION" path="" value="1.1-SNAPSHOT"/>
+		<pathentry kind="mac" name="ENBL_DBGPRINT" path="" value=""/>
 	</storageModule>
 </cproject>

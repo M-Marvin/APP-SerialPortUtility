@@ -94,8 +94,8 @@ namespace SerialOverEthernet {
 #define DEFAULT_SOE_PORT 26
 
 #define SERIAL_RX_ENTRY_LEN 1024 		// Buffer for incoming serial payload (individual stack entries)
-#define SERIAL_RX_STACK_LIMIT 32		// Limit for the reception stack, serial reception will hold if this limit is exceeded, and data loss will occur, tx stack on the other end will automatically have the same size, although it can exceed the limit slightly under specific conditions
-#define SERIAL_RX_TIMEOUT 0 			// Time to wait for requested amount of bytes (SERIAL_RX_BUF) before returning with less if nothing more was received
+#define SERIAL_RX_STACK_LIMIT 128		// Limit for the reception stack, serial reception will hold if this limit is exceeded, and data loss will occur, tx stack on the other end will automatically have the same size, although it can exceed the limit slightly under specific conditions
+#define SERIAL_RX_TIMEOUT_CONSEC 10 	// Time to wait for more data if something has been received
 #define SERIAL_TX_TIMEOUT 1000 			// Time to wait for transmitting serial data before returning with the number of bytes that have been transmitted
 
 /* The control frame operation codes */

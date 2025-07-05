@@ -13,7 +13,6 @@
 #include "dbgprintf.h"
 
 void SerialOverEthernet::SOESocketHandler::handleRequest(char opc, NetSocket::INetAddress& remoteAddress, std::string& remotePortName, const char* payload, unsigned int payloadLen) {
-	dbgprintf("[DBG] processing received package: %d remote port: %s\n", opc, remotePortName.c_str());
 
 	switch (opc) {
 	case OPC_OPEN: {
@@ -77,7 +76,7 @@ void SerialOverEthernet::SOESocketHandler::handleRequest(char opc, NetSocket::IN
 			delete serialPort;
 			return;
 		}
-		if (!serialPort->setConfig(config) || !serialPort->setTimeouts(SERIAL_RX_TIMEOUT, SERIAL_TX_TIMEOUT)) {
+		if (!serialPort->setConfig(config) || !serialPort->setTimeouts(0, SERIAL_TX_TIMEOUT)) {
 			sendError(remoteAddress, localPortName, "failed to configure port");
 			delete serialPort;
 			return;
@@ -203,18 +202,21 @@ void SerialOverEthernet::SOESocketHandler::handleRequest(char opc, NetSocket::IN
 				return;
 			}
 
+			// Update keep alive timeout
+			portClaim->point_of_timeout = std::chrono::steady_clock::now() + std::chrono::milliseconds(INET_KEEP_ALIVE_TIMEOUT);
+
 			// Put remaining payload on transmission stack
 			const char* serialData = payload + 4;
 			size_t serialLen = payloadLen - 4;
 			if (serialLen > 0) {
-				if (!portClaim->handler->send(txid, serialData, serialLen))
+				if (!portClaim->handler->send(txid, serialData, serialLen)) {
 					dbgprintf("[DBG] could not process package, tx stack full: [tx %u] %s\n", txid, localPortName.c_str());
+					sendError(remoteAddress, localPortName, "STREAM: could not process package, tx stack full");
+					return;
+				}
 			} else {
 				dbgprintf("[DBG] received keep alive: %s -> %s\n", remotePortName.c_str(), localPortName.c_str());
 			}
-
-			// Update keep alive timeout
-			portClaim->point_of_timeout = std::chrono::steady_clock::now() + std::chrono::milliseconds(INET_KEEP_ALIVE_TIMEOUT);
 
 			sendConfirm(remoteAddress, false, localPortName, txid);
 
