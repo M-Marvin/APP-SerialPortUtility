@@ -90,9 +90,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientTX() {
 					if (entry->second.last_send + std::chrono::milliseconds(INET_KEEP_ALIVE_INTERVAL) < now) {
 						length = 0;
 						rxid = 0;
-#ifdef DEBUG_PRINTS
-						printf("DEBUG: send keep alive: %s -> %s\n", localPortName.c_str(), remotePortName.c_str());
-#endif
+						dbgprintf("[DBG] send keep alive: %s -> %s\n", localPortName.c_str(), remotePortName.c_str());
 					} else {
 						entry++;
 						continue;
