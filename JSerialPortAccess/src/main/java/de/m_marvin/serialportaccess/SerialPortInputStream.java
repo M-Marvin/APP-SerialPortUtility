@@ -45,6 +45,26 @@ public class SerialPortInputStream extends InputStream {
 	}
 	
 	@Override
+	public int read(byte[] b, int off, int len) throws IOException {
+		int read = 0;
+		if (available() > 0) {
+			read = Math.min(len, this.buffer.length - this.bufferPtr);
+			System.arraycopy(this.buffer, this.bufferPtr, b, off, read);
+			this.bufferPtr += read;
+		}
+		if (read == len) return read;
+		int read2 = 0;
+		do {
+			if (fillBuffer()) {
+				read2 = Math.min(len - read, this.buffer.length - this.bufferPtr);
+				System.arraycopy(this.buffer, this.bufferPtr, b, off + read, read2);
+				this.bufferPtr += read2;
+			}
+		} while (read + read2 == 0);
+		return read + read2;
+	}
+	
+	@Override
 	public int available() throws IOException {
 		if (this.buffer == null || this.bufferPtr == this.buffer.length) {
 			if (!fillBuffer()) return 0;
