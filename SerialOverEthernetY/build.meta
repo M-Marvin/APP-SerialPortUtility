@@ -10,7 +10,7 @@ import de.m_marvin.metabuild.maven.types.Repository.Credentials;
 
 public class Buildfile extends CppMultiTargetBuildScript {
 	
-	boolean debugging = false; // set to true to compile with debug info
+	boolean debugging = true; // set to true to compile with debug info
 	
 	String version = "1.1";
 	

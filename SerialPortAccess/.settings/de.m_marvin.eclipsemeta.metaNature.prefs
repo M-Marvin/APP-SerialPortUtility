@@ -1,4 +1,4 @@
-activeConfig=lin_amd64_jni
+activeConfig=win_amd64
 eclipse.preferences.version=1
 metaTaskConfig/lin_amd64=\:headersUnzipLinAMD64
 metaTaskConfig/lin_amd64_jni=\:headersUnzipLinAMD64

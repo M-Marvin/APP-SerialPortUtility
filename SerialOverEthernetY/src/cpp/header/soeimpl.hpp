@@ -93,10 +93,12 @@ namespace SerialOverEthernet {
 
 #define DEFAULT_SOE_PORT 26
 
-#define SERIAL_RX_ENTRY_LEN 1024 		// Buffer for incoming serial payload (individual stack entries)
-#define SERIAL_RX_STACK_LIMIT 128		// Limit for the reception stack, serial reception will hold if this limit is exceeded, and data loss will occur, tx stack on the other end will automatically have the same size, although it can exceed the limit slightly under specific conditions
-#define SERIAL_RX_TIMEOUT_CONSEC 10 	// Time to wait for more data if something has been received
+#define SERIAL_RX_ENTRY_LEN 512 		// Buffer for incoming serial payload (individual stack entries)
+#define SERIAL_RX_STACK_LIMIT 16		// Limit for the reception stack, serial reception will hold if this limit is exceeded, and data loss will occur, tx stack on the other end will automatically have the same size, although it can exceed the limit slightly under specific conditions
+#define SERIAL_RX_TIMEOUT_CONSEC 0	 	// Time to wait for more data if something has been received
 #define SERIAL_TX_TIMEOUT 1000 			// Time to wait for transmitting serial data before returning with the number of bytes that have been transmitted
+
+// NOTE on SERIAL_RX_TIMEOUT_CONSEC: After some testing it seems like no delay at all (aka, imidiantly return with what is available) seems to give significantly better latency, at the cost of slightly higher network trafic, and low latency is the entire point of this, so ... zero buffering it is ...
 
 /* The control frame operation codes */
 #define OPC_ERROR 0x0
