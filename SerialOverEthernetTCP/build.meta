@@ -103,7 +103,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		
 		dependencies.repository(new Repository(
 				"GHP [SerialPortAccess]", 
-				"https://maven.pkg.github.com/m-marvin/library-serialportaccess",
+				"https://maven.pkg.github.com/m-marvin/app-serialportutility",
 				new Credentials(
 						() -> System.getenv("GITHUB_ACTOR"), 
 						() -> System.getenv("GITHUB_TOKEN")
