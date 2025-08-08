@@ -153,11 +153,11 @@ public class Test {
 		out.write(data.getBytes());
 		Thread.sleep(1000);
 		
-//		System.out.println("read back data (if this blocks, the stream gets no data)");
-//		String readBack3 = new String(in.readNBytes(data.length()));
-//		if (readBack3 == null || !readBack3.equals(data)) {
-//			System.out.println("missmatch:\nsend:\t" + data + "\nread:\t" + readBack3);
-//		}
+		System.out.println("read back data (if this blocks, the stream gets no data)");
+		String readBack3 = new String(in.readNBytes(data.length()));
+		if (readBack3 == null || !readBack3.equals(data)) {
+			System.out.println("missmatch:\nsend:\t" + data + "\nread:\t" + readBack3);
+		}
 		
 		System.out.println("close port");
 		port.closePort();

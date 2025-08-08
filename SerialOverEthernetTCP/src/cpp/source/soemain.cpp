@@ -15,11 +15,11 @@
 
 static std::mutex m_clientConnections;
 static std::condition_variable cv_clientConnections;
-static std::vector<SerialOverEthernet::SOESocketHandler*> clientConnections;
+static std::vector<SerialOverEthernet::SOELinkHandler*> clientConnections;
 
 void cleanupDeadConnectionHandlers() {
 	std::lock_guard<std::mutex> lock(m_clientConnections);
-	clientConnections.erase(std::remove_if(clientConnections.begin(), clientConnections.end(), [](SerialOverEthernet::SOESocketHandler* managedHandler){
+	clientConnections.erase(std::remove_if(clientConnections.begin(), clientConnections.end(), [](SerialOverEthernet::SOELinkHandler* managedHandler){
 		if (!managedHandler->isAlive()) {
 			delete managedHandler;
 			return true;
@@ -28,10 +28,10 @@ void cleanupDeadConnectionHandlers() {
 	}), clientConnections.end());
 }
 
-SerialOverEthernet::SOESocketHandler* createConnectionHandler(NetSocket::Socket* unmanagedSocket, std::string socketHostName, std::string socketHostPort) {
+SerialOverEthernet::SOELinkHandler* createConnectionHandler(NetSocket::Socket* unmanagedSocket, std::string socketHostName, std::string socketHostPort) {
 	std::lock_guard<std::mutex> lock(m_clientConnections);
-	printf("[DBG] create handler for: %s/%s\n", socketHostName.c_str(), socketHostPort.c_str());
-	SerialOverEthernet::SOESocketHandler* managedHandler = new SerialOverEthernet::SOESocketHandler(unmanagedSocket, socketHostName, socketHostPort, [](SerialOverEthernet::SOESocketHandler* managedHandler) {
+	dbgprintf("[DBG] create handler for: %s/%s\n", socketHostName.c_str(), socketHostPort.c_str());
+	SerialOverEthernet::SOELinkHandler* managedHandler = new SerialOverEthernet::SOELinkHandler(unmanagedSocket, socketHostName, socketHostPort, [](SerialOverEthernet::SOELinkHandler* managedHandler) {
 		cv_clientConnections.notify_one(); // try to run the cleanup of closed handlers if not in server mode
 	});
 	clientConnections.push_back(managedHandler);
@@ -58,10 +58,10 @@ bool linkRemotePort(std::string& remoteHost, std::string& remotePort, std::strin
 		if (!clientSocket->connect(address, SOE_TCP_HANDSHAKE_TIMEOUT))
 			continue;
 
-		printf("[DBG] connect succeded at: %s/%s\n", serverHostName.c_str(), serverHostPortStr.c_str());
+		dbgprintf("[DBG] connect succeded at: %s/%s\n", serverHostName.c_str(), serverHostPortStr.c_str());
 
 		// create connection handler, try to apply configurations
-		SerialOverEthernet::SOESocketHandler* handler = createConnectionHandler(clientSocket, serverHostName, serverHostPortStr);
+		SerialOverEthernet::SOELinkHandler* handler = createConnectionHandler(clientSocket, serverHostName, serverHostPortStr);
 		if (!handler->openRemotePort(remoteSerial)) {
 			printf("[!] failed to open remote port: %s\n", remoteSerial.c_str());
 			handler->shutdown();

@@ -19,7 +19,7 @@
 #define SOE_TCP_OPC_CONFIGURE_PORT 0x30
 #define SOE_TCP_OPC_STREAM_SERIAL 0x40
 
-bool SerialOverEthernet::SOESocketHandler::processPackage(const char* package, unsigned int packageLen) {
+bool SerialOverEthernet::SOELinkHandler::processPackage(const char* package, unsigned int packageLen) {
 
 	if (packageLen == 0)
 		return sendError("no package payload");
@@ -36,7 +36,7 @@ bool SerialOverEthernet::SOESocketHandler::processPackage(const char* package, u
 
 }
 
-bool SerialOverEthernet::SOESocketHandler::sendError(const std::string& message) {
+bool SerialOverEthernet::SOELinkHandler::sendError(const std::string& message) {
 	char package[message.length() + 1] {0};
 	package[0] = SOE_TCP_OPC_ERROR;
 	memcpy(package + 1, message.c_str(), (size_t) message.length());
@@ -44,20 +44,20 @@ bool SerialOverEthernet::SOESocketHandler::sendError(const std::string& message)
 	return transmitPackage(package, (unsigned int) message.length() + 1);
 }
 
-bool SerialOverEthernet::SOESocketHandler::processError(const char* package, unsigned int packageLen) {
+bool SerialOverEthernet::SOELinkHandler::processError(const char* package, unsigned int packageLen) {
 	std::string message(package + 1, packageLen - 1);
 
 	printf("[!] remote error frame: %s\n", message.c_str());
 	return true;
 }
 
-bool SerialOverEthernet::SOESocketHandler::sendConfirm(bool status) {
+bool SerialOverEthernet::SOELinkHandler::sendConfirm(bool status) {
 	char package[] = { SOE_TCP_OPC_CONFIRM, status ? (char) 0x1 : (char) 0x0 };
 
 	return transmitPackage(package, 2);
 }
 
-bool SerialOverEthernet::SOESocketHandler::processConfirm(const char* package, unsigned int packageLen) {
+bool SerialOverEthernet::SOELinkHandler::processConfirm(const char* package, unsigned int packageLen) {
 	std::unique_lock<std::mutex> lock(this->m_remoteReturn);
 	this->remoteReturn = package[1] == 0x1;
 	lock.unlock();
@@ -65,7 +65,7 @@ bool SerialOverEthernet::SOESocketHandler::processConfirm(const char* package, u
 	return true;
 }
 
-bool SerialOverEthernet::SOESocketHandler::sendRemoteOpen(const std::string& remoteSerial) {
+bool SerialOverEthernet::SOELinkHandler::sendRemoteOpen(const std::string& remoteSerial) {
 	char package[remoteSerial.length() + 1] {0};
 	package[0] = SOE_TCP_OPC_OPEN_PORT;
 	memcpy(package + 1, remoteSerial.c_str(), (size_t) remoteSerial.length());
@@ -73,7 +73,7 @@ bool SerialOverEthernet::SOESocketHandler::sendRemoteOpen(const std::string& rem
 	return transmitPackage(package, (unsigned int) remoteSerial.length() + 1);
 }
 
-bool SerialOverEthernet::SOESocketHandler::processRemoteOpen(const char* package, unsigned int packageLen) {
+bool SerialOverEthernet::SOELinkHandler::processRemoteOpen(const char* package, unsigned int packageLen) {
 	std::string portName(package + 1, packageLen - 1);
 
 	printf("[i] open port from remote: %s\n", portName.c_str());
@@ -87,13 +87,13 @@ bool SerialOverEthernet::SOESocketHandler::processRemoteOpen(const char* package
 	return true;
 }
 
-bool SerialOverEthernet::SOESocketHandler::sendRemoteClose() {
+bool SerialOverEthernet::SOELinkHandler::sendRemoteClose() {
 	char package = SOE_TCP_OPC_CLOSE_PORT;
 
 	return transmitPackage(&package, 1);
 }
 
-bool SerialOverEthernet::SOESocketHandler::processRemoteClose(const char* package, unsigned int packageLen) {
+bool SerialOverEthernet::SOELinkHandler::processRemoteClose(const char* package, unsigned int packageLen) {
 	printf("[i] close port from remote: %s\n", this->localPortName.c_str());
 	bool closed = closeLocalPort();
 	if (!closed)
@@ -105,7 +105,7 @@ bool SerialOverEthernet::SOESocketHandler::processRemoteClose(const char* packag
 	return true;
 }
 
-bool SerialOverEthernet::SOESocketHandler::sendRemoteConfig(const SerialAccess::SerialPortConfiguration& remoteSerial) {
+bool SerialOverEthernet::SOELinkHandler::sendRemoteConfig(const SerialAccess::SerialPortConfiguration& remoteSerial) {
 	char package[18] {0};
 	package[0] = SOE_TCP_OPC_CONFIGURE_PORT;
 	package[1] = (remoteSerial.baudRate >> 24) & 0xFF;
@@ -129,7 +129,7 @@ bool SerialOverEthernet::SOESocketHandler::sendRemoteConfig(const SerialAccess::
 	return transmitPackage(package, 18);
 }
 
-bool SerialOverEthernet::SOESocketHandler::processRemoteConfig(const char* package, unsigned int packageLen) {
+bool SerialOverEthernet::SOELinkHandler::processRemoteConfig(const char* package, unsigned int packageLen) {
 	SerialAccess::SerialPortConfiguration config = {
 		(unsigned long) ( // baud rate
 				(package[1] & 0xFF) << 24 |
@@ -155,7 +155,7 @@ bool SerialOverEthernet::SOESocketHandler::processRemoteConfig(const char* packa
 				(package[17] & 0xFF) << 0)
 	};
 
-	printf("[i] change port configuration from remote: %s\n", this->localPortName.c_str());
+	printf("[i] change port configuration from remote: %s (baud %lu)\n", this->localPortName.c_str(), config.baudRate);
 	bool changed = setLocalConfig(config);
 	if (!changed)
 		printf("[!] unable to change configuration from remote: %s\n", this->localPortName.c_str());
@@ -166,7 +166,7 @@ bool SerialOverEthernet::SOESocketHandler::processRemoteConfig(const char* packa
 	return true;
 }
 
-bool SerialOverEthernet::SOESocketHandler::sendSerialData(const char* data, unsigned int len) {
+bool SerialOverEthernet::SOELinkHandler::sendSerialData(const char* data, unsigned int len) {
 	char package[len + 1] {0};
 	package[0] = SOE_TCP_OPC_STREAM_SERIAL;
 	memcpy(package + 1, data, len);
@@ -174,7 +174,7 @@ bool SerialOverEthernet::SOESocketHandler::sendSerialData(const char* data, unsi
 	return transmitPackage(package, len + 1);
 }
 
-bool SerialOverEthernet::SOESocketHandler::processSerialData(const char* package, unsigned int packageLen) {
+bool SerialOverEthernet::SOELinkHandler::processSerialData(const char* package, unsigned int packageLen) {
 	if (packageLen)
 		transmitSerialData(package + 1, packageLen - 1);
 

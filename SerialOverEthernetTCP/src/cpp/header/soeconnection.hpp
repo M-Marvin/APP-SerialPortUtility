@@ -30,7 +30,7 @@ namespace SerialOverEthernet {
 #define SOE_TCP_HEADER_LEN (SOE_TCP_PROTO_IDENT_LEN + SOE_TCP_FRAME_LEN_BYTES)	// length of the package header
 #define SOE_SERIAL_BUFFER_LEN (SOE_TCP_FRAME_MAX_LEN - SOE_TCP_HEADER_LEN) - 1	// max length of received serial data for one package
 
-class SOESocketHandler {
+class SOELinkHandler {
 
 public:
 	/**
@@ -38,12 +38,12 @@ public:
 	 * @param socket The socket of the client-server connection
 	 * @param onDeath A callback invoked when the connection was closed
 	 */
-	SOESocketHandler(NetSocket::Socket* socket, std::string& hostName, std::string& hostPort, std::function<void(SOESocketHandler*)> onDeath);
+	SOELinkHandler(NetSocket::Socket* socket, std::string& hostName, std::string& hostPort, std::function<void(SOELinkHandler*)> onDeath);
 
 	/**
 	 * Closes all ports and the socket and cleans all allocated buffer memory
 	 */
-	~SOESocketHandler();
+	~SOELinkHandler();
 
 	/**
 	 * Attempts to open the local serial port.
@@ -135,7 +135,7 @@ private:
 	std::unique_ptr<NetSocket::Socket> socket;				// network TCP socket
 	std::string remoteHostName;									// the host name this connection was established with
 	std::string remoteHostPort;									// the host port this connection was established with
-	std::function<void(SOESocketHandler*)> onDeath;			// callback when connection is shut down
+	std::function<void(SOELinkHandler*)> onDeath;			// callback when connection is shut down
 
 	std::thread thread_rx;									// TCP reception thread
 	std::thread thread_tx;									// TCP transmission thread

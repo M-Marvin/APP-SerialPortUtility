@@ -61,16 +61,16 @@ void interpretFlags(const std::vector<std::string>& args) {
 
 				if (*flag == "-lbaud" || *flag == "-rbaud" || *flag == "-baud") {
 					config->baudRate = stoul(*++flag);
-					if (applyRemote && applyLocal) remoteConfig.baudRate = localConfig.baudRate;
+					if (applyRemote && applyLocal) localConfig.baudRate = remoteConfig.baudRate;
 				} else if (*flag == "-lbits" || *flag == "-rbits" || *flag == "-bits") {
 					config->dataBits = stoul(*++flag);
-					if (applyRemote && applyLocal) remoteConfig.dataBits = localConfig.dataBits;
+					if (applyRemote && applyLocal) localConfig.dataBits = remoteConfig.dataBits;
 				} else if (*flag == "-lstops" || *flag == "-rstops" || *flag == "-stops") {
 					flag++;
 					if (*flag == "one") config->stopBits = SerialAccess::SPC_STOPB_ONE;
 					if (*flag == "one-half") config->stopBits = SerialAccess::SPC_STOPB_ONE_HALF;
 					if (*flag == "two") config->stopBits = SerialAccess::SPC_STOPB_TWO;
-					if (applyRemote && applyLocal) remoteConfig.stopBits = localConfig.stopBits;
+					if (applyRemote && applyLocal) localConfig.stopBits = remoteConfig.stopBits;
 				} else if (*flag == "-lparity" || *flag == "-rparity" || *flag == "-parity") {
 					flag++;
 					if (*flag == "none") config->parity = SerialAccess::SPC_PARITY_NONE;
@@ -78,14 +78,14 @@ void interpretFlags(const std::vector<std::string>& args) {
 					if (*flag == "odd") config->parity = SerialAccess::SPC_PARITY_ODD;
 					if (*flag == "mark") config->parity = SerialAccess::SPC_PARITY_MARK;
 					if (*flag == "space") config->parity = SerialAccess::SPC_PARITY_SPACE;
-					if (applyRemote && applyLocal) remoteConfig.parity = localConfig.parity;
+					if (applyRemote && applyLocal) localConfig.parity = remoteConfig.parity;
 				} else if (*flag == "-lflowctrl" || *flag == "-rflowctrl" || *flag == "-flowctrl") {
 					flag++;
 					if (*flag == "none") config->flowControl = SerialAccess::SPC_FLOW_NONE;
 					if (*flag == "xonxoff") config->flowControl = SerialAccess::SPC_FLOW_XON_XOFF;
 					if (*flag == "rtscts") config->flowControl = SerialAccess::SPC_FLOW_RTS_CTS;
 					if (*flag == "dsrdtr") config->flowControl = SerialAccess::SPC_FLOW_DSR_DTR;
-					if (applyRemote && applyLocal) remoteConfig.flowControl = localConfig.flowControl;
+					if (applyRemote && applyLocal) localConfig.flowControl = remoteConfig.flowControl;
 				}
 
 			}
@@ -103,7 +103,7 @@ void interpretFlags(const std::vector<std::string>& args) {
 			return;
 		}
 
-		linkRemotePort(remoteHost, remotePort, remoteSerial, localSerial, localConfig, remoteConfig);
+		linkRemotePort(remoteHost, remotePort, remoteSerial, localSerial, remoteConfig, localConfig);
 	}
 }
 
@@ -129,7 +129,7 @@ int mainCPP(std::string& exec, std::vector<std::string>& args) {
 		printf(" -(l|r|)bits [data bits]\n");
 		printf(" -(l|r|)stops [stop bits] : one|one-half|two\n");
 		printf(" -(l|r|)parity [parity] : none|even|odd|mark|space\n");
-		printf(" (l - local only | r - remote only | both)");
+		printf(" (l - local only | r - remote only | both)\n");
 		printf("serial over ethernet version: " ASSTRING(BUILD_VERSION) "\n");
 		return 1;
 	}

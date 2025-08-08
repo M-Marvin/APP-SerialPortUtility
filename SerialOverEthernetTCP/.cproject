@@ -20,10 +20,9 @@
 		<pathentry include="D:/Programms/toolchains/SysGCC-linux/x86_64-linux-gnu/include" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/SysGCC-linux/x86_64-linux-gnu/sysroot/usr/include/x86_64-linux-gnu" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/SysGCC-linux/x86_64-linux-gnu/sysroot/usr/include" kind="inc" path="" system="true"/>
-		<pathentry include="E:/GitHub/LIBRARY-SerialPortAccess/SerialOverEthernetTCP/build/LinAMD64/includeHeaders" kind="inc" path="" system="true"/>
-		<pathentry include="E:/GitHub/LIBRARY-SerialPortAccess/SerialOverEthernetTCP/src/cpp/header" kind="inc" path="" system="true"/>
+		<pathentry include="E:/GitHub/APP-SerialPortUtility/SerialOverEthernetTCP/build/LinAMD64/includeHeaders" kind="inc" path="" system="true"/>
+		<pathentry include="E:/GitHub/APP-SerialPortUtility/SerialOverEthernetTCP/src/cpp/header" kind="inc" path="" system="true"/>
 		<pathentry kind="mac" name="PLATFORM_LIN" path="" value=""/>
-		<pathentry kind="mac" name="BUILD_VERSION" path="" value="1.1"/>
-		<pathentry kind="mac" name="ENBL_DBGPRINT" path="" value=""/>
+		<pathentry kind="mac" name="BUILD_VERSION" path="" value="2.0"/>
 	</storageModule>
 </cproject>

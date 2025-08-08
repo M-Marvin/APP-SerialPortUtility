@@ -1,10 +1,10 @@
 /*
  * serialportterminal.cpp
  *
- * An simple serial port terminal for windows
+ * An simple serial port terminal for windows and linux
  *
  *  Created on: 05.04.2024
- *      Author: Marvin Koehler
+ *      Author: Marvin Koehler (M_Marvin)
  */
 
 #include <stdio.h>
@@ -13,6 +13,8 @@
 
 #ifdef PLATFORM_WIN
 #include <windows.h>
+#else
+#include <termios.h>
 #endif
 #include "serialportterminal.h"
 #include <serial_port.hpp>
@@ -24,14 +26,12 @@
 #define STRINGIZE(x) #x
 #define ASSTRING(x) STRINGIZE(x)
 
-static bool shouldTerminate;
-static bool lineEditing = false;
-static char sendLineEnd = 0;
+static bool shouldTerminate;				// if stdin was closed and the receptor thread should close
+static bool lineEditing = false;			// if line editing mode is enabled
+static char sendLineEnd = 0;				// if a ln or cr should be send after each line entered
+static unsigned long pipeCloseDelay = 0;	// the delay for closing the receptor thread after closing stdin
 static SerialAccess::SerialPortConfiguration portConfiguration(SerialAccess::DEFAULT_PORT_CONFIGURATION);
 static SerialAccess::SerialPort* port;
-#ifdef PLATFORM_WIN
-static HANDLE console = 0;
-#endif
 
 int main(int argc, const char** argv) {
 
@@ -50,6 +50,7 @@ int main(int argc, const char** argv) {
 		printf(" -parity [parity] : none|even|odd|mark|space\n");
 		printf(" -flowctrl [flow control] : none|xonxoff|rtscts|dsrdtr\n");
 		printf(" -lineedit (send new line) : sendlf|sendcr\n");
+		printf(" -dclose [pipe close delay] : [ms]\n");
 		printf("serial terminal version: " ASSTRING(BUILD_VERSION) "\n");
 		return 1;
 	}
@@ -87,6 +88,8 @@ int main(int argc, const char** argv) {
 				lineEditing = true;
 				if (arg == "sendlf") sendLineEnd = '\n';
 				if (arg == "sendcr") sendLineEnd = '\r';
+			} else if (flag == "-dclose") {
+				pipeCloseDelay = std::strtoul(argv[i], NULL, 10);
 			} else {
 				i--; // no match with argument
 			}
@@ -156,8 +159,12 @@ int main(int argc, const char** argv) {
 		}
 	}
 
+	// wait for the configured delay
+	std::this_thread::sleep_for(std::chrono::milliseconds(pipeCloseDelay));
+
 	// terminate transmission thread
 	shouldTerminate = true;
+	port->closePort();
 	receptionThread.join();
 
 	// close port
@@ -178,6 +185,8 @@ void receptionLoop() {
 }
 
 #ifdef PLATFORM_WIN
+
+static HANDLE console = 0;
 
 void printError() {
 	DWORD errorCode = GetLastError();
@@ -204,7 +213,19 @@ bool setupConsole(bool lineInput) {
 #else
 
 bool setupConsole(bool lineInput) {
-	return lineInput;
+	struct termios term;
+	if (tcgetattr(fileno(stdin), &term) == -1)
+		return false;
+
+	if (lineInput)
+		term.c_lflag |= (ECHO | ICANON);
+	else
+		term.c_lflag &= ~(ECHO | ICANON);
+
+	if (tcsetattr(fileno(stdin), 0, &term) == -1)
+		return false;
+
+	return true;
 }
 
 #endif

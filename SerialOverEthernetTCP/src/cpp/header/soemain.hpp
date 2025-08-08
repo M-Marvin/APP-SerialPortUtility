@@ -39,7 +39,7 @@ void interpretFlags(const std::vector<std::string>& args);
  * @param socketHostPort The remote host port, used for log entries related to this connection
  * @return An pointer to the newly created connection handler, or an nullptr if the creation failed
  */
-SerialOverEthernet::SOESocketHandler* createConnectionHandler(NetSocket::Socket* unmanagedSocket, std::string socketHostName, std::string socketHostPort);
+SerialOverEthernet::SOELinkHandler* createConnectionHandler(NetSocket::Socket* unmanagedSocket, std::string socketHostName, std::string socketHostPort);
 /**
  * Check all currently available connection handler for closed connections, and properly shutdown and delte them.
  */

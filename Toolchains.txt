@@ -6,4 +6,3 @@ To compile all binaries, toolchains for each platform are required:
 
 Individual platforms can be out-commented in the build.meta files.
 Alternatively only specific platforms can be build usind the platform specific Tasks (example: buildWinAMD64)
-Publishing Tasks generally attempt to build all platforms, out-commenting is required.

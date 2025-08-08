@@ -1,5 +1,5 @@
 /*
- * soesockethandler.cpp
+ * soelinkhandler.cpp
  *
  * Handles an single Serial over Ethernet/IP connection/link.
  * This file implements the generic code required, such as opening sockets and ports and the RX/TX threads.
@@ -12,12 +12,13 @@
 #include "soeconnection.hpp"
 #include "dbgprintf.h"
 
-SerialOverEthernet::SOESocketHandler::SOESocketHandler(NetSocket::Socket* socket, std::string& hostName, std::string& hostPort, std::function<void(SOESocketHandler*)> onDeath) {
+SerialOverEthernet::SOELinkHandler::SOELinkHandler(NetSocket::Socket* socket, std::string& hostName, std::string& hostPort, std::function<void(SOELinkHandler*)> onDeath) {
 	this->onDeath = onDeath;
 	this->remoteHostName = hostName;
 	this->remoteHostPort = hostPort;
 	this->socket.reset(socket);
 	this->socket->setTimeouts(0, 0);
+	this->socket->setNagle(false);
 	this->thread_rx = std::thread([this]() -> void {
 		this->handleClientRX();
 	});
@@ -26,7 +27,7 @@ SerialOverEthernet::SOESocketHandler::SOESocketHandler(NetSocket::Socket* socket
 	});
 }
 
-SerialOverEthernet::SOESocketHandler::~SOESocketHandler() {
+SerialOverEthernet::SOELinkHandler::~SOELinkHandler() {
 	shutdown();
 	printf("[DBG] joining RX thread ...\n");
 	this->thread_rx.join();
@@ -36,7 +37,7 @@ SerialOverEthernet::SOESocketHandler::~SOESocketHandler() {
 	printf("[DBG] joined\n");
 }
 
-bool SerialOverEthernet::SOESocketHandler::shutdown() {
+bool SerialOverEthernet::SOELinkHandler::shutdown() {
 	if (isAlive()) {
 		printf("[i] link shutting down: %s <-> %s @ %s/%s\n", this->localPortName.c_str(), this->remotePortName.c_str(), this->remoteHostName.c_str(), this->remoteHostPort.c_str());
 		closeLocalPort();
@@ -51,11 +52,11 @@ bool SerialOverEthernet::SOESocketHandler::shutdown() {
 	return false;
 }
 
-bool SerialOverEthernet::SOESocketHandler::isAlive() {
+bool SerialOverEthernet::SOELinkHandler::isAlive() {
 	return this->socket->isOpen();
 }
 
-bool SerialOverEthernet::SOESocketHandler::openLocalPort(const std::string& localSerial) {
+bool SerialOverEthernet::SOELinkHandler::openLocalPort(const std::string& localSerial) {
 	closeLocalPort();
 	std::unique_lock<std::mutex> lock(this->m_localPort);
 	this->localPort.reset(SerialAccess::newSerialPortS(localSerial));
@@ -73,7 +74,7 @@ bool SerialOverEthernet::SOESocketHandler::openLocalPort(const std::string& loca
 	return opened;
 }
 
-bool SerialOverEthernet::SOESocketHandler::closeLocalPort() {
+bool SerialOverEthernet::SOELinkHandler::closeLocalPort() {
 	if (this->localPort == 0 || !this->localPort->isOpen()) return true;
 	std::unique_lock<std::mutex> lock(this->m_localPort);
 	this->localPort->closePort();
@@ -82,14 +83,14 @@ bool SerialOverEthernet::SOESocketHandler::closeLocalPort() {
 	return true;
 }
 
-bool SerialOverEthernet::SOESocketHandler::setLocalConfig(const SerialAccess::SerialPortConfiguration& localConfig) {
+bool SerialOverEthernet::SOELinkHandler::setLocalConfig(const SerialAccess::SerialPortConfiguration& localConfig) {
 	if (this->localPort == 0 || !this->localPort->isOpen()) return false;
 	std::lock_guard<std::mutex> lock(this->m_localPort);
-	dbgprintf("[DBG] changing local port configuration: %s\n", this->localPortName.c_str());
+	dbgprintf("[DBG] changing local port configuration: %s (baud %lu)\n", this->localPortName.c_str(), localConfig.baudRate);
 	return this->localPort->setConfig(localConfig);
 }
 
-bool SerialOverEthernet::SOESocketHandler::openRemotePort(const std::string& remoteSerial) {
+bool SerialOverEthernet::SOELinkHandler::openRemotePort(const std::string& remoteSerial) {
 	std::unique_lock<std::mutex> lock(this->m_remoteReturn);
 	this->remotePortName = remoteSerial;
 	dbgprintf("[DBG] opening remote port: %s\n", this->remotePortName.c_str());
@@ -104,7 +105,7 @@ bool SerialOverEthernet::SOESocketHandler::openRemotePort(const std::string& rem
 	return this->remoteReturn;
 }
 
-bool SerialOverEthernet::SOESocketHandler::closeRemotePort() {
+bool SerialOverEthernet::SOELinkHandler::closeRemotePort() {
 	if (this->remotePortName.empty()) return true;
 	std::unique_lock<std::mutex> lock(this->m_remoteReturn);
 	dbgprintf("[DBG] close remote port: %s\n", this->remotePortName.c_str());
@@ -119,7 +120,7 @@ bool SerialOverEthernet::SOESocketHandler::closeRemotePort() {
 	return this->remoteReturn;
 }
 
-bool SerialOverEthernet::SOESocketHandler::setRemoteConfig(const SerialAccess::SerialPortConfiguration& remoteConfig) {
+bool SerialOverEthernet::SOELinkHandler::setRemoteConfig(const SerialAccess::SerialPortConfiguration& remoteConfig) {
 	std::unique_lock<std::mutex> lock(this->m_remoteReturn);
 	dbgprintf("[DBG] changing remote port configuration: %s\n", this->remotePortName.c_str());
 	if (!sendRemoteConfig(remoteConfig)) {
@@ -133,7 +134,7 @@ bool SerialOverEthernet::SOESocketHandler::setRemoteConfig(const SerialAccess::S
 	return this->remoteReturn;
 }
 
-void SerialOverEthernet::SOESocketHandler::handleClientTX() {
+void SerialOverEthernet::SOELinkHandler::handleClientTX() {
 
 	char serialData[SOE_SERIAL_BUFFER_LEN] {0};
 
@@ -164,17 +165,17 @@ void SerialOverEthernet::SOESocketHandler::handleClientTX() {
 
 }
 
-void SerialOverEthernet::SOESocketHandler::transmitSerialData(const char* data, unsigned int len) {
+void SerialOverEthernet::SOELinkHandler::transmitSerialData(const char* data, unsigned int len) {
 
 	if (this->localPort == 0 || !this->localPort->isOpen()) return;
 
 	dbgprintf("[DBG] stream data: [serial] <- |network| : >%.*s<\n", len, data);
 
-	unsigned int written = this->localPort->writeBytes(data, len);
+	this->localPort->writeBytes(data, len);
 
 }
 
-void SerialOverEthernet::SOESocketHandler::handleClientRX() {
+void SerialOverEthernet::SOELinkHandler::handleClientRX() {
 
 	char packageFrame[SOE_TCP_FRAME_MAX_LEN] {0};
 	unsigned int headerLen = 0;
@@ -232,7 +233,7 @@ void SerialOverEthernet::SOESocketHandler::handleClientRX() {
 
 }
 
-bool SerialOverEthernet::SOESocketHandler::transmitPackage(const char* package, unsigned int packageLen) {
+bool SerialOverEthernet::SOELinkHandler::transmitPackage(const char* package, unsigned int packageLen) {
 
 	// assemble frame header
 	char frameHeader[SOE_TCP_HEADER_LEN] {0};

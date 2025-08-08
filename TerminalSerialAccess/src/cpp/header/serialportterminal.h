@@ -2,7 +2,7 @@
  * serialportterminal.h
  *
  *  Created on: 06.04.2024
- *      Author: Marvin Koehler
+ *      Author: Marvin Koehler (M_Marvin)
  */
 
 #ifndef SERIALPORTTERMINAL_H_

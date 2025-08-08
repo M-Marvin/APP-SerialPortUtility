@@ -16,7 +16,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 
 	boolean debugging = false; // set to true to compile with debug info
 	
-	String version = "2.1.1-SNAPSHOT";
+	String version = "2.1.1";
 	
 	@Override
 	public void init() {
@@ -133,15 +133,15 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		
 		publishLocal.coordinates("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":" + version);
 		
-//		publish.coordinates("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":" + version);
-//		publish.repository(new Repository(
-//				"GHP [SerialPortAccess]", 
-//				"https://maven.pkg.github.com/m-marvin/library-serialportaccess",
-//				new Credentials(
-//						() -> System.getenv("GITHUB_ACTOR"), 
-//						() -> System.getenv("GITHUB_TOKEN")
-//				)
-//		));
+		publish.coordinates("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":" + version);
+		publish.repository(new Repository(
+				"GHP [SerialPortAccess]", 
+				"https://maven.pkg.github.com/m-marvin/app-serialportutility",
+				new Credentials(
+						() -> System.getenv("GITHUB_ACTOR"), 
+						() -> System.getenv("GITHUB_TOKEN")
+				)
+		));
 		
 	}
 	
