@@ -45,3 +45,7 @@ The protocoll does not support to transmit the flow controll status between the 
 
 **IMPORTAND: The protocoll does not implement any kind of encryption or security features, it was purely developed for usage in local networks.**
 
+## Note on Com0Com
+
+The repository contains some files from https://sourceforge.net/u/vfrolov/profile located in the folder "Com0Com"
+These are not part of this project and only for testing my own code.
