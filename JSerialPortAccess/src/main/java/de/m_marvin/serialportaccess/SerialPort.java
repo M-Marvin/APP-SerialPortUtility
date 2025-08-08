@@ -123,7 +123,8 @@ public class SerialPort {
 	protected static native int n_getBaud(long handle);
 	protected static native boolean n_setConfig(long handle, SerialPortConfiguration config);
 	protected static native boolean n_getConfig(long handle, SerialPortConfiguration config);
-	protected static native boolean n_setTimeouts(long handle, int readTimeout, int writeTimeout);
+	protected static native boolean n_setTimeouts(long handle, int readTimeout, int readTimeoutInterval, int writeTimeout);
+	protected static native boolean n_getTimeouts(long handle, int[] timeouts);
 	protected static native boolean n_openPort(long handle);
 	protected static native void n_closePort(long handle);
 	protected static native boolean n_isOpen(long handle);
@@ -168,8 +169,40 @@ public class SerialPort {
 		return n_setBaud(handle, baud);
 	}
 	
-	public boolean setTimeouts(int readTimeout, int writeTimeout) {
-		return n_setTimeouts(this.handle, readTimeout, writeTimeout);
+	public boolean setTimeouts(int readTimeout, int readTimeoutInterval, int writeTimeout) {
+		return n_setTimeouts(this.handle, readTimeout, readTimeoutInterval, writeTimeout);
+	}
+	
+	public boolean setTimeouts(int[] timeouts) {
+		Objects.requireNonNull(timeouts, "timeout array must not be null");
+		if (timeouts.length != 3)
+			throw new IllegalArgumentException("timeout array must be of length 3");
+		return n_setTimeouts(this.handle, timeouts[0], timeouts[1], timeouts[2]);
+	}
+	
+	public boolean getTimeouts(int[] timeouts) {
+		Objects.requireNonNull(timeouts, "timeout array must not be null");
+		if (timeouts.length != 3)
+			throw new IllegalArgumentException("timeout array must be of length 3");
+		return n_getTimeouts(this.handle, timeouts);
+	}
+	
+	public int getReadTimeout() {
+		int[] timeouts = new int[3];
+		getTimeouts(timeouts);
+		return timeouts[0];
+	}
+
+	public int getReadTimeoutInterval() {
+		int[] timeouts = new int[3];
+		getTimeouts(timeouts);
+		return timeouts[1];
+	}
+
+	public int getWriteTimeout() {
+		int[] timeouts = new int[3];
+		getTimeouts(timeouts);
+		return timeouts[2];
 	}
 	
 	public boolean openPort() {

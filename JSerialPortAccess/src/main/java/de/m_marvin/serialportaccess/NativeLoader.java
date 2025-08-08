@@ -35,7 +35,6 @@ public class NativeLoader {
 	
 	public static String getArchitectureName() {
 		
-		// TODO: Check the correct values for os.arch
 		String arch = System.getProperty("os.arch").toLowerCase();
 		if (arch.contains("amd64")) {
 			arch = "amd_64";

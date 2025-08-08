@@ -8,3 +8,7 @@
 /TerminalSerialAccess/build
 *.log
 *.log
+/SerialOverEthernetTCP/build
+/SerialOverEthernetTCP/build
+/SerialOverEthernetTCP/build
+/SerialOverEthernetTCP/build

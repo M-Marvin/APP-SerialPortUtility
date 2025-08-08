@@ -133,10 +133,21 @@ JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1getC
 	return true;
 }
 
-JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1setTimeouts(JNIEnv* env, jclass clazz, jlong handle, jint readTimeout, jint writeTimeout)
+JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1setTimeouts(JNIEnv* env, jclass clazz, jlong handle, jint readTimeout, jint readTimeoutInterval, jint writeTimeout)
 {
 	SerialPort* port = (SerialPort*)handle;
-	return port->setTimeouts(readTimeout, writeTimeout);
+	return port->setTimeouts(readTimeout, readTimeoutInterval, writeTimeout);
+}
+
+JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1getTimeouts(JNIEnv* env, jclass clazz, jlong handle, jintArray timeouts)
+{
+	SerialPort* port = (SerialPort*)handle;
+	int timeoutsArr[3] {0};
+	if (port->getTimeouts(timeoutsArr + 0, timeoutsArr + 1, timeoutsArr + 2)) {
+		env->SetIntArrayRegion(timeouts, 0, 3, (jint*) timeoutsArr);
+		return true;
+	}
+	return false;
 }
 
 JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1openPort(JNIEnv* env, jclass clazz, jlong handle)

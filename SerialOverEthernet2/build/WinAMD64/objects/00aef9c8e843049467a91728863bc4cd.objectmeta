@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<objectmeta xmlns="https://github.com/M-Marvin/APP-Metabuild/cpp/objectmeta">
-	<objectfile source="E:\GitHub\LIBRARY-SerialPortAccess\SerialOverEthernet2\src\cpp\source\soeprotocoll.cpp" object="E:\GitHub\LIBRARY-SerialPortAccess\SerialOverEthernet2\build\WinAMD64\objects\cpp\soeprotocoll.o"/>
-	<objectfile source="E:\GitHub\LIBRARY-SerialPortAccess\SerialOverEthernet2\src\cpp\source\soesockethandler.cpp" object="E:\GitHub\LIBRARY-SerialPortAccess\SerialOverEthernet2\build\WinAMD64\objects\cpp\soesockethandler.o"/>
-	<objectfile source="E:\GitHub\LIBRARY-SerialPortAccess\SerialOverEthernet2\src\cpp\source\soemain.cpp" object="E:\GitHub\LIBRARY-SerialPortAccess\SerialOverEthernet2\build\WinAMD64\objects\cpp\soemain.o"/>
-	<objectfile source="E:\GitHub\LIBRARY-SerialPortAccess\SerialOverEthernet2\src\cpp\source\soeporthandler.cpp" object="E:\GitHub\LIBRARY-SerialPortAccess\SerialOverEthernet2\build\WinAMD64\objects\cpp\soeporthandler.o"/>
-</objectmeta>

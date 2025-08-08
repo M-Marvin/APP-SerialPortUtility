@@ -10,8 +10,9 @@
 #include <poll.h>
 #include <unistd.h>
 #include <termios.h>
+#include <sys/eventfd.h>
 
-void printerror(const char* format) {
+void printError(const char* format) {
 	setbuf(stdout, NULL); // Work around for errors printed during JNI
 	int errorCode = errno;
 	if (errorCode == 0) return;
@@ -98,10 +99,11 @@ private:
 	struct termios comPortState;
 	int comPortHandle;
 	const char* portFileName;
-	unsigned int rxTimeout;
-	unsigned int txTimeout;
-	struct pollfd rxPoll;
-	struct pollfd txPoll;
+	int rxTimeout = 0;
+	int rxTimeoutInterval = 0;
+	int txTimeout = 0;
+	struct pollfd pollfdRx[2]; // rx, evt
+	struct pollfd pollfdTx[2]; // tx, evt
 
 public:
 
@@ -109,19 +111,23 @@ public:
 	{
 		this->portFileName = portFile;
 		this->comPortHandle = -1;
-		this->txTimeout = 1000;
-		this->rxTimeout = 1000;
+		this->pollfdTx[1].fd = eventfd(0, 0);
+		this->pollfdTx[1].events = POLLIN;
+		this->pollfdRx[1].fd = eventfd(0, 0);
+		this->pollfdRx[1].events = POLLIN;
 	}
 
 	~SerialPortLin() {
 		closePort();
+		::close(this->pollfdRx[1].fd);
+		::close(this->pollfdTx[1].fd);
 	}
 
 	bool setConfig(const SerialAccess::SerialPortConfig &config) {
 		if (this->comPortHandle < 0) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printerror("error %i in SerialPort:setConfig:tcgetattr: %s\n");
+			printError("error %i in SerialPort:setConfig:tcgetattr: %s\n");
 			return false;
 		}
 
@@ -193,7 +199,7 @@ public:
 
 		int baudCfg = getBaudCfgValue(config.baudRate);
 		if (baudCfg < 0 || ::cfsetspeed(&this->comPortState, baudCfg) != 0) {
-			printerror("error %i in SerialPort:setConfig:cfsetspeed: %s\n");
+			printError("error %i in SerialPort:setConfig:cfsetspeed: %s\n");
 			return false;
 		}
 
@@ -210,7 +216,7 @@ public:
 		if (this->comPortHandle < 0) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printerror("error %i in SerialPort:getConfig:tcgetattr: %s\n");
+			printError("error %i in SerialPort:getConfig:tcgetattr: %s\n");
 			return false;
 		}
 
@@ -248,12 +254,13 @@ public:
 		this->comPortHandle = ::open(this->portFileName, O_RDWR);
 
 		if (isOpen()) {
-			this->rxPoll.fd = this->comPortHandle;
-			this->rxPoll.events = POLLIN;
-			this->txPoll.fd = this->comPortHandle;
-			this->txPoll.events = POLLOUT;
+			this->pollfdRx[0].fd = this->comPortHandle;
+			this->pollfdRx[0].events = POLLIN;
+			this->pollfdTx[0].fd = this->comPortHandle;
+			this->pollfdTx[0].events = POLLOUT;
 
 			setConfig(SerialAccess::DEFAULT_PORT_CONFIGURATION);
+			setTimeouts(SerialAccess::DEFAULT_PORT_RX_TIMEOUT, SerialAccess::DEFAULT_PORT_RX_TIMEOUT_MULTIPLIER, SerialAccess::DEFAULT_PORT_TX_TIMEOUT);
 			return true;
 		}
 
@@ -263,8 +270,15 @@ public:
 	void closePort()
 	{
 		if (this->comPortHandle < 0) return;
-		close(this->comPortHandle);
+		::close(this->comPortHandle);
 		this->comPortHandle = -1;
+
+		// trigger close event to release poll()
+		unsigned long val = 1;
+		if (::write(this->pollfdRx[1].fd, (char*) &val, 8) == -1)
+			printError("error %i in SerialPort:closePort:write(evtRx): %s\n");
+		if (::write(this->pollfdTx[1].fd, (char*) &val, 8) == -1)
+			printError("error %i in SerialPort:closePort:write(evtTx): %s\n");
 	}
 
 	bool isOpen()
@@ -277,18 +291,18 @@ public:
 		if (this->comPortHandle < 0) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printerror("error %i in SerialPort:setBaud:tcgetattr: %s\n");
+			printError("error %i in SerialPort:setBaud:tcgetattr: %s\n");
 			return false;
 		}
 
 		int baudCfg = getBaudCfgValue(baud);
 		if (baudCfg < 0 || ::cfsetspeed(&this->comPortState, baudCfg) != 0) {
-			printerror("error %i in SerialPort:setBaud:cfsetspeed: %s\n");
+			printError("error %i in SerialPort:setBaud:cfsetspeed: %s\n");
 			return false;
 		}
 
 		if (::tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
-			printerror("error %i in SerialPort:setBaud:tcsetattr: %s\n");
+			printError("error %i in SerialPort:setBaud:tcsetattr: %s\n");
 			return false;
 		}
 
@@ -300,7 +314,7 @@ public:
 		if (this->comPortHandle < 0) return 0;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printerror("error %i in SerialPort:getBaud:tcgetattr: %s\n");
+			printError("error %i in SerialPort:getBaud:tcgetattr: %s\n");
 			return 0;
 		}
 
@@ -308,26 +322,47 @@ public:
 		return baudRate < 0 ? 0 : baudRate;
 	}
 
-	bool setTimeouts(unsigned int readTimeout, unsigned int writeTimeout)
+	bool setTimeouts(int readTimeout, int readTimeoutInterval, int writeTimeout)
 	{
 		if (this->comPortHandle < 0) return false;
 
-		this->txTimeout = writeTimeout;
-		this->rxTimeout = readTimeout;
-
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printerror("error %i in SerialPort:setTimeouts:tcgetattr: %s\n");
+			printError("error %i in SerialPort:setTimeouts:tcgetattr: %s\n");
 			return false;
 		}
 
-		this->comPortState.c_cc[VMIN] = 0;
-		this->comPortState.c_cc[VTIME] = (unsigned char) (readTimeout / 100); // Convert ms in ds
+		if (readTimeout < 0) {
+			// No timeout, but wait indefinitely for at least one byte
+			// When receiving a byte, wait additonal readTimeoutInterval ms for another one before returning
+			this->rxTimeout = -1;
+			this->rxTimeoutInterval = readTimeoutInterval;
+			this->comPortState.c_cc[VTIME] = readTimeoutInterval < 0 ? 0 : (unsigned char) (readTimeoutInterval / 100);
+			this->comPortState.c_cc[VMIN] = 1;
+		} else {
+			// Wait for readTimeout ms, then return no matter what has or has not been received
+			// When receiving a byte, wait additonal readTimeoutInterval ms for another one before returning
+			this->rxTimeout = (unsigned char) (readTimeout / 100);
+			this->rxTimeoutInterval = readTimeoutInterval;
+			this->comPortState.c_cc[VTIME] = readTimeoutInterval < 0 ? 0 : (unsigned char) (readTimeoutInterval / 100);
+			this->comPortState.c_cc[VMIN] = 0;
+		}
+
+		// Wait for writeTimeout ms for data to be send
+		this->txTimeout = writeTimeout < 0 ? 0 : writeTimeout;
 
 		if (::tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
-			printerror("error %i in SerialPort:setTimeouts:tcsetattr: %s\n");
+			printError("error %i in SerialPort:setTimeouts:tcsetattr: %s\n");
 			return false;
 		}
 
+		return true;
+	}
+
+	bool getTimeouts(int* readTimeout, int* readTimeoutInterval, int* writeTimeout) {
+		if (!isOpen()) return false;
+		*readTimeout = this->rxTimeout;
+		*readTimeoutInterval = this->rxTimeoutInterval;
+		*writeTimeout = this->txTimeout;
 		return true;
 	}
 
@@ -335,10 +370,10 @@ public:
 	{
 		if (this->comPortHandle < 0) return 0;
 
-		if (this->rxTimeout >= 0) {
-			this->rxPoll.revents = 0;
-			int result = ::poll(&this->rxPoll, 1, this->rxTimeout);
-			if (result == 0) return 0;
+		if (this->rxTimeout != 0) {
+			this->pollfdRx[0].revents = this->pollfdRx[1].revents = 0;
+			int result = ::poll(this->pollfdRx, 2, this->rxTimeout);
+			if (this->pollfdRx[0].revents == 0) return 0;
 		}
 
 		ssize_t receivedBytes = ::read(this->comPortHandle, buffer, bufferCapacity);
@@ -349,19 +384,25 @@ public:
 	unsigned long readBytesConsecutive(char* buffer, unsigned long bufferCapacity, unsigned int consecutiveDelay, unsigned int receptionWaitTimeout)
 	{
 		if (this->comPortHandle < 0) return 0;
-		unsigned long receivedBytes;
-		long long waitStart = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-		while ((receivedBytes = readBytes(buffer, bufferCapacity)) == 0) {
-			long long time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-			if (time - waitStart > receptionWaitTimeout) return 0;
-		}
-		while (receivedBytes < bufferCapacity)
-		{
-			unsigned int lastReceived = readBytes(buffer + receivedBytes, bufferCapacity - receivedBytes);
-			if (lastReceived == 0) break;
-			receivedBytes += lastReceived;
-			std::this_thread::sleep_for(std::chrono::milliseconds(consecutiveDelay));
-		}
+
+		int originalRxTimeout, originalRxTimeoutInterval, originalTxTimeout;
+		if (!getTimeouts(&originalRxTimeout, &originalRxTimeoutInterval, &originalTxTimeout))
+			return 0;
+
+		// Temporary set new timeouts for consecutive read operation
+		if (originalRxTimeout != receptionWaitTimeout || originalRxTimeoutInterval != consecutiveDelay)
+			if (!setTimeouts(receptionWaitTimeout, consecutiveDelay, originalTxTimeout)) {
+				setTimeouts(originalRxTimeout, originalRxTimeoutInterval, originalTxTimeout);
+				return 0;
+			}
+
+		// Read data
+		unsigned long receivedBytes = readBytes(buffer, bufferCapacity);
+
+		// Reset timeout back to previous value
+		if (originalRxTimeout != receptionWaitTimeout || originalRxTimeoutInterval != consecutiveDelay)
+			setTimeouts(originalRxTimeout, originalRxTimeoutInterval, originalTxTimeout);
+
 		return receivedBytes;
 	}
 
@@ -369,10 +410,10 @@ public:
 	{
 		if (this->comPortHandle < 0) return 0;
 
-		if (this->txTimeout >= 0) {
-			this->txPoll.revents = 0;
-			int result = ::poll(&txPoll, 1, this->txTimeout);
-			if (result == 0) return 0;
+		if (this->txTimeout != 0) {
+			this->pollfdTx[0].revents = this->pollfdTx[1].revents = 0;
+			int result = ::poll(this->pollfdTx, 2, this->txTimeout);
+			if (this->pollfdTx[0].revents == 0) return 0;
 		}
 
 		ssize_t writtenBytes = ::write(this->comPortHandle, buffer, bufferLength);

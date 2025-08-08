@@ -1,6 +1,10 @@
 import java.io.File;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import de.m_marvin.metabuild.core.tasks.BuildTask;
+import de.m_marvin.metabuild.cpp.CppSourceIncludes;
 import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
 import de.m_marvin.metabuild.maven.Maven;
 import de.m_marvin.metabuild.maven.tasks.MavenPublishTask;
@@ -12,7 +16,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 
 	boolean debugging = false; // set to true to compile with debug info
 	
-	String version = "2.0";
+	String version = "2.1.1-SNAPSHOT";
 	
 	@Override
 	public void init() {

@@ -1,8 +1,7 @@
-import java.awt.Desktop.Action;
 import java.io.File;
-import java.lang.reflect.Executable;
 
 import de.m_marvin.metabuild.core.tasks.FileTask;
+import de.m_marvin.metabuild.core.tasks.FileTask.Action;
 import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
 import de.m_marvin.metabuild.maven.Maven;
 import de.m_marvin.metabuild.maven.tasks.MavenResolveTask;
@@ -11,46 +10,68 @@ import de.m_marvin.metabuild.maven.types.Repository.Credentials;
 
 public class Buildfile extends CppMultiTargetBuildScript {
 	
+	boolean debugging = true; // set to true to compile with debug info
+	
 	String version = "2.0";
 	
 	@Override
 	public void init() {
 		
-		projectName = "terminalserial";
-
+		projectName = "serialoverethernet";
+		
 		// Platform windows AMD 64 Client
-		var target = makeTarget("WinAMD64", "serial.exe");
+		var target = makeTarget("WinAMD64", "soe.exe");
 		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
 		target.compileCpp.define("PLATFORM_WIN");
+		if (debugging) {
+			target.compileCpp.define("ENBL_DBGPRINT");
+			target.compileCpp.options.add("-g");
+		}
 		target.linkCpp.libraries.add("serialportaccess_x64");
+		target.linkCpp.libraries.add("netsocket_x64");
 		target.linkCpp.options.add("-static-libgcc");
 		target.linkCpp.options.add("-static-libstdc++");
 		target.compileCpp.define("BUILD_VERSION", version);
 
 		// Platform linux AMD 64 Client
-		target = makeTarget("LinAMD64", "serial");
+		target = makeTarget("LinAMD64", "soe");
 		target.linkCpp.linker = target.compileCpp.compiler = "lin-amd-64-g++";
 		target.compileCpp.define("PLATFORM_LIN");
+		if (debugging) {
+			target.compileCpp.define("ENBL_DBGPRINT");
+			target.compileCpp.options.add("-g");
+		}
 		target.linkCpp.libraries.add("serialportaccess_x64");
+		target.linkCpp.libraries.add("netsocket_x64");
 		target.linkCpp.libraries.add("pthread");
 		target.compileCpp.options.add("-fno-stack-protector");
 		target.linkCpp.options.add("-Wl,-rpath,./");
 		target.compileCpp.define("BUILD_VERSION", version);
 
 		// Platform linux ARM 64 Client
-		target = makeTarget("LinARM64", "serial");
+		target = makeTarget("LinARM64", "soe");
 		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-64-g++";
 		target.compileCpp.define("PLATFORM_LIN");
+		if (debugging) {
+			target.compileCpp.define("ENBL_DBGPRINT");
+			target.compileCpp.options.add("-g");
+		}
 		target.linkCpp.libraries.add("serialportaccess_arm64");
+		target.linkCpp.libraries.add("netsocket_arm64");
 		target.linkCpp.libraries.add("pthread");
 		target.linkCpp.options.add("-Wl,-rpath,./");
 		target.compileCpp.define("BUILD_VERSION", version);
 
 		// Platform linux ARM 32 Client
-		target = makeTarget("LinARM32", "serial");
+		target = makeTarget("LinARM32", "soe");
 		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-32-g++";
 		target.compileCpp.define("PLATFORM_LIN");
+		if (debugging) {
+			target.compileCpp.define("ENBL_DBGPRINT");
+			target.compileCpp.options.add("-g");
+		}
 		target.linkCpp.libraries.add("serialportaccess_arm32");
+		target.linkCpp.libraries.add("netsocket_arm32");
 		target.linkCpp.libraries.add("pthread");
 		target.linkCpp.options.add("-Wl,-rpath,./");
 		target.compileCpp.define("BUILD_VERSION", version);
@@ -60,21 +81,25 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	}
 	
 	@Override
-	public TargetConfig makeTarget(String config, String excutableName) {
-		var target = super.makeTarget(config, excutableName);
+	public TargetConfig makeTarget(String config, String executableName) {
 		
-		var copyLibs = new FileTask("copyLibs" + config, de.m_marvin.metabuild.core.tasks.FileTask.Action.COPY, target.binaryUnzip.output, new File("../bin/" + config + "/"), true);
+		var target = super.makeTarget(config, executableName);
+		
+		target.linkCpp.outputFile = new File("../bin/" + config + "/" + executableName);
+		
+		var copyLibs = new FileTask("copyLibs" + config, Action.COPY, target.binaryUnzip.output, new File("../bin/" + config), true);
 		copyLibs.group = "platform";
-		copyLibs.dependencyOf(target.build);
 		copyLibs.dependsOn(target.binaryUnzip);
-		
-		target.linkCpp.outputFile = new File("../bin/" + config + "/" + excutableName);
+		copyLibs.dependencyOf(target.build);
 		
 		return target;
+		
 	}
 	
 	@Override
 	public void repositories(MavenResolveTask dependencies, String config) {
+		
+		dependencies.repository(Maven.mavenLocal());
 		
 		dependencies.repository(new Repository(
 				"GHP [SerialPortAccess]", 
@@ -84,16 +109,26 @@ public class Buildfile extends CppMultiTargetBuildScript {
 						() -> System.getenv("GITHUB_TOKEN")
 				)
 		));
-		
-		dependencies.repository(Maven.mavenLocal());
+
+		dependencies.repository(new Repository(
+				"GHP [NetSocket]", 
+				"https://maven.pkg.github.com/m-marvin/library-netsocket",
+				new Credentials(
+						() -> System.getenv("GITHUB_ACTOR"), 
+						() -> System.getenv("GITHUB_TOKEN")
+				)
+		));
 		
 	}
 	
 	@Override
 	public void dependencies(MavenResolveTask dependencies, String config) {
 		
-		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config + "::zip:2.1");
-		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config + ":headers:zip:2.1");
+		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + "::zip:2.1.1-SNAPSHOT");
+		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":headers:zip:2.1.1-SNAPSHOT");
+
+		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + "::zip:1.1.1-SNAPSHOT");
+		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":headers:zip:1.1.1-SNAPSHOT");
 		
 	}
 	

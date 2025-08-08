@@ -44,6 +44,10 @@ static const SerialPortConfig DEFAULT_PORT_CONFIGURATION = {
 	.flowControl = SPC_FLOW_NONE
 };
 
+static const int DEFAULT_PORT_RX_TIMEOUT = -1;
+static const int DEFAULT_PORT_RX_TIMEOUT_MULTIPLIER = 0;
+static const int DEFAULT_PORT_TX_TIMEOUT = 100;
+
 class SerialPort
 {
 
@@ -83,13 +87,27 @@ public:
 
 	/**
 	 * Sets the read write timeouts for the port.
-	 * Zero means no timeout (instant return if no data is available)
+	 * An readTimeout of zero means no timeout. (instant return if no data is available)
+	 * An readTimeout of less than zero causes the read method to block until at least one character has arrived.
+	 * An writeTimeout of zero or less has means block until everything is sent.
+	 * The readTimeoutInterval defines an additional timeout that is appended to each received byte.
 	 * The port has to be open for this to work.
 	 * @param readTimeout The read timeout, if the requested amount of data is not received within this time, it returns with what it has (might be zero)
-	 * @param writeTimeout The write timeout, if the supplied data could not be written within this time, it returns with the ammount of data that could be written (might be zero)
+	 * @param readTimeoutInterval An additional timeout that is waited for after each received byte, only has an effect if readTimeout >= 0.
+	 * @param writeTimeout The write timeout, if the supplied data could not be written within this time, it returns with the amount of data that could be written (might be zero)
 	 * @return true if the timeouts where set, false if an error occurred
 	 */
-	virtual bool setTimeouts(unsigned int readTimeout, unsigned int writeTimeout) = 0;
+	virtual bool setTimeouts(int readTimeout, int readTimeoutInterval, int writeTimeout) = 0;
+
+	/**
+	 * Returns the current timeouts of the serial port.
+	 * The port has to be open for this to work.
+	 * @param readTimeout Where to store the read timeout
+	 * @param readTimeoutInterval Where to store the read timeout multiplier
+	 * @param writeTimeout Where to store the write timeout
+	 * @return true if the port was open and timeouts where read, false if the port was closed
+	 */
+	virtual bool getTimeouts(int* readTimeout, int* readTimeoutInterval, int* writeTimeout) = 0;
 
 	/**
 	 * Attempt to claim/open the port.
@@ -125,13 +143,9 @@ public:
 	 * This is useful if the data arrives in random intervals, such as user input.
 	 *
 	 * NOTE
-	 * The consecutive delay is implemented as delay between the read operations.
-	 * This means that the application will always wait for the configured ammount of time before attempting to read the next bytes.
-	 * So the value should be held small enough to not cause a buffer overflow.
-	 *
-	 * NOTE
-	 * The reception wait timeout can not be lower than the read timeout of the port, lower values will simply mean to use the read timeout
-	 * The actual timeout will also always be round up to the next multiple of the read timeout.
+	 * This function is an convenience method for doing this between normal reading operations.
+	 * This function temporary changes the timeout configuration of the port using the supplied values.
+	 * If this is the only required behavior, the same should be done using setTimeouts and readBytes.
 	 *
 	 * @param buffer The buffer to write the data to
 	 * @param bufferCapacity The capacity of the buffer, aka the max number of bytes to read

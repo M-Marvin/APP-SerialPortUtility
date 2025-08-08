@@ -24,11 +24,6 @@
 #define STRINGIZE(x) #x
 #define ASSTRING(x) STRINGIZE(x)
 
-#define BUFFER_SIZE 128
-#define CONSECUTIVE_DELAY 10
-#define TRANSMISSION_TIMEOUT 1000
-#define RECEPTION_TIMEOUT 1000
-
 static bool shouldTerminate;
 static bool lineEditing = false;
 static char sendLineEnd = 0;
@@ -126,17 +121,17 @@ int main(int argc, const char** argv) {
 		return -1;
 	}
 
-	// configure port
-	if (!port->setConfig(portConfiguration)) {
-		printf("[!] failed to configure port: %s\n", portName.c_str());
-		printf("[i] this usualy indiciates not supported hardware configuration or an general invalid configuration\n");
+	// configure serial timeouts
+	if (!port->setTimeouts(-1, 0, -1)) {
+		printf("[!] failed to set port timeouts: %s\n", portName.c_str());
 		port->closePort();
 		return -1;
 	}
 
-	// configure serial timeouts
-	if (!port->setTimeouts(CONSECUTIVE_DELAY, TRANSMISSION_TIMEOUT)) {
-		printf("[!] failed to set port timeouts: %s\n", portName.c_str());
+	// configure port
+	if (!port->setConfig(portConfiguration)) {
+		printf("[!] failed to configure port: %s\n", portName.c_str());
+		printf("[i] this usualy indiciates not supported hardware configuration or an general invalid configuration\n");
 		port->closePort();
 		return -1;
 	}
@@ -147,19 +142,10 @@ int main(int argc, const char** argv) {
 
 	// start transmission loop
 	char inputChar;
-	while (!shouldTerminate) {
+	while (!shouldTerminate && !std::cin.eof()) {
 		if (!lineEditing) {
-#ifdef PLATFORM_WIN
-			unsigned long int read;
-			if (ReadConsole(console, &inputChar, 1, &read, NULL)) {
-				port->writeBytes(&inputChar, 1);
-			} else {
-				printf("[!] failed to get raw console access, fallback to line mode\n");
-				lineEditing = true;
-			}
-#else
-			break;
-#endif
+			std::cin.read(&inputChar, 1);
+			port->writeBytes(&inputChar, 1);
 		} else {
 			std::string line;
 			getline(std::cin, line);
@@ -180,6 +166,17 @@ int main(int argc, const char** argv) {
 	return 0;
 }
 
+void receptionLoop() {
+	char receptionBuffer[1];
+	unsigned long receptionLen = 0;
+
+	while (!shouldTerminate) {
+		receptionLen = port->readBytes(receptionBuffer, 1);
+		if (receptionLen > 0)
+			printf("%.*s", (int) receptionLen, receptionBuffer);
+	}
+}
+
 #ifdef PLATFORM_WIN
 
 void printError() {
@@ -195,6 +192,9 @@ void printError() {
 bool setupConsole(bool lineInput) {
 	console = GetStdHandle(STD_INPUT_HANDLE);
 	if (!SetConsoleMode(console, lineInput ? (ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT) : (ENABLE_PROCESSED_INPUT))) {
+		// INVALID_HANDLE most likely means we receive piped input from an another process, so no need to setup an inexistent console
+		if (GetLastError() == 6) return true;
+
 		printError();
 		return false;
 	}
@@ -208,14 +208,3 @@ bool setupConsole(bool lineInput) {
 }
 
 #endif
-
-void receptionLoop() {
-	char receptionBuffer[BUFFER_SIZE];
-	unsigned long receptionLen = 0;
-
-	while (!shouldTerminate) {
-		receptionLen = port->readBytesConsecutive(receptionBuffer, BUFFER_SIZE, CONSECUTIVE_DELAY, RECEPTION_TIMEOUT);
-		if (receptionLen > 0)
-			printf("%.*s", receptionLen, receptionBuffer);
-	}
-}
