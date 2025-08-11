@@ -1,0 +1,80 @@
+import java.io.File;
+
+import de.m_marvin.metabuild.core.tasks.FileTask;
+import de.m_marvin.metabuild.core.tasks.FileTask.Action;
+import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
+import de.m_marvin.metabuild.maven.Maven;
+import de.m_marvin.metabuild.maven.tasks.MavenResolveTask;
+import de.m_marvin.metabuild.maven.types.Repository;
+import de.m_marvin.metabuild.maven.types.Repository.Credentials;
+
+public class Buildfile extends CppMultiTargetBuildScript {
+
+	boolean debugging = false; // set to true to compile with debug info
+	
+	String version = "1.0";
+	
+	@Override
+	public void init() {
+		
+		projectName = "virtualserial";
+
+		importBuild("libcom0com", new File("../LibCom0Com"));
+		
+		var target = makeTarget("WinAMD64", "vserial.exe");
+		target.linkCpp.options.add("-lcom0com");
+		target.compileCpp.define("PLATFORM_WIN");
+		
+		super.init();
+		
+	}
+
+	@Override
+	public TargetConfig makeTarget(String config, String executableName) {
+		
+		var target = super.makeTarget(config, executableName);
+
+		target.linkCpp.outputFile = new File("../bin/" + config + "/" + executableName);
+		
+		var copyLibs = new FileTask("copyLibs" + config, Action.COPY, target.binaryUnzip.output, new File("../bin/" + config), true);
+		copyLibs.group = "platform";
+		copyLibs.dependsOn(target.binaryUnzip);
+		copyLibs.dependencyOf(target.build);
+		
+		if (debugging) {
+			target.compileCpp.define("ENBL_DBGPRINT");
+			target.compileCpp.options.add("-g");
+		}
+		
+		target.dependencies.dependsOn("libcom0com:publishMavenLocal");
+		
+		return target;
+		
+	}
+	
+	@Override
+	public void repositories(MavenResolveTask dependencies, String config) {
+		
+		dependencies.repository(Maven.mavenLocal());
+		
+		dependencies.repository(new Repository(
+				"GHP [SerialPortAccess]", 
+				"https://maven.pkg.github.com/m-marvin/library-serialportaccess",
+				new Credentials(
+						() -> System.getenv("GITHUB_ACTOR"), 
+						() -> System.getenv("GITHUB_TOKEN")
+				)
+		));
+		
+	}
+	
+	@Override
+	public void dependencies(MavenResolveTask dependencies, String config) {
+		
+		dependencies.implementation("de.m_marvin.libcom0com:libcom0com:3.0.0.0::zip");
+		dependencies.implementation("de.m_marvin.libcom0com:libcom0com:3.0.0.0:headers:zip");
+		dependencies.implementation("de.m_marvin.libcom0com:libcom0com:3.0.0.0:driver64:zip");
+		
+	}
+	
+}

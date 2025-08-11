@@ -1,0 +1,60 @@
+import java.io.File;
+
+import de.m_marvin.metabuild.core.tasks.ZipTask;
+import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
+import de.m_marvin.metabuild.maven.tasks.MavenPublishTask;
+import de.m_marvin.metabuild.maven.types.Artifact;
+
+public class Buildfile extends CppMultiTargetBuildScript {
+	
+	// might have to be adjustet to the toolchain used
+	File windowsDDKinclude = new File("D:\\Programms\\toolchains\\mingw64-msvcrt\\x86_64-w64-mingw32\\include\\ddk");
+	
+	ZipTask zipDriver32;
+	ZipTask zipDriver64;
+	
+	@Override
+	public void init() {
+		
+		projectName = "libcom0com";
+
+		withSourcesZip();
+
+		zipDriver32 = new ZipTask("zipDriver32");
+		zipDriver32.group = "build";
+		zipDriver32.entries.put(new File("drivers/driver_bin_x86"), "");
+		zipDriver32.archive = new File("build/WinAMD64/bin/libcom0com-driver32.zip");
+
+		zipDriver64 = new ZipTask("zipDriver64");
+		zipDriver64.group = "build";
+		zipDriver64.entries.put(new File("drivers/driver_bin_x64"), "");
+		zipDriver64.archive = new File("build/WinAMD64/bin/libcom0com-driver64.zip");
+		
+		var target = makeTarget("WinAMD64", "libcom0com.dll");
+		target.compileCpp.includes.add(windowsDDKinclude);
+		target.linkCpp.options.add("-shared");
+		target.linkCpp.options.add("-lmsports");
+		target.linkCpp.options.add("-lsetupapi");
+		target.linkCpp.options.add("-lnewdev");
+
+		target.binaryZip.entries.put(new File("com0com_license.txt"), "com0com_license.txt");
+		target.binaryZip.entries.put(new File("com0com_ReadMe.txt"), "com0com_README.txt");
+		
+		super.init();
+		
+		zipDriver32.dependencyOf("build");
+		zipDriver64.dependencyOf("build");
+
+	}
+	
+	@Override
+	public void publishing(MavenPublishTask publish, MavenPublishTask publishLocal, String config) {
+		
+		publishLocal.artifacts.put("driver32", zipDriver32.archive);
+		publishLocal.artifacts.put("driver64", zipDriver64.archive);
+		
+		publishLocal.coordinates("de.m_marvin.libcom0com:libcom0com:3.0.0.0");
+		
+	}
+	
+}

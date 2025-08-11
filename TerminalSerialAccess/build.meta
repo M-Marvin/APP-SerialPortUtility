@@ -18,6 +18,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		
 		projectName = "terminalserial";
 
+		importBuild("serialportaccess", new File("../SerialPortAccess"));
+		
 		// Platform windows AMD 64 Client
 		var target = makeTarget("WinAMD64", "serial.exe");
 		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
@@ -69,6 +71,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		copyLibs.dependsOn(target.binaryUnzip);
 		
 		target.linkCpp.outputFile = new File("../bin/" + config + "/" + excutableName);
+
+		target.dependencies.dependsOn("serialportaccess:publishMavenLocal");
 		
 		return target;
 	}

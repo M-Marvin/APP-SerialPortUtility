@@ -28,7 +28,6 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
 		target.compileCpp.define("PLATFORM_WIN");
 		target.compileCpp.options.add("-g");
-		target.linkCpp.libraries.add("Ws2_32");
 		target.linkCpp.options.add("-shared");
 		target.linkCpp.options.add("-static-libgcc");
 		target.linkCpp.options.add("-static-libstdc++");

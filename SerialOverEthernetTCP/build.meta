@@ -18,15 +18,13 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	public void init() {
 		
 		projectName = "serialoverethernet";
+
+		importBuild("serialportaccess", new File("../SerialPortAccess"));
 		
 		// Platform windows AMD 64 Client
 		var target = makeTarget("WinAMD64", "soe.exe");
 		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
 		target.compileCpp.define("PLATFORM_WIN");
-		if (debugging) {
-			target.compileCpp.define("ENBL_DBGPRINT");
-			target.compileCpp.options.add("-g");
-		}
 		target.linkCpp.libraries.add("serialportaccess_x64");
 		target.linkCpp.libraries.add("netsocket_x64");
 		target.linkCpp.options.add("-static-libgcc");
@@ -37,10 +35,6 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target = makeTarget("LinAMD64", "soe");
 		target.linkCpp.linker = target.compileCpp.compiler = "lin-amd-64-g++";
 		target.compileCpp.define("PLATFORM_LIN");
-		if (debugging) {
-			target.compileCpp.define("ENBL_DBGPRINT");
-			target.compileCpp.options.add("-g");
-		}
 		target.linkCpp.libraries.add("serialportaccess_x64");
 		target.linkCpp.libraries.add("netsocket_x64");
 		target.linkCpp.libraries.add("pthread");
@@ -52,10 +46,6 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target = makeTarget("LinARM64", "soe");
 		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-64-g++";
 		target.compileCpp.define("PLATFORM_LIN");
-		if (debugging) {
-			target.compileCpp.define("ENBL_DBGPRINT");
-			target.compileCpp.options.add("-g");
-		}
 		target.linkCpp.libraries.add("serialportaccess_arm64");
 		target.linkCpp.libraries.add("netsocket_arm64");
 		target.linkCpp.libraries.add("pthread");
@@ -66,16 +56,12 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target = makeTarget("LinARM32", "soe");
 		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-32-g++";
 		target.compileCpp.define("PLATFORM_LIN");
-		if (debugging) {
-			target.compileCpp.define("ENBL_DBGPRINT");
-			target.compileCpp.options.add("-g");
-		}
 		target.linkCpp.libraries.add("serialportaccess_arm32");
 		target.linkCpp.libraries.add("netsocket_arm32");
 		target.linkCpp.libraries.add("pthread");
 		target.linkCpp.options.add("-Wl,-rpath,./");
 		target.compileCpp.define("BUILD_VERSION", version);
-
+		
 		super.init();
 		
 	}
@@ -91,6 +77,13 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		copyLibs.group = "platform";
 		copyLibs.dependsOn(target.binaryUnzip);
 		copyLibs.dependencyOf(target.build);
+		
+		if (debugging) {
+			target.compileCpp.define("ENBL_DBGPRINT");
+			target.compileCpp.options.add("-g");
+		}
+		
+		target.dependencies.dependsOn("serialportaccess:publishMavenLocal");
 		
 		return target;
 		
