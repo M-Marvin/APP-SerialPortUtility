@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace SerialAccess {
 
@@ -138,24 +139,6 @@ public:
 	virtual unsigned long readBytes(char* buffer, unsigned long bufferCapacity) = 0;
 
 	/**
-	 * Attempts to fill the buffer by reading bytes from the port.
-	 * The difference to the normal read is, that the timeout is extended each time a byte is received.
-	 * This is useful if the data arrives in random intervals, such as user input.
-	 *
-	 * NOTE
-	 * This function is an convenience method for doing this between normal reading operations.
-	 * This function temporary changes the timeout configuration of the port using the supplied values.
-	 * If this is the only required behavior, the same should be done using setTimeouts and readBytes.
-	 *
-	 * @param buffer The buffer to write the data to
-	 * @param bufferCapacity The capacity of the buffer, aka the max number of bytes to read
-	 * @param consecutiveDelay The timeout to add when data was received
-	 * @param receptionWaitTimeout The minimum time to wait for the first byte
-	 * @return The number of bytes read
-	 */
-	virtual unsigned long readBytesConsecutive(char* buffer, unsigned long bufferCapacity, unsigned int consecutiveDelay, unsigned int receptionWaitTimeout) = 0;
-
-	/**
 	 * Attempts to write the content of the buffer to the serial port.
 	 * If not all data could be written until the write timeout expires, the function returns.
 	 * @param buffer The buffer to read the data from
@@ -164,6 +147,43 @@ public:
 	 */
 	virtual unsigned long writeBytes(const char* buffer, unsigned long bufferLength) = 0;
 	
+	/**
+	 * Reads the current pin input states of the serial port:
+	 *
+	 * Then input and output pins are:
+	 * OUT    IN
+	 * DTR -> DSR // flow control option 1
+	 * RTS -> CTS // flow control option 2
+	 */
+	virtual bool getRawPortState(bool& dsr, bool& cts) = 0;
+
+	/**
+	 * Assigns the current pin output states of the serial port:
+	 *
+	 * Then input and output pins are:
+	 * OUT    IN
+	 * DTR -> DSR // flow control option 1
+	 * RTS -> CTS // flow control option 2
+	 */
+	virtual bool setRawPortState(bool dtr, bool rts) = 0;
+
+	/**
+	 * Reads the correct pin states for the configured hardware flow control.
+	 * Returns always true as flow control state if no hardware flow control was configured.
+	 * @param readyState The state of the flow control, true if flow control is "on" (sending is currently possible), false if flow control is "off"
+	 * @return true if the state could be successfully read, false otherwise
+	 */
+	virtual bool getFlowControl(bool& readyState) = 0;
+
+	/**
+	 * Assigns the correct pin states for the configured hardware flow control.
+	 * Does reset hardware pins not used for flow control to their default state.
+	 * Does nothing if no hardware flow control was configured.
+	 * @param readyState The state to assign for the flow control, true if flow control is "on" (reception is currently possible), false if flow control is "off"
+	 * @return true if the state could be successfully assigned, false otherwise
+	 */
+	virtual bool setFlowControl(bool readyState) = 0;
+
 };
 
 SerialPort* newSerialPort(const char* portFile);

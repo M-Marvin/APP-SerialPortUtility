@@ -78,7 +78,7 @@ bool linkRemotePort(std::string& remoteHost, std::string& remotePort, std::strin
 			return false;
 		}
 		if (!handler->setLocalConfig(localConfig)) {
-			printf("[!] failed to configure local port: %s\n", remoteSerial.c_str());
+			printf("[!] failed to configure local port: %s\n", localSerial.c_str());
 			handler->shutdown();
 			return false;
 		}

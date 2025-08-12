@@ -82,7 +82,8 @@ void interpretFlags(const std::vector<std::string>& args) {
 				} else if (*flag == "-lflowctrl" || *flag == "-rflowctrl" || *flag == "-flowctrl") {
 					flag++;
 					if (*flag == "none") config->flowControl = SerialAccess::SPC_FLOW_NONE;
-					if (*flag == "xonxoff") config->flowControl = SerialAccess::SPC_FLOW_XON_XOFF;
+					// XON/XOFF is handled by simply passing them trough to the other socket
+					//if (*flag == "xonxoff") config->flowControl = SerialAccess::SPC_FLOW_XON_XOFF;
 					if (*flag == "rtscts") config->flowControl = SerialAccess::SPC_FLOW_RTS_CTS;
 					if (*flag == "dsrdtr") config->flowControl = SerialAccess::SPC_FLOW_DSR_DTR;
 					if (applyRemote && applyLocal) localConfig.flowControl = remoteConfig.flowControl;
@@ -127,6 +128,7 @@ int mainCPP(std::string& exec, std::vector<std::string>& args) {
 		printf(" -lser [serial port]\n");
 		printf(" -(l|r|)baud [serial baud]\n");
 		printf(" -(l|r|)bits [data bits]\n");
+		printf(" -(l|r|)flowctrl [flow control] : none|rtscts|dsrdtr\n");
 		printf(" -(l|r|)stops [stop bits] : one|one-half|two\n");
 		printf(" -(l|r|)parity [parity] : none|even|odd|mark|space\n");
 		printf(" (l - local only | r - remote only | both)\n");

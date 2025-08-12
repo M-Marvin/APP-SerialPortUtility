@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <termios.h>
 #include <sys/eventfd.h>
+#include <sys/ioctl.h>
 
 void printError(const char* format) {
 	setbuf(stdout, NULL); // Work around for errors printed during JNI
@@ -123,7 +124,8 @@ public:
 		::close(this->pollfdTx[1].fd);
 	}
 
-	bool setConfig(const SerialAccess::SerialPortConfig &config) {
+	bool setConfig(const SerialAccess::SerialPortConfig &config) override
+	{
 		if (this->comPortHandle < 0) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
@@ -212,7 +214,8 @@ public:
 		return true;
 	}
 
-	bool getConfig(SerialAccess::SerialPortConfig &config) {
+	bool getConfig(SerialAccess::SerialPortConfig &config) override
+	{
 		if (this->comPortHandle < 0) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
@@ -248,7 +251,7 @@ public:
 		return true;
 	}
 
-	bool openPort()
+	bool openPort() override
 	{
 		if (this->comPortHandle >= 0) return false;
 		this->comPortHandle = ::open(this->portFileName, O_RDWR);
@@ -267,26 +270,26 @@ public:
 		return false;
 	}
 
-	void closePort()
+	void closePort() override
 	{
 		if (this->comPortHandle < 0) return;
 		::close(this->comPortHandle);
 		this->comPortHandle = -1;
 
 		// trigger close event to release poll()
-		unsigned long val = 1;
+		unsigned long long val = 1;
 		if (::write(this->pollfdRx[1].fd, (char*) &val, 8) == -1)
 			printError("error %i in SerialPort:closePort:write(evtRx): %s\n");
 		if (::write(this->pollfdTx[1].fd, (char*) &val, 8) == -1)
 			printError("error %i in SerialPort:closePort:write(evtTx): %s\n");
 	}
 
-	bool isOpen()
+	bool isOpen() override
 	{
 		return this->comPortHandle >= 0;
 	}
 
-	bool setBaud(unsigned long baud)
+	bool setBaud(unsigned long baud) override
 	{
 		if (this->comPortHandle < 0) return false;
 
@@ -309,7 +312,7 @@ public:
 		return true;
 	}
 
-	unsigned long getBaud()
+	unsigned long getBaud() override
 	{
 		if (this->comPortHandle < 0) return 0;
 
@@ -322,7 +325,7 @@ public:
 		return baudRate < 0 ? 0 : baudRate;
 	}
 
-	bool setTimeouts(int readTimeout, int readTimeoutInterval, int writeTimeout)
+	bool setTimeouts(int readTimeout, int readTimeoutInterval, int writeTimeout) override
 	{
 		if (this->comPortHandle < 0) return false;
 
@@ -358,7 +361,8 @@ public:
 		return true;
 	}
 
-	bool getTimeouts(int* readTimeout, int* readTimeoutInterval, int* writeTimeout) {
+	bool getTimeouts(int* readTimeout, int* readTimeoutInterval, int* writeTimeout) override
+	{
 		if (!isOpen()) return false;
 		*readTimeout = this->rxTimeout;
 		*readTimeoutInterval = this->rxTimeoutInterval;
@@ -366,7 +370,7 @@ public:
 		return true;
 	}
 
-	unsigned long readBytes(char* buffer, unsigned long bufferCapacity)
+	unsigned long readBytes(char* buffer, unsigned long bufferCapacity) override
 	{
 		if (this->comPortHandle < 0) return 0;
 
@@ -381,32 +385,7 @@ public:
 		return receivedBytes;
 	}
 
-	unsigned long readBytesConsecutive(char* buffer, unsigned long bufferCapacity, unsigned int consecutiveDelay, unsigned int receptionWaitTimeout)
-	{
-		if (this->comPortHandle < 0) return 0;
-
-		int originalRxTimeout, originalRxTimeoutInterval, originalTxTimeout;
-		if (!getTimeouts(&originalRxTimeout, &originalRxTimeoutInterval, &originalTxTimeout))
-			return 0;
-
-		// Temporary set new timeouts for consecutive read operation
-		if (originalRxTimeout != receptionWaitTimeout || originalRxTimeoutInterval != consecutiveDelay)
-			if (!setTimeouts(receptionWaitTimeout, consecutiveDelay, originalTxTimeout)) {
-				setTimeouts(originalRxTimeout, originalRxTimeoutInterval, originalTxTimeout);
-				return 0;
-			}
-
-		// Read data
-		unsigned long receivedBytes = readBytes(buffer, bufferCapacity);
-
-		// Reset timeout back to previous value
-		if (originalRxTimeout != receptionWaitTimeout || originalRxTimeoutInterval != consecutiveDelay)
-			setTimeouts(originalRxTimeout, originalRxTimeoutInterval, originalTxTimeout);
-
-		return receivedBytes;
-	}
-
-	unsigned long writeBytes(const char* buffer, unsigned long bufferLength)
+	unsigned long writeBytes(const char* buffer, unsigned long bufferLength) override
 	{
 		if (this->comPortHandle < 0) return 0;
 
@@ -419,6 +398,86 @@ public:
 		ssize_t writtenBytes = ::write(this->comPortHandle, buffer, bufferLength);
 		if (writtenBytes < 0) return 0;
 		return writtenBytes;
+	}
+
+	bool getRawPortState(bool& dsr, bool& cts) override
+	{
+		if (this->comPortHandle < 0) return 0;
+
+		int state = 0;
+		if (::ioctl(this->comPortHandle, TIOCMGET, &state) == -1) {
+			printError("error %d in SerialPort:getRawPortState:ioctl(TIOCMGET): %s\n");
+			return false;
+		}
+
+		dsr = state & TIOCM_DSR;
+		cts = state & TIOCM_CTS;
+		return true;
+	}
+
+	bool setRawPortState(bool dtr, bool rts) override
+	{
+		if (this->comPortHandle < 0) return 0;
+
+		int state = 0;
+		if (::ioctl(this->comPortHandle, TIOCMGET, &state) == -1) {
+			printError("error %d in SerialPort:setRawPortState:ioctl(TIOCMGET): %s\n");
+			return false;
+		}
+
+		if (dtr)
+			state |= TIOCM_DTR;
+		else
+			state &= ~TIOCM_DTR;
+
+		if (rts)
+			state |= TIOCM_RTS;
+		else
+			state &= ~TIOCM_RTS;
+
+		if (::ioctl(this->comPortHandle, TIOCMSET, &state) == -1) {
+			printError("error %d in SerialPort:setRawPortState:ioctl(TIOCMSET): %s\n");
+			return false;
+		}
+
+		return true;
+	}
+
+	bool getFlowControl(bool& readyState) override
+	{
+		if (this->comPortHandle < 0) return 0;
+
+		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
+			printError("error %i in SerialPort:getConfig:tcgetattr: %s\n");
+			return false;
+		}
+
+		bool dsrState = false;
+		bool ctsState = false;
+		if (!getRawPortState(dsrState, ctsState))
+			return false;
+
+		if (this->comPortState.c_cflag & CRTSCTS)
+			readyState = ctsState;
+
+		return true;
+	}
+
+	bool setFlowControl(bool readyState) override
+	{
+		if (this->comPortHandle < 0) return 0;
+
+		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
+			printError("error %i in SerialPort:getConfig:tcgetattr: %s\n");
+			return false;
+		}
+
+		bool dtrState = true;
+		bool rtsState = true;
+		if (this->comPortState.c_cflag & CRTSCTS)
+			rtsState = readyState;
+
+		return setRawPortState(dtrState, rtsState);
 	}
 
 };

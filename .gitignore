@@ -2,13 +2,8 @@
 /bin
 /JSerialPortAccess/bin
 /JSerialPortAccess/build
-*.log
 /SerialOverEthernet/build
-*.log
 /TerminalSerialAccess/build
+/SerialOverEthernetTCP/build
+/LibCom0Com/build
 *.log
-*.log
-/SerialOverEthernetTCP/build
-/SerialOverEthernetTCP/build
-/SerialOverEthernetTCP/build
-/SerialOverEthernetTCP/build

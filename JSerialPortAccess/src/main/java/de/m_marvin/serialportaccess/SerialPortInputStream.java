@@ -9,31 +9,14 @@ public class SerialPortInputStream extends InputStream {
 	private final int bufferSize;
 	private byte[] buffer;
 	private int bufferPtr;
-	private long consecutiveDelay;
-	private long receptionTimeout;
 	
 	public SerialPortInputStream(SerialPort port, int bufferSize) {
 		this.serialPort = port;
 		this.bufferSize = bufferSize;
 	}
 	
-	/**
-	 * If consecutiveDelay is greater than zero, it enabled consecutive read mode of this input stream.
-	 * The read methods then behave like the consecutive method of SerialPort and do not block longer than for the specified timeout when no date is received.
-	 * @param consecutiveDelay The number of milliseconds to wait between each read operation
-	 * @param receptionTimeout The number of milliseconds to wait for the first byte
-	 */
-	public void setConsecutiveTimeout(long consecutiveDelay, long receptionTimeout) {
-		this.consecutiveDelay = consecutiveDelay;
-		this.receptionTimeout = receptionTimeout;
-	}
-	
 	public SerialPort getSerialPort() {
 		return serialPort;
-	}
-	
-	public boolean readsConsecutive() {
-		return this.consecutiveDelay > 0;
 	}
 	
 	@Override
@@ -73,27 +56,15 @@ public class SerialPortInputStream extends InputStream {
 	}
 	
 	private boolean fillBuffer() throws IOException {
-		if (readsConsecutive()) {
-			if (this.buffer == null || this.bufferPtr == this.buffer.length) {
-				if (!this.serialPort.isOpen()) throw new IOException("lost connection on serial port " + this.serialPort.toString());
-				this.buffer = this.serialPort.readDataConsecutive(this.bufferSize, this.consecutiveDelay, this.receptionTimeout);
-				if (this.buffer != null && this.buffer.length > 0)
-					this.bufferPtr = 0;
-				else
-					return false;
-			}
-			return true;
-		} else {
-			while (this.buffer == null || this.bufferPtr == this.buffer.length) {
-				if (!this.serialPort.isOpen()) throw new IOException("lost connection on serial port " + this.serialPort.toString());
-				this.buffer = this.serialPort.readData(this.bufferSize);
-				if (this.buffer != null && this.buffer.length > 0)
-					this.bufferPtr = 0;
-				else
-					return false;
-			}
-			return true;
+		while (this.buffer == null || this.bufferPtr == this.buffer.length) {
+			if (!this.serialPort.isOpen()) throw new IOException("lost connection on serial port " + this.serialPort.toString());
+			this.buffer = this.serialPort.readData(this.bufferSize);
+			if (this.buffer != null && this.buffer.length > 0)
+				this.bufferPtr = 0;
+			else
+				return false;
 		}
+		return true;
 	}
 	
 	@Override

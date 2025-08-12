@@ -18,6 +18,7 @@
 #define SOE_TCP_OPC_CLOSE_PORT 0x20
 #define SOE_TCP_OPC_CONFIGURE_PORT 0x30
 #define SOE_TCP_OPC_STREAM_SERIAL 0x40
+#define SOE_TCP_OPC_FLOW_CONTROL 0x50
 
 bool SerialOverEthernet::SOELinkHandler::processPackage(const char* package, unsigned int packageLen) {
 
@@ -31,6 +32,7 @@ bool SerialOverEthernet::SOELinkHandler::processPackage(const char* package, uns
 	case SOE_TCP_OPC_OPEN_PORT: 		return processRemoteOpen(package, packageLen);
 	case SOE_TCP_OPC_CLOSE_PORT: 		return processRemoteClose(package, packageLen);
 	case SOE_TCP_OPC_CONFIGURE_PORT: 	return processRemoteConfig(package, packageLen);
+	case SOE_TCP_OPC_FLOW_CONTROL:		return processFlowControl(package, packageLen);
 	default: 							return sendError("undefined package code: " + std::to_string(package[0]));
 	}
 
@@ -45,6 +47,7 @@ bool SerialOverEthernet::SOELinkHandler::sendError(const std::string& message) {
 }
 
 bool SerialOverEthernet::SOELinkHandler::processError(const char* package, unsigned int packageLen) {
+	if (packageLen < 1) return false;
 	std::string message(package + 1, packageLen - 1);
 
 	printf("[!] remote error frame: %s\n", message.c_str());
@@ -58,6 +61,7 @@ bool SerialOverEthernet::SOELinkHandler::sendConfirm(bool status) {
 }
 
 bool SerialOverEthernet::SOELinkHandler::processConfirm(const char* package, unsigned int packageLen) {
+	if (packageLen < 2) return false;
 	std::unique_lock<std::mutex> lock(this->m_remoteReturn);
 	this->remoteReturn = package[1] == 0x1;
 	lock.unlock();
@@ -74,6 +78,7 @@ bool SerialOverEthernet::SOELinkHandler::sendRemoteOpen(const std::string& remot
 }
 
 bool SerialOverEthernet::SOELinkHandler::processRemoteOpen(const char* package, unsigned int packageLen) {
+	if (packageLen < 2) return false;
 	std::string portName(package + 1, packageLen - 1);
 
 	printf("[i] open port from remote: %s\n", portName.c_str());
@@ -130,6 +135,7 @@ bool SerialOverEthernet::SOELinkHandler::sendRemoteConfig(const SerialAccess::Se
 }
 
 bool SerialOverEthernet::SOELinkHandler::processRemoteConfig(const char* package, unsigned int packageLen) {
+	if (packageLen < 18) return false;
 	SerialAccess::SerialPortConfiguration config = {
 		(unsigned long) ( // baud rate
 				(package[1] & 0xFF) << 24 |
@@ -175,8 +181,23 @@ bool SerialOverEthernet::SOELinkHandler::sendSerialData(const char* data, unsign
 }
 
 bool SerialOverEthernet::SOELinkHandler::processSerialData(const char* package, unsigned int packageLen) {
-	if (packageLen)
-		transmitSerialData(package + 1, packageLen - 1);
+	if (packageLen < 1) return false;
+
+	transmitSerialData(package + 1, packageLen - 1);
+
+	return true;
+}
+
+bool SerialOverEthernet::SOELinkHandler::sendFlowControl(bool status) {
+	char package[] = { SOE_TCP_OPC_FLOW_CONTROL, status ? (char) 0x1 : (char) 0x0 };
+
+	return transmitPackage(package, 2);
+}
+
+bool SerialOverEthernet::SOELinkHandler::processFlowControl(const char* package, unsigned int packageLen) {
+	if (packageLen < 2) return false;
+
+	updateFlowControl(package[1] == 0x1);
 
 	return true;
 }

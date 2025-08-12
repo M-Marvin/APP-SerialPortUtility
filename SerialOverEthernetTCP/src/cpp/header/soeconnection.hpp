@@ -129,7 +129,11 @@ private:
 	bool sendSerialData(const char* data, unsigned int len);
 	bool processSerialData(const char* package, unsigned int packageLen);
 
+	bool sendFlowControl(bool readyState);
+	bool processFlowControl(const char* package, unsigned int packageLen);
+
 	void transmitSerialData(const char* data, unsigned int len);
+	void updateFlowControl(bool readyToReceive);
 
 	std::mutex m_socketTX;									// protect against async writes to network
 	std::unique_ptr<NetSocket::Socket> socket;				// network TCP socket
@@ -149,6 +153,7 @@ private:
 	std::unique_ptr<SerialAccess::SerialPort> localPort;	// local serial port
 	std::string localPortName;								// local serial port name currently open
 	std::string remotePortName;								// remote serial prot currently open
+	bool readyToSend = true;								// keeps track of hardware flow control to detect changes
 
 };
 

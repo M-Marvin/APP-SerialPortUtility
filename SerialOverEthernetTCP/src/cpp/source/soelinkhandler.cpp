@@ -171,7 +171,23 @@ void SerialOverEthernet::SOELinkHandler::transmitSerialData(const char* data, un
 
 	dbgprintf("[DBG] stream data: [serial] <- |network| : >%.*s<\n", len, data);
 
+	// detect changes in flow control, notify remote port
+	bool state;
+	if (this->localPort->getFlowControl(state) && state != readyToSend) {
+		sendFlowControl(false);
+		readyToSend = state;
+	}
+
+	// write data (blocks until ready to send again)
 	this->localPort->writeBytes(data, len);
+
+}
+
+void SerialOverEthernet::SOELinkHandler::updateFlowControl(bool readyToReceive) {
+
+	if (this->localPort == 0 || !this->localPort->isOpen()) return;
+
+	this->localPort->setFlowControl(readyToReceive);
 
 }
 

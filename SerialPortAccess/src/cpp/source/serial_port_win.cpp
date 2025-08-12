@@ -46,11 +46,12 @@ public:
 		closePort();
 	}
 
-	bool setConfig(const SerialAccess::SerialPortConfig &config) {
+	bool setConfig(const SerialAccess::SerialPortConfig &config) override
+	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
 
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("error %lu in SerialPort:setConfig:GetCommState: %s\n");
+			printError("error %lu in SerialPort:setConfig:GetCommState: %s");
 			return false;
 		}
 
@@ -92,18 +93,19 @@ public:
 		this->comPortState.EvtChar = 0;
 
 		if (!SetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("error %lu in SerialPort:setConfig:SetCommState: %s\n");
+			printError("error %lu in SerialPort:setConfig:SetCommState: %s");
 			return false;
 		}
 
 		return true;
 	}
 
-	bool getConfig(SerialAccess::SerialPortConfig &config) {
+	bool getConfig(SerialAccess::SerialPortConfig &config) override
+	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
 
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("error %lu in SerialPort:getConfig:GetCommState: %s\n");
+			printError("error %lu in SerialPort:getConfig:GetCommState: %s");
 			return false;
 		}
 
@@ -136,7 +138,7 @@ public:
 		return true;
 	}
 
-	bool openPort()
+	bool openPort() override
 	{
 		if (this->comPortHandle != INVALID_HANDLE_VALUE) return false;
 		this->comPortHandle = CreateFileA(this->portFileName, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
@@ -145,7 +147,7 @@ public:
 			return false;
 
 		if (!SetCommMask(this->comPortHandle, EV_RXCHAR)) {
-			printError("error %lu in SerialPort:openPort:SetCommMask: %s\n");
+			printError("error %lu in SerialPort:openPort:SetCommMask: %s");
 			closePort();
 			return false;
 		}
@@ -155,14 +157,14 @@ public:
 
 		this->writeEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
 		if (this->writeEventHandle == NULL) {
-			printError("error %lu in SerialPort:openPort:CreateEventA: %s\n");
+			printError("error %lu in SerialPort:openPort:CreateEventA: %s");
 			closePort();
 			return false;
 		}
 
 		this->readEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
 		if (this->readEventHandle == NULL) {
-			printError("error %lu in SerialPort:openPort:CreateEventA: %s\n");
+			printError("error %lu in SerialPort:openPort:CreateEventA: %s");
 			closePort();
 			return false;
 		}
@@ -170,7 +172,7 @@ public:
 		return true;
 	}
 
-	void closePort()
+	void closePort() override
 	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return;
 		CloseHandle(this->comPortHandle);
@@ -183,41 +185,41 @@ public:
 		this->readEventHandle = NULL;
 	}
 
-	bool isOpen()
+	bool isOpen() override
 	{
 		return this->comPortHandle != INVALID_HANDLE_VALUE;
 	}
 
-	bool setBaud(unsigned long baud)
+	bool setBaud(unsigned long baud) override
 	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("error %lu in SerialPort:setBaud:GetCommState: %s\n");
+			printError("error %lu in SerialPort:setBaud:GetCommState: %s");
 			return false;
 		}
 		this->comPortState.BaudRate = baud;
 		if (!SetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("error %lu in SerialPort:setBaud:SetCommState: %s\n");
+			printError("error %lu in SerialPort:setBaud:SetCommState: %s");
 			return false;
 		}
 		return true;
 	}
 
-	unsigned long getBaud()
+	unsigned long getBaud() override
 	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return 0;
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("error %lu in SerialPort:getBaud:GetCommState: %s\n");
+			printError("error %lu in SerialPort:getBaud:GetCommState: %s");
 			return 0;
 		}
 		return this->comPortState.BaudRate;
 	}
 
-	bool setTimeouts(int readTimeout, int readTimeoutInterval, int writeTimeout)
+	bool setTimeouts(int readTimeout, int readTimeoutInterval, int writeTimeout) override
 	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
 		if (!GetCommTimeouts(this->comPortHandle, &this->comPortTimeouts)) {
-			printError("error %lu in SerialPort:setTimeouts:GetCommTimeouts: %s\n");
+			printError("error %lu in SerialPort:setTimeouts:GetCommTimeouts: %s");
 			return false;
 		}
 
@@ -239,17 +241,17 @@ public:
 		this->comPortTimeouts.WriteTotalTimeoutMultiplier = 0;
 
 		if (!SetCommTimeouts(this->comPortHandle, &this->comPortTimeouts)) {
-			printError("error %lu in SerialPort:setTimeouts:SetCommTimeouts: %s\n");
+			printError("error %lu in SerialPort:setTimeouts:SetCommTimeouts: %s");
 			return false;
 		}
 		return true;
 	}
 
-	bool getTimeouts(int* readTimeout, int* readTimeoutInterval, int* writeTimeout)
+	bool getTimeouts(int* readTimeout, int* readTimeoutInterval, int* writeTimeout) override
 	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
 		if (!GetCommTimeouts(this->comPortHandle, &this->comPortTimeouts)) {
-			printError("error %lu in SerialPort:setTimeouts:GetCommTimeouts: %s\n");
+			printError("error %lu in SerialPort:setTimeouts:GetCommTimeouts: %s");
 			return false;
 		}
 
@@ -259,7 +261,7 @@ public:
 		return true;
 	}
 
-	unsigned long readBytes(char* buffer, unsigned long bufferCapacity)
+	unsigned long readBytes(char* buffer, unsigned long bufferCapacity) override
 	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return 0;
 
@@ -267,7 +269,7 @@ public:
 		ZeroMemory(&this->readOverlapped, sizeof(OVERLAPPED));
 		this->readOverlapped.hEvent = this->readEventHandle;
 		if (!ResetEvent(this->readEventHandle)) {
-			printError("error %lu in SerialPort:readBytes:ResetEvent: %s\n");
+			printError("error %lu in SerialPort:readBytes:ResetEvent: %s");
 			return 0;
 		}
 
@@ -277,7 +279,7 @@ public:
 
 			// If not completed yet, check if error
 			if (GetLastError() != ERROR_IO_PENDING) {
-				printError("error %lu in SerialPort:readBytes:ReadFile: %s\n");
+				printError("error %lu in SerialPort:readBytes:ReadFile: %s");
 				return 0;
 			}
 
@@ -285,7 +287,7 @@ public:
 			if (!GetOverlappedResult(this->comPortHandle, &this->readOverlapped, &receivedBytes, TRUE)) {
 				if (GetLastError() == ERROR_OPERATION_ABORTED)
 					return 0; // port closed
-				printError("error %lu in SerialPort:readBytes:GetOverlappedResult: %s\n");
+				printError("error %lu in SerialPort:readBytes:GetOverlappedResult: %s");
 				return 0;
 			}
 
@@ -294,32 +296,7 @@ public:
 		return receivedBytes;
 	}
 
-	unsigned long readBytesConsecutive(char* buffer, unsigned long bufferCapacity, unsigned int consecutiveDelay, unsigned int receptionWaitTimeout)
-	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return 0;
-
-		int originalRxTimeout, originalRxTimeoutInterval, originalTxTimeout;
-		if (!getTimeouts(&originalRxTimeout, &originalRxTimeoutInterval, &originalTxTimeout))
-			return 0;
-
-		// Temporary set new timeouts for consecutive read operation
-		if (originalRxTimeout != receptionWaitTimeout || originalRxTimeoutInterval != consecutiveDelay)
-			if (!setTimeouts(receptionWaitTimeout, consecutiveDelay, originalTxTimeout)) {
-				setTimeouts(originalRxTimeout, originalRxTimeoutInterval, originalTxTimeout);
-				return 0;
-			}
-
-		// Read data
-		unsigned long receivedBytes = readBytes(buffer, bufferCapacity);
-
-		// Reset timeout back to previous value
-		if (originalRxTimeout != receptionWaitTimeout || originalRxTimeoutInterval != consecutiveDelay)
-			setTimeouts(originalRxTimeout, originalRxTimeoutInterval, originalTxTimeout);
-
-		return receivedBytes;
-	}
-
-	unsigned long writeBytes(const char* buffer, unsigned long bufferLength)
+	unsigned long writeBytes(const char* buffer, unsigned long bufferLength) override
 	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return 0;
 
@@ -327,7 +304,7 @@ public:
 		ZeroMemory(&this->writeOverlapped, sizeof(OVERLAPPED));
 		this->writeOverlapped.hEvent = this->writeEventHandle;
 		if (!ResetEvent(this->writeEventHandle)) {
-			printError("error %lu in SerialPort:writeBytes:ResetEvent: %s\n");
+			printError("error %lu in SerialPort:writeBytes:ResetEvent: %s");
 			return 0;
 		}
 
@@ -337,7 +314,7 @@ public:
 
 			// If not completed yet, check if error
 			if (GetLastError() != ERROR_IO_PENDING) {
-				printError("error %lu in SerialPort:writeBytes:WriteFile: %s\n");
+				printError("error %lu in SerialPort:writeBytes:WriteFile: %s");
 				return 0;
 			}
 
@@ -345,7 +322,7 @@ public:
 			if (!GetOverlappedResult(this->comPortHandle, &this->writeOverlapped, &writtenBytes, TRUE)) {
 				if (GetLastError() == ERROR_OPERATION_ABORTED)
 					return 0; // port closed
-				printError("error %lu in SerialPort:writeBytes:GetOverlappedResult: %s\n");
+				printError("error %lu in SerialPort:writeBytes:GetOverlappedResult: %s");
 				return 0;
 			}
 
@@ -354,6 +331,78 @@ public:
 		return writtenBytes;
 	}
 
+	bool getRawPortState(bool& dsr, bool& cts) override
+	{
+		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+
+		DWORD state;
+		if (!::GetCommModemStatus(this->comPortHandle, &state)) {
+			printError("error %lu in SerialPort:getRawPortState:GetCommModemStatus: %s");
+			return false;
+		}
+
+		dsr = state & MS_DSR_ON;
+		cts = state & MS_CTS_ON;
+		return true;
+	}
+
+	bool setRawPortState(bool dtr, bool rts) override
+	{
+		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+
+		if (!::EscapeCommFunction(this->comPortHandle, dtr ? SETDTR : CLRDTR)) {
+			printError("error %lu in SerialPort:setPortState:EscapeCommFunction(DTR): %s");
+			return false;
+		}
+
+		if (!::EscapeCommFunction(this->comPortHandle, rts ? SETRTS : CLRRTS)) {
+			printError("error %lu in SerialPort:setPortState:EscapeCommFunction(RTS): %s");
+			return false;
+		}
+
+		return true;
+	}
+
+	bool getFlowControl(bool& readyState) override
+	{
+		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+
+		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
+			printError("error %lu in SerialPort:getFlowControl:GetCommState: %s");
+			return false;
+		}
+
+		bool dsrState = false;
+		bool ctsState = false;
+		if (!getRawPortState(dsrState, ctsState))
+			return false;
+
+		if (this->comPortState.fOutxCtsFlow)
+			readyState = ctsState;
+		if (this->comPortState.fOutxDsrFlow)
+			readyState = dsrState;
+
+		return true;
+	}
+
+	bool setFlowControl(bool readyState) override
+	{
+		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+
+		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
+			printError("error %lu in SerialPort:setFlowControl:GetCommState: %s");
+			return false;
+		}
+
+		bool dtrState = true;
+		bool rtsState = true;
+		if (this->comPortState.fOutxCtsFlow)
+			rtsState = readyState;
+		if (this->comPortState.fOutxDsrFlow)
+			dtrState = readyState;
+
+		return setRawPortState(dtrState, rtsState);
+	}
 
 };
 

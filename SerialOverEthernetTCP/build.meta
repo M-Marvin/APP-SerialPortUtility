@@ -12,7 +12,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	
 	boolean debugging = false; // set to true to compile with debug info
 	
-	String version = "2.0";
+	String version = "2.1";
 	
 	@Override
 	public void init() {
@@ -117,8 +117,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	@Override
 	public void dependencies(MavenResolveTask dependencies, String config) {
 		
-		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + "::zip:2.1.1");
-		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":headers:zip:2.1.1");
+		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + "::zip:2.2");
+		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":headers:zip:2.2");
 
 		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + "::zip:1.1.1");
 		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":headers:zip:1.1.1");

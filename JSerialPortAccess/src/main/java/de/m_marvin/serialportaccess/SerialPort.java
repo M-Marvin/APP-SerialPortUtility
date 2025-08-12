@@ -117,23 +117,25 @@ public class SerialPort {
 	public static final long DEFAULT_CONSECUTIVE_RECEPTION_TIMEOUT = 1000;
 	public static final SerialPortConfiguration DEFAULT_PORT_CONFIGURATION = new SerialPortConfiguration();
 	
-	protected static native long n_createSerialPort(String portFile);
-	protected static native void n_disposeSerialPort(long handle);
-	protected static native boolean n_setBaud(long handle, int baud);
-	protected static native int n_getBaud(long handle);
-	protected static native boolean n_setConfig(long handle, SerialPortConfiguration config);
-	protected static native boolean n_getConfig(long handle, SerialPortConfiguration config);
-	protected static native boolean n_setTimeouts(long handle, int readTimeout, int readTimeoutInterval, int writeTimeout);
-	protected static native boolean n_getTimeouts(long handle, int[] timeouts);
-	protected static native boolean n_openPort(long handle);
-	protected static native void n_closePort(long handle);
-	protected static native boolean n_isOpen(long handle);
-	protected static native String n_readDataS(long handle, int bufferCapacity);
-	protected static native byte[] n_readDataB(long handle, int bufferCapacity);
-	protected static native String n_readDataConsecutiveS(long handle, int bufferCapacity, long consecutiveDelay, long receptionWaitTimeout);
-	protected static native byte[] n_readDataConsecutiveB(long handle, int bufferCapacity, long consecutiveDelay, long receptionWaitTimeout);
-	protected static native int n_writeDataS(long handle, String data);
-	protected static native int n_writeDataB(long handle, byte[] data);
+	private static native long n_createSerialPort(String portFile);
+	private static native void n_disposeSerialPort(long handle);
+	private static native boolean n_setBaud(long handle, int baud);
+	private static native int n_getBaud(long handle);
+	private static native boolean n_setConfig(long handle, SerialPortConfiguration config);
+	private static native boolean n_getConfig(long handle, SerialPortConfiguration config);
+	private static native boolean n_setTimeouts(long handle, int readTimeout, int readTimeoutInterval, int writeTimeout);
+	private static native boolean n_getTimeouts(long handle, int[] timeouts);
+	private static native boolean n_openPort(long handle);
+	private static native void n_closePort(long handle);
+	private static native boolean n_isOpen(long handle);
+	private static native String n_readDataS(long handle, int bufferCapacity);
+	private static native byte[] n_readDataB(long handle, int bufferCapacity);
+	private static native int n_writeDataS(long handle, String data);
+	private static native int n_writeDataB(long handle, byte[] data);
+	private static native boolean n_getRawPortState(long handle, boolean[] state);
+	private static native boolean n_setRawPortState(long handle, boolean dtrState, boolean rtsState);
+	private static native boolean n_getFlowControl(long handle, boolean[] state);
+	private static native boolean n_setFlowControl(long handle, boolean state);
 	
 	private final long handle;
 	private final String portName;
@@ -268,54 +270,6 @@ public class SerialPort {
 	}
 	
 	/**
-	 * Waits until at least on byte got received and continues to read until an error occurred, the buffer is full or no more consecutive bytes could be read.
-	 * Two received bytes are considered consecutive if the delay of reception between both is smaller than the receptionLoopDelay.
-	 * If after receptionWaitTimeout milliseconds no bytes could be received, null is returned.
-	 * Returns the read bytes as string, or null if no bytes could be read.
-	 * @param bufferSize The max bytes that can be read in on go
-	 * @param consecutiveDelay The number of milliseconds to wait between each read operation
-	 * @param receptionWaitTimeout The number of milliseconds to wait for the first byte
-	 * @return The String value of the bytes or null if nothing could be read
-	 */
-	public String readStringConsecutive(int bufferSize, long consecutiveDelay, long receptionWaitTimeout) {
-		return n_readDataConsecutiveS(handle, bufferSize, consecutiveDelay, receptionWaitTimeout);
-	}
-	
-	/**
-	 * Waits until at least on byte got received and continues to read until an error occurred, the buffer is full or no more consecutive bytes could be read.
-	 * Two received bytes are considered consecutive if the delay of reception between both is smaller than the {@link SerialPort.DEFAULT_LOOP_DELAY}.
-	 * If after {@link SerialPort.DEFAULT_CONSECUTIVE_RECEPTION_TIMEOUT} milliseconds no bytes could be received, null is returned.
-	 * Returns the read bytes as string, or null if no bytes could be read.
-	 * @return The String value of the bytes or null if nothing could be read
-	 */
-	public String readStringConsecutive() {
-		return readStringConsecutive(DEFAULT_BUFFER_SIZE, DEFAULT_CONSECUTIVE_LOOP_DELAY, DEFAULT_CONSECUTIVE_RECEPTION_TIMEOUT);
-	}
-
-	/**
-	 * Waits until at least on byte got received and continues to read until an error occurred, the buffer is full or no more consecutive bytes could be read.
-	 * Two received bytes are considered consecutive if the delay of reception between both is smaller than the receptionLoopDelay.
-	 * If after receptionWaitTimeout milliseconds no bytes could be received, null is returned.
-	 * @param bufferSize The max bytes that can be read in on go
-	 * @param receptionLoopDelay The number of milliseconds to wait between each read operation
-	 * @param receptionWaitTimeout The number of milliseconds to wait for the first byte
-	 * @return An byte array containing the read bytes or null if nothing could be read (length of array = number of bytes read)
-	 */
-	public byte[] readDataConsecutive(int bufferSize, long consecutiveDelay, long receptionWaitTimeout) {
-		return n_readDataConsecutiveB(handle, bufferSize, consecutiveDelay, receptionWaitTimeout);
-	}
-	
-	/**
-	 * Waits until at least on byte got received and continues to read until an error occurred, the buffer is full or no more consecutive bytes could be read.
-	 * Two received bytes are considered consecutive if the delay of reception between both is smaller than the {@link SerialPort.DEFAULT_LOOP_DELAY}.
-	 * If after {@link SerialPort.DEFAULT_CONSECUTIVE_RECEPTION_TIMEOUT} milliseconds no bytes could be received, null is returned.
-	 * @return An byte array containing the read bytes or null if nothing could be read (length of array = number of bytes read)
-	 */
-	public byte[] readDataConsecutive() {
-		return readDataConsecutive(DEFAULT_BUFFER_SIZE, DEFAULT_CONSECUTIVE_LOOP_DELAY, DEFAULT_CONSECUTIVE_RECEPTION_TIMEOUT);
-	}
-	
-	/**
 	 * Writes the string as bytes to the serial port.
 	 * @param data The string to be written
 	 * @return The number of bytes successfully written (can be smaller than the length of the string if an error occurred!)
@@ -335,6 +289,59 @@ public class SerialPort {
 		int writtenBytes = n_writeDataB(handle, data);
 		if (writtenBytes == 0 && data.length > 0) closePort(); // Connection has been lost, close port to make isOpen() respond correctly
 		return writtenBytes;
+	}
+	
+	/**
+	 * Reads the logical values of the serial port pins DSR and CTS.
+	 * @param state The state of the pins { DSR, CTS }
+	 * @return true if the state was read successfully, false otherwise
+	 */
+	public boolean getRawPortState(boolean[] state) {
+		Objects.requireNonNull(state, "state array must not be null");
+		if (state.length != 2)
+			throw new IllegalArgumentException("state array must be of length 3");
+		return n_getRawPortState(handle, state);
+	}
+
+	/**
+	 * Assigns the logical values of the serial port pins DTR and RTS.
+	 * @param dtrState The state of the DTR pin
+	 * @param rtsState The state of the RTS pin
+	 * @return true if the state was assigned successfully, false otherwise
+	 */
+	public boolean setRawPortState(boolean dtrState, boolean rtsState) {
+		return n_setRawPortState(handle, dtrState, dtrState);
+	}
+	
+	/**
+	 * Assigns the logical values of the serial port pins DTR and RTS.
+	 * @param state The state of the pins { DTR, RTS }
+	 * @return true if the state was assigned successfully, false otherwise
+	 */
+	public boolean setRawPortState(boolean[] state) {
+		Objects.requireNonNull(state, "state array must not be null");
+		if (state.length != 2)
+			throw new IllegalArgumentException("state array must be of length 3");
+		return setRawPortState(state[0], state[1]);
+	}
+	
+	/**
+	 * Reads the current hardware flow control state.
+	 * @return true if the hardware signals that the other end is ready to receive data, false if it signals that no data can be received or if the operation to read the value failed
+	 */
+	public boolean getFlowControl() {
+		boolean[] state = new boolean[1];
+		if (!n_getFlowControl(handle, state)) return false;
+		return state[0];
+	}
+	
+	/**
+	 * Assigns the current hardware flow control state.
+	 * @param state true to signal that data can be received, false to signal that no data can be received
+	 * @return true if the state was assigned successfully, false otherwise
+	 */
+	public boolean setFlowControl(boolean state) {
+		return n_setFlowControl(handle, state);
 	}
 	
 	public SerialPortInputStream getInputStream(int bufferSize) {
