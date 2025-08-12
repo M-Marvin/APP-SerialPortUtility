@@ -1,4 +1,5 @@
 /.metadata
+*.log
 /bin
 /JSerialPortAccess/bin
 /JSerialPortAccess/build
@@ -6,4 +7,4 @@
 /TerminalSerialAccess/build
 /SerialOverEthernetTCP/build
 /LibCom0Com/build
-*.log
+/VirtualSerial/build

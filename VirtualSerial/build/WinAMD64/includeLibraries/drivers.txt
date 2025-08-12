@@ -1,2 +1,0 @@
-These are the Driver binaries from the original com0com Project:
-https://sourceforge.net/projects/com0com/
