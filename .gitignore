@@ -8,3 +8,7 @@
 /SerialOverEthernetTCP/build
 /LibCom0Com/build
 /VirtualSerial/build
+/VCOM/x64
+/VCOM/VCOM/x64
+*.tlog
+/VCOM/VCOM Package/x64
