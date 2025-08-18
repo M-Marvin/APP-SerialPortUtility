@@ -22,16 +22,16 @@
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Device.c" />
-    <ClCompile Include="Driver.c" />
-    <ClCompile Include="Queue.c" />
+    <ClCompile Include="vcomdevice.c" />
+    <ClCompile Include="vcomdriver.c" />
+    <ClCompile Include="vcomcontrol.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Device.h" />
-    <ClInclude Include="Driver.h" />
-    <ClInclude Include="Public.h" />
-    <ClInclude Include="Queue.h" />
-    <ClInclude Include="Trace.h" />
+    <ClInclude Include="dbgprint.h" />
+    <ClInclude Include="serial.h" />
+    <ClInclude Include="vcomdevice.h" />
+    <ClInclude Include="vcomdriver.h" />
+    <ClInclude Include="vcomcontrol.h" />
   </ItemGroup>
   <ItemGroup>
     <Inf Include="VCOM.inf" />
@@ -108,9 +108,10 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <WppEnabled>true</WppEnabled>
+      <WppEnabled>false</WppEnabled>
       <WppRecorderEnabled>true</WppRecorderEnabled>
       <WppScanConfigurationData Condition="'%(ClCompile.ScanConfigurationData)' == ''">trace.h</WppScanConfigurationData>
+      <WppMinimalRebuildFromTracking>false</WppMinimalRebuildFromTracking>
     </ClCompile>
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>

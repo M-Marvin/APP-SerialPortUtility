@@ -18,4 +18,10 @@ In VS		=> Driver Package Project > Deploy
 Using the files => devcon.exe install *driver.inf* *Root\devce* (*hw-id defined in Driver INF below [Manufacturer] block*)
 Uninstall 	=> devcon remove *Root\devce* (*hw-id defined in Driver INF below [Manufacturer] block*)
 
+Preinstalling Driver
+pnputil -add-driver *Driver INF* -install
+
+Uninstalling Driver (but not devices)
+pnputil -delete-driver *oemN.inf* -uninstall
+
 NOTE: Each install with the Hardware-ID Registers a new device.
