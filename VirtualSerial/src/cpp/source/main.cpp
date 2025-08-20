@@ -26,8 +26,8 @@ void printError(const char* format) {
 
 int main(int argn, const char** argv) {
 
-	if (argn <= 1) {
-		printf("vserial [port path]\n");
+	if (argn <= 2) {
+		printf("vserial [port path] [data]\n");
 		return 1;
 	}
 
@@ -43,11 +43,10 @@ int main(int argn, const char** argv) {
 
 	printf("write buffers ...\n");
 
-	char inBuffer[32];
-	size_t inBufferLen = 32;
+	size_t inBufferLen = strlen(argv[2]);
+	char inBuffer[inBufferLen];
 
-	const char* testText = "TEST TEXT DATA";
-	strncpy(inBuffer, testText, strlen(testText));
+	strncpy(inBuffer, argv[2], inBufferLen);
 
 	char outBuffer[32];
 	size_t outBufferLen = 32;
@@ -57,6 +56,16 @@ int main(int argn, const char** argv) {
 	printf("send IOCTL ...\n");
 
 	if (!DeviceIoControl(handle, IOCTL_APPLINK_WRITE_BUFFER, inBuffer, inBufferLen, outBuffer, outBufferLen, &bytesReturned, NULL)) {
+		printError("DeviceIoControl failed: %lu %s");
+		CloseHandle(handle);
+		return -1;
+	}
+
+	printf("read buffers ...\n");
+
+	printf("send IOCTL ...\n");
+
+	if (!DeviceIoControl(handle, IOCTL_APPLINK_READ_BUFFER, inBuffer, 0, outBuffer, outBufferLen, &bytesReturned, NULL)) {
 		printError("DeviceIoControl failed: %lu %s");
 		CloseHandle(handle);
 		return -1;

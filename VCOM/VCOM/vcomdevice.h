@@ -23,9 +23,6 @@ typedef struct
 
     BUFFER_CONTEXT      BufferContext;
 
-    // NOT IMPLEMENTED
-    BOOLEAN             CreatedLegacyHardwareKey;
-    PWSTR               PdoName;
 
 } DEVICE_CONTEXT;
 

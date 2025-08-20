@@ -21,7 +21,7 @@ NTSTATUS CreateBuffers(BUFFER_CONTEXT* bufferContext);
 void CleanupBuffers(BUFFER_CONTEXT* bufferContext);
 
 NTSTATUS ReallocateBuffers(BUFFER_CONTEXT* bufferContext);
-NTSTATUS WriteTransmittion(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied);
-NTSTATUS ReadTransmittion(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied);
-NTSTATUS WriteReception(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied);
-NTSTATUS ReadReception(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied);
+NTSTATUS WriteTransmittion(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferSize);
+NTSTATUS ReadTransmittion(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferSize);
+NTSTATUS WriteReception(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferSize);
+NTSTATUS ReadReception(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferSize);

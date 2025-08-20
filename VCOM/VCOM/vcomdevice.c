@@ -2,6 +2,7 @@
 #include "vcomdevice.h"
 #include "vcomcontrol.h"
 #include "dbgprint.h"
+#include <wdfdevice.h>
 
 NTSTATUS DeviceCreate(WDFDRIVER driverHandle, PWDFDEVICE_INIT deviceInit, DEVICE_CONTEXT** deviceContext)
 {
@@ -13,10 +14,17 @@ NTSTATUS DeviceCreate(WDFDRIVER driverHandle, PWDFDEVICE_INIT deviceInit, DEVICE
 	NTSTATUS status;
 	WDFDEVICE deviceHandle;
 	WDF_OBJECT_ATTRIBUTES attributes;
+	WDF_OBJECT_ATTRIBUTES requestAttributes;
 	
 	// configure device object
 	WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&attributes, DEVICE_CONTEXT);
 	attributes.EvtCleanupCallback = DeviceCleanup;
+
+	//WdfDeviceInitSetExclusive(&deviceInit, TRUE);
+
+	// configure request context
+	WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&requestAttributes, REQUEST_CONTEXT);
+	WdfDeviceInitSetRequestAttributes(deviceInit, &requestAttributes);
 
 	// create device object
 	status = WdfDeviceCreate(&deviceInit, &attributes, &deviceHandle);

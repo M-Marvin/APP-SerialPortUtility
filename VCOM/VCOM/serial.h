@@ -112,4 +112,23 @@ typedef struct _SERIAL_CHARS {
 #define MARK_PARITY      3
 #define SPACE_PARITY     4
 
+//
+// Defines the bitmask that the driver can used to notify
+// app of various changes in the state of the UART.
+//
+
+#define SERIAL_EV_RXCHAR           0x0001  // Any Character received
+#define SERIAL_EV_RXFLAG           0x0002  // Received certain character
+#define SERIAL_EV_TXEMPTY          0x0004  // Transmitt Queue Empty
+#define SERIAL_EV_CTS              0x0008  // CTS changed state
+#define SERIAL_EV_DSR              0x0010  // DSR changed state
+#define SERIAL_EV_RLSD             0x0020  // RLSD changed state
+#define SERIAL_EV_BREAK            0x0040  // BREAK received
+#define SERIAL_EV_ERR              0x0080  // Line status error occurred
+#define SERIAL_EV_RING             0x0100  // Ring signal detected
+#define SERIAL_EV_PERR             0x0200  // Printer error occured
+#define SERIAL_EV_RX80FULL         0x0400  // Receive buffer is 80 percent full
+#define SERIAL_EV_EVENT1           0x0800  // Provider specific event 1
+#define SERIAL_EV_EVENT2           0x1000  // Provider specific event 2
+
 #endif  // #ifdef _KERNEL_MODE, #include <ntddser.h>

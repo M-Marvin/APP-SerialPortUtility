@@ -96,8 +96,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	@Override
 	public void dependencies(MavenResolveTask dependencies, String config) {
 		
-		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config + "::zip:2.1");
-		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config + ":headers:zip:2.1");
+		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config + "::zip:2.2");
+		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config + ":headers:zip:2.2");
 		
 	}
 	
