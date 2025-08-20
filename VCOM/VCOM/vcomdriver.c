@@ -15,6 +15,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING registryPath)
 
 	// configure driver object
 	WDF_OBJECT_ATTRIBUTES_INIT(&attributes);
+	attributes.SynchronizationScope = WdfSynchronizationScopeDevice;
 	WDF_DRIVER_CONFIG_INIT(&config, DriverDeviceAdd);
 
 	// create driver object
@@ -36,19 +37,19 @@ NTSTATUS DriverDeviceAdd(WDFDRIVER driverHandle, PWDFDEVICE_INIT deviceInit)
 	dbgprintf("[i] VCOM DriverDeviceAdd called\n");
 
 	NTSTATUS status;
-	DeviceContext* deviceContext;
+	DEVICE_CONTEXT* deviceContext;
 
 	// create device
 	status = DeviceCreate(driverHandle, deviceInit, &deviceContext);
 	if (status != STATUS_SUCCESS) {
-		dbgerrprintf("[!] VCOM DriverDeviceAdd failed: NTSTATUS 0x%x\n", status);
+		dbgerrprintf("[!] VCOM DeviceCreate failed: NTSTATUS 0x%x\n", status);
 		return status;
 	}
 
 	// configure device
 	status = DeviceConfigure(deviceContext);
 	if (status != STATUS_SUCCESS) {
-		dbgerrprintf("[!] VCOM DriverDeviceAdd failed: NTSTATUS 0x%x\n", status);
+		dbgerrprintf("[!] VCOM DeviceConfigure failed: NTSTATUS 0x%x\n", status);
 		return status;
 	}
 

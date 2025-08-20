@@ -22,13 +22,16 @@
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="vcombuffers.c" />
     <ClCompile Include="vcomdevice.c" />
     <ClCompile Include="vcomdriver.c" />
     <ClCompile Include="vcomcontrol.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="dbgprint.h" />
+    <ClInclude Include="public.h" />
     <ClInclude Include="serial.h" />
+    <ClInclude Include="vcombuffers.h" />
     <ClInclude Include="vcomdevice.h" />
     <ClInclude Include="vcomdriver.h" />
     <ClInclude Include="vcomcontrol.h" />

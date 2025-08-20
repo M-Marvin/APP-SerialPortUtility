@@ -1,0 +1,5 @@
+#pragma once
+
+#include <winioctl.h>
+
+#define IOCTL_APPLINK_WRITE_BUFFER      CTL_CODE(FILE_DEVICE_SERIAL_PORT,50,METHOD_BUFFERED,FILE_ANY_ACCESS)

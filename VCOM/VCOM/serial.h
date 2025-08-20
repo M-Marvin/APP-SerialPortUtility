@@ -1,14 +1,6 @@
 #pragma once
 
 //
-// This defines the bit used to control whether the device is sending
-// a break.  When this bit is set the device is sending a space (logic 0).
-//
-// Most protocols will assume that this is a hangup.
-//
-#define SERIAL_LCR_BREAK    0x40
-
-//
 // These defines are used to set the line control register.
 //
 #define SERIAL_5_DATA       ((UCHAR)0x00)
@@ -72,7 +64,6 @@
 #define IOCTL_SERIAL_XOFF_COUNTER       CTL_CODE(FILE_DEVICE_SERIAL_PORT,28,METHOD_BUFFERED,FILE_ANY_ACCESS)
 #define IOCTL_SERIAL_GET_PROPERTIES     CTL_CODE(FILE_DEVICE_SERIAL_PORT,29,METHOD_BUFFERED,FILE_ANY_ACCESS)
 #define IOCTL_SERIAL_GET_DTRRTS         CTL_CODE(FILE_DEVICE_SERIAL_PORT,30,METHOD_BUFFERED,FILE_ANY_ACCESS)
-
 #define IOCTL_SERIAL_GET_MODEM_CONTROL  CTL_CODE(FILE_DEVICE_SERIAL_PORT,37,METHOD_BUFFERED,FILE_ANY_ACCESS)
 #define IOCTL_SERIAL_SET_MODEM_CONTROL  CTL_CODE(FILE_DEVICE_SERIAL_PORT,38,METHOD_BUFFERED,FILE_ANY_ACCESS)
 #define IOCTL_SERIAL_SET_FIFO_CONTROL   CTL_CODE(FILE_DEVICE_SERIAL_PORT,39,METHOD_BUFFERED,FILE_ANY_ACCESS)
@@ -122,8 +113,3 @@ typedef struct _SERIAL_CHARS {
 #define SPACE_PARITY     4
 
 #endif  // #ifdef _KERNEL_MODE, #include <ntddser.h>
-
-//
-// DEFINE_GUID(GUID_DEVINTERFACE_MODEM, 0x2c7089aa, 0x2e0e, 0x11d1, 0xb1, 0x14, 0x00, 0xc0, 0x4f, 0xc2, 0xaa, 0xe4);
-//
-#include <ntddmodm.h>

@@ -1,8 +1,9 @@
 
 #include "vcomcontrol.h"
 #include "dbgprint.h"
+#include "public.h"
 
-NTSTATUS CreateIOQueue(DeviceContext* deviceContext)
+NTSTATUS CreateIOQueue(DEVICE_CONTEXT* deviceContext)
 {
 
 	dbgprintf("[i] VCOM CreateIOQueue called\n");
@@ -14,14 +15,14 @@ NTSTATUS CreateIOQueue(DeviceContext* deviceContext)
 	WDFQUEUE defaultQueueHandle;
 	WDFQUEUE readQueueHandle;
 	WDFQUEUE waitQueueHandle;
-	QueueContext* context;
+	QUEUE_CONTEXT* context;
 
 	// configure default IO queue
 	WDF_IO_QUEUE_CONFIG_INIT_DEFAULT_QUEUE(&config, WdfIoQueueDispatchParallel);
 	config.EvtIoRead = IORead;
 	config.EvtIoWrite = IOWrite;
 	config.EvtIoDeviceControl = IODeviceControl;
-	WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&attributes, QueueContext);
+	WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&attributes, QUEUE_CONTEXT);
 
 	// create default IO queue
 	status = WdfIoQueueCreate(deviceHandle, &config, &attributes, &defaultQueueHandle);
@@ -117,8 +118,9 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 	dbgprintf("[i] VCOM IODeviceControl called: IOCTL_CODE: %lu\n", controlCode);
 
 	NTSTATUS status;
-	QueueContext* queueContext = GetQueueContext(queueHandle);
-	DeviceContext* deviceContext = queueContext->DeviceContext;
+	QUEUE_CONTEXT* queueContext = GetQueueContext(queueHandle);
+	DEVICE_CONTEXT* deviceContext = queueContext->DeviceContext;
+	BUFFER_CONTEXT* bufferContext = &deviceContext->BufferContext;
 
 	switch (controlCode) {
 
@@ -219,6 +221,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		break;
 	}
 
+		/* controls the serial port (flow control lines and buffers) */
 
 	case IOCTL_SERIAL_WAIT_ON_MASK:
 	{
@@ -280,8 +283,6 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 
 		break;
 	}
-
-		/* controls the serial port (flow control lines and buffers) */
 
 	case  IOCTL_SERIAL_SET_DTR: // set the DTR line if not controled by autmatic flow control
 	{
@@ -351,6 +352,65 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		break;
 	}
 
+		/* controls the serial port from the application (access to internal buffers) */
+
+	case IOCTL_APPLINK_SET_BUFFER_SIZES:
+	{
+
+		dbgprintf("[i] VCOM IOCTL_APPLINK_SET_BUFFER_SIZES called\n");
+
+		// read and apply new buffer size configuration
+		status = CopyFromRequest(requestHandle, &bufferContext->BufferSizes, sizeof(BUFFER_SIZES));
+		if (status == STATUS_SUCCESS) {
+			status = ReallocateBuffers(bufferContext);
+		}
+
+		break;
+	}
+	case IOCTL_APPLINK_GET_BUFFER_SIZES:
+	{
+
+		dbgprintf("[i] VCOM IOCTL_APPLINK_GET_BUFFER_SIZES called\n");
+
+		// write buffer sizes to request
+		status = CopyToRequest(requestHandle, &bufferContext->BufferSizes, sizeof(BUFFER_SIZES));
+		
+		break;
+	}
+
+	case IOCTL_APPLINK_WRITE_BUFFER:
+	{
+
+		dbgprintf("[i] VCOM IOCTL_APPLINK_WRITE_BUFFER called\n");
+
+		ULONG bytesWritten;
+
+		// put data from request into buffer
+		status = WriteReception(bufferContext, requestHandle, (ULONG) inputBufferLength, &bytesWritten);
+		if (status == STATUS_SUCCESS) {
+			WdfRequestCompleteWithInformation(requestHandle, STATUS_SUCCESS, bytesWritten);
+			return;
+		}
+
+		break;
+	}
+	case IOCTL_APPLINK_READ_BUFFER:
+	{
+
+		dbgprintf("[i] VCOM IOCTL_APPLINK_READ_BUFFER called\n");
+
+		ULONG bytesRead;
+
+		// write data from buffer to request
+		status = ReadTransmittion(bufferContext, requestHandle, (ULONG) outputBufferLength, &bytesRead);
+		if (status == STATUS_SUCCESS) {
+			WdfRequestCompleteWithInformation(requestHandle, STATUS_SUCCESS, bytesRead);
+			return;
+		}
+
+		break;
+	}
+
 		/* not supported control codes (these mostly don't make much sense for an virtual port) */
 
 	case IOCTL_SERIAL_SET_QUEUE_SIZE:
@@ -389,10 +449,24 @@ void IORead(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t length)
 
 	//dbgprintf("[i] VCOM IORead called: buflen: %u\n", length);
 
-	UNREFERENCED_PARAMETER(queueHandle);
-	UNREFERENCED_PARAMETER(length);
-
 	NTSTATUS status;
+	QUEUE_CONTEXT* queueContext = GetQueueContext(queueHandle);
+	DEVICE_CONTEXT* deviceContext = queueContext->DeviceContext;
+	BUFFER_CONTEXT* bufferContext = &deviceContext->BufferContext;
+	ULONG bytesRead;
+
+	status = ReadReception(bufferContext, requestHandle, (ULONG) length, &bytesRead);
+	if (status != STATUS_SUCCESS) {
+		dbgerrprintf("[!] VCOM IORead:ReadReception failed: NTSTATUS 0x%x\n", status);
+		WdfRequestComplete(requestHandle, status);
+		return;
+	}
+
+	WdfRequestCompleteWithInformation(requestHandle, status, bytesRead);
+
+
+
+
 //	QueueContext* queueContext = GetQueueContext(queueHandle);
 
 	// no data to read yet, queue for later
@@ -403,30 +477,49 @@ void IORead(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t length)
 //	}
 
 	// return F every time
-	char buffer[256];
-	size_t toCopy = min(256, length);
-	for (size_t i = 0; i < toCopy; i++)
-		buffer[i] = 'F';
+//	char buffer[256];
+//	size_t toCopy = min(256, length);
+//	for (size_t i = 0; i < toCopy; i++)
+//		buffer[i] = 'F';
+//
+//	status = CopyToRequest(requestHandle, buffer, toCopy);
+//	if (status != STATUS_SUCCESS) {
+//		dbgerrprintf("[!] VCOM IOWrite:CopyToRequest failed: NTSTATUS 0x%x\n", status);
+//		WdfRequestComplete(requestHandle, status);
+//		return;
+//	}
 
-	status = CopyToRequest(requestHandle, buffer, toCopy);
-	if (status != STATUS_SUCCESS) {
-		dbgerrprintf("[!] VCOM IOWrite:CopyToRequest failed: NTSTATUS 0x%x\n", status);
-		WdfRequestComplete(requestHandle, status);
-		return;
-	}
-
-	WdfRequestCompleteWithInformation(requestHandle, status, toCopy);
+	//WdfRequestCompleteWithInformation(requestHandle, status, toCopy);
 
 }
 
 void IOWrite(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t length)
 {
 
-	//dbgprintf("[i] VCOM IOWrite called: buflen: %u\n", length);
+	dbgprintf("[i] VCOM IOWrite called: buflen: %u\n", length);
 
-	UNREFERENCED_PARAMETER(queueHandle);
+	NTSTATUS status;
+	QUEUE_CONTEXT* queueContext = GetQueueContext(queueHandle);
+	DEVICE_CONTEXT* deviceContext = queueContext->DeviceContext;
+	BUFFER_CONTEXT* bufferContext = &deviceContext->BufferContext;
+	ULONG bytesWritten;
 
+	status = WriteTransmittion(bufferContext, requestHandle, (ULONG) length, &bytesWritten);
+	if (status != STATUS_SUCCESS) {
+		dbgerrprintf("[!] VCOM IOWrite:WriteTransmittion failed: NTSTATUS 0x%x\n", status);
+		WdfRequestComplete(requestHandle, status);
+		return;
+	}
+
+	WdfRequestCompleteWithInformation(requestHandle, status, bytesWritten);
+
+//	size_t toCopy = min(256, length);
+//	char buffer[256] = { 0 };
+//	CopyFromRequest(requestHandle, buffer, toCopy);
+	//
+//	dbgprintf("[i] >>> %.*s\n", toCopy, buffer);
+	
 	// nothing accepts data yet, just complete request
-	WdfRequestCompleteWithInformation(requestHandle, STATUS_SUCCESS, length);
+	//WdfRequestCompleteWithInformation(requestHandle, STATUS_SUCCESS, toCopy);
 
 }

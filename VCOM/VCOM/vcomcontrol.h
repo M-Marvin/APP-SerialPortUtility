@@ -10,18 +10,18 @@ typedef struct
     WDFQUEUE        WaitMaskQueue;      // Manual queue for pending ioctl wait-on-mask
     ULONG           WaitMask;
 
-    DeviceContext* DeviceContext;
+    DEVICE_CONTEXT* DeviceContext;
 
-} QueueContext;
+} QUEUE_CONTEXT;
 
-WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(QueueContext, GetQueueContext);
+WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(QUEUE_CONTEXT, GetQueueContext);
 
 /// <summary>
 /// Creates a new IO Event queue for the device
 /// </summary>
 /// <param name="deviceContext">The device context</param>
 /// <returns>STATUS_SUCCESS if no error occured</returns>
-NTSTATUS CreateIOQueue(DeviceContext* deviceContext);
+NTSTATUS CreateIOQueue(DEVICE_CONTEXT* deviceContext);
 
 NTSTATUS CopyFromRequest(WDFREQUEST requestHandle, void* buffer, size_t bytesToCopy);
 NTSTATUS CopyToRequest(WDFREQUEST requestHandle, void* buffer, size_t bytesToCopy);
