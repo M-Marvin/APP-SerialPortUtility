@@ -1,26 +1,5 @@
 #pragma once
 
-//
-// These defines are used to set the line control register.
-//
-#define SERIAL_5_DATA       ((UCHAR)0x00)
-#define SERIAL_6_DATA       ((UCHAR)0x01)
-#define SERIAL_7_DATA       ((UCHAR)0x02)
-#define SERIAL_8_DATA       ((UCHAR)0x03)
-#define SERIAL_DATA_MASK    ((UCHAR)0x03)
-
-#define SERIAL_1_STOP       ((UCHAR)0x00)
-#define SERIAL_1_5_STOP     ((UCHAR)0x04) // Only valid for 5 data bits
-#define SERIAL_2_STOP       ((UCHAR)0x04) // Not valid for 5 data bits
-#define SERIAL_STOP_MASK    ((UCHAR)0x04)
-
-#define SERIAL_NONE_PARITY  ((UCHAR)0x00)
-#define SERIAL_ODD_PARITY   ((UCHAR)0x08)
-#define SERIAL_EVEN_PARITY  ((UCHAR)0x18)
-#define SERIAL_MARK_PARITY  ((UCHAR)0x28)
-#define SERIAL_SPACE_PARITY ((UCHAR)0x38)
-#define SERIAL_PARITY_MASK  ((UCHAR)0x38)
-
 #ifdef _KERNEL_MODE
 
 #include <ntddser.h>
@@ -85,6 +64,45 @@ typedef struct _SERIAL_LINE_CONTROL {
     UCHAR WordLength;
 } SERIAL_LINE_CONTROL, * PSERIAL_LINE_CONTROL;
 
+#define STOP_BIT_1      0
+#define STOP_BITS_1_5   1
+#define STOP_BITS_2     2
+
+#define NO_PARITY        0
+#define ODD_PARITY       1
+#define EVEN_PARITY      2
+#define MARK_PARITY      3
+#define SPACE_PARITY     4
+
+typedef struct _SERIAL_HANDFLOW {
+    ULONG ControlHandShake;
+    ULONG FlowReplace;
+    LONG XonLimit;
+    LONG XoffLimit;
+} SERIAL_HANDFLOW, * PSERIAL_HANDFLOW;
+
+#define SERIAL_DTR_MASK           ((ULONG)0x03)
+#define SERIAL_DTR_CONTROL        ((ULONG)0x01)
+#define SERIAL_DTR_HANDSHAKE      ((ULONG)0x02)
+#define SERIAL_CTS_HANDSHAKE      ((ULONG)0x08)
+#define SERIAL_DSR_HANDSHAKE      ((ULONG)0x10)
+#define SERIAL_DCD_HANDSHAKE      ((ULONG)0x20)
+#define SERIAL_OUT_HANDSHAKEMASK  ((ULONG)0x38)
+#define SERIAL_DSR_SENSITIVITY    ((ULONG)0x40)
+#define SERIAL_ERROR_ABORT        ((ULONG)0x80000000)
+#define SERIAL_CONTROL_INVALID    ((ULONG)0x7fffff84)
+#define SERIAL_AUTO_TRANSMIT      ((ULONG)0x01)
+#define SERIAL_AUTO_RECEIVE       ((ULONG)0x02)
+#define SERIAL_ERROR_CHAR         ((ULONG)0x04)
+#define SERIAL_NULL_STRIPPING     ((ULONG)0x08)
+#define SERIAL_BREAK_CHAR         ((ULONG)0x10)
+#define SERIAL_RTS_MASK           ((ULONG)0xc0)
+#define SERIAL_RTS_CONTROL        ((ULONG)0x40)
+#define SERIAL_RTS_HANDSHAKE      ((ULONG)0x80)
+#define SERIAL_TRANSMIT_TOGGLE    ((ULONG)0xc0)
+#define SERIAL_XOFF_CONTINUE      ((ULONG)0x80000000)
+#define SERIAL_FLOW_INVALID       ((ULONG)0x7fffff20)
+
 typedef struct _SERIAL_TIMEOUTS {
     ULONG ReadIntervalTimeout;
     ULONG ReadTotalTimeoutMultiplier;
@@ -101,16 +119,6 @@ typedef struct _SERIAL_CHARS {
     UCHAR XonChar;
     UCHAR XoffChar;
 } SERIAL_CHARS, * PSERIAL_CHARS;
-
-#define STOP_BIT_1      0
-#define STOP_BITS_1_5   1
-#define STOP_BITS_2     2
-
-#define NO_PARITY        0
-#define ODD_PARITY       1
-#define EVEN_PARITY      2
-#define MARK_PARITY      3
-#define SPACE_PARITY     4
 
 //
 // Defines the bitmask that the driver can used to notify

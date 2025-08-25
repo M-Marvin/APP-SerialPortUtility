@@ -25,8 +25,12 @@ private:
 	COMMTIMEOUTS comPortTimeouts;
 	OVERLAPPED writeOverlapped;
 	OVERLAPPED readOverlapped;
+	OVERLAPPED waitOverlapped;
 	HANDLE writeEventHandle;
 	HANDLE readEventHandle;
+	HANDLE waitEventHandle;
+	DWORD eventMask = 0;
+	DWORD eventMaskReturned = 0;
 	HANDLE comPortHandle;
 	const char* portFileName;
 
@@ -38,17 +42,74 @@ public:
 		this->comPortHandle = INVALID_HANDLE_VALUE;
 		this->comPortState = {0};
 		this->comPortTimeouts = {0};
-		this->writeEventHandle = INVALID_HANDLE_VALUE;
-		this->readEventHandle = INVALID_HANDLE_VALUE;
+		this->writeOverlapped.hEvent = this->writeEventHandle = INVALID_HANDLE_VALUE;
+		this->readOverlapped.hEvent = this->readEventHandle = INVALID_HANDLE_VALUE;
+		this->waitOverlapped.hEvent = this->waitEventHandle = INVALID_HANDLE_VALUE;
 	}
 
 	~SerialPortWin() {
 		closePort();
 	}
 
+	bool openPort() override
+	{
+		if (isOpen()) return false;
+		this->comPortHandle = CreateFileA(this->portFileName, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+
+		if (!isOpen())
+			return false;
+
+		// We ignore if this fails, this could just mean that the default configuration is not supported
+		setConfig(SerialAccess::DEFAULT_PORT_CONFIGURATION);
+
+		this->writeEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
+		if (this->writeEventHandle == NULL) {
+			printError("error %lu in SerialPort:openPort:CreateEventA: %s");
+			closePort();
+			return false;
+		}
+
+		this->readEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
+		if (this->readEventHandle == NULL) {
+			printError("error %lu in SerialPort:openPort:CreateEventA: %s");
+			closePort();
+			return false;
+		}
+
+		this->waitEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
+		if (this->waitEventHandle == NULL) {
+			printError("error %lu in SerialPort:openPort:CreateEventA: %s");
+			closePort();
+			return false;
+		}
+
+		return true;
+	}
+
+	void closePort() override
+	{
+		if (this->comPortHandle == INVALID_HANDLE_VALUE) return;
+		CloseHandle(this->comPortHandle);
+		if (this->writeEventHandle != NULL)
+			CloseHandle(this->writeEventHandle);
+		if (this->readEventHandle != NULL)
+			CloseHandle(this->readEventHandle);
+		if (this->waitEventHandle != NULL)
+			CloseHandle(this->waitEventHandle);
+		this->comPortHandle = INVALID_HANDLE_VALUE;
+		this->writeEventHandle = NULL;
+		this->readEventHandle = NULL;
+		this->waitEventHandle = NULL;
+	}
+
+	bool isOpen() override
+	{
+		return this->comPortHandle != INVALID_HANDLE_VALUE;
+	}
+
 	bool setConfig(const SerialAccess::SerialPortConfig &config) override
 	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+		if (!isOpen()) return false;
 
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
 			printError("error %lu in SerialPort:setConfig:GetCommState: %s");
@@ -86,11 +147,8 @@ public:
 		default: break;
 		case SerialAccess::SPC_STOPB_ONE: this->comPortState.StopBits = ONESTOPBIT; break;
 		}
-		this->comPortState.XonChar = 17;
-		this->comPortState.XoffChar = 19;
-		this->comPortState.ErrorChar = 0;
-		this->comPortState.EofChar = 0;
-		this->comPortState.EvtChar = 0;
+		this->comPortState.XonChar = config.xonChar;
+		this->comPortState.XoffChar = config.xoffChar;
 
 		if (!SetCommState(this->comPortHandle, &this->comPortState)) {
 			printError("error %lu in SerialPort:setConfig:SetCommState: %s");
@@ -102,7 +160,7 @@ public:
 
 	bool getConfig(SerialAccess::SerialPortConfig &config) override
 	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+		if (!isOpen()) return false;
 
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
 			printError("error %lu in SerialPort:getConfig:GetCommState: %s");
@@ -134,65 +192,18 @@ public:
 		} else {
 			config.flowControl = SerialAccess::SPC_FLOW_UNDEFINED;
 		}
+		config.xonChar = this->comPortState.XonChar;
+		config.xoffChar = this->comPortState.XoffChar;
+		config.errorChar = 0;
+		config.eofChar = 0;
+		config.eventChar = 0;
 
 		return true;
-	}
-
-	bool openPort() override
-	{
-		if (this->comPortHandle != INVALID_HANDLE_VALUE) return false;
-		this->comPortHandle = CreateFileA(this->portFileName, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-
-		if (!isOpen())
-			return false;
-
-		if (!SetCommMask(this->comPortHandle, EV_RXCHAR)) {
-			printError("error %lu in SerialPort:openPort:SetCommMask: %s");
-			closePort();
-			return false;
-		}
-
-		// We ignore if this fails, this could just mean that the default configuration is not supported
-		setConfig(SerialAccess::DEFAULT_PORT_CONFIGURATION);
-
-		this->writeEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
-		if (this->writeEventHandle == NULL) {
-			printError("error %lu in SerialPort:openPort:CreateEventA: %s");
-			closePort();
-			return false;
-		}
-
-		this->readEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
-		if (this->readEventHandle == NULL) {
-			printError("error %lu in SerialPort:openPort:CreateEventA: %s");
-			closePort();
-			return false;
-		}
-
-		return true;
-	}
-
-	void closePort() override
-	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return;
-		CloseHandle(this->comPortHandle);
-		if (this->writeEventHandle != NULL)
-			CloseHandle(this->writeEventHandle);
-		if (this->readEventHandle != NULL)
-			CloseHandle(this->readEventHandle);
-		this->comPortHandle = INVALID_HANDLE_VALUE;
-		this->writeEventHandle = NULL;
-		this->readEventHandle = NULL;
-	}
-
-	bool isOpen() override
-	{
-		return this->comPortHandle != INVALID_HANDLE_VALUE;
 	}
 
 	bool setBaud(unsigned long baud) override
 	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+		if (!isOpen()) return false;
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
 			printError("error %lu in SerialPort:setBaud:GetCommState: %s");
 			return false;
@@ -217,7 +228,7 @@ public:
 
 	bool setTimeouts(int readTimeout, int readTimeoutInterval, int writeTimeout) override
 	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+		if (!isOpen()) return false;
 		if (!GetCommTimeouts(this->comPortHandle, &this->comPortTimeouts)) {
 			printError("error %lu in SerialPort:setTimeouts:GetCommTimeouts: %s");
 			return false;
@@ -249,7 +260,7 @@ public:
 
 	bool getTimeouts(int* readTimeout, int* readTimeoutInterval, int* writeTimeout) override
 	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+		if (!isOpen()) return false;
 		if (!GetCommTimeouts(this->comPortHandle, &this->comPortTimeouts)) {
 			printError("error %lu in SerialPort:setTimeouts:GetCommTimeouts: %s");
 			return false;
@@ -261,79 +272,115 @@ public:
 		return true;
 	}
 
-	unsigned long readBytes(char* buffer, unsigned long bufferCapacity) override
+	long long int readBytes(char* buffer, unsigned long bufferCapacity, bool wait) override
 	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return 0;
 
-		// Create overlapped event
-		ZeroMemory(&this->readOverlapped, sizeof(OVERLAPPED));
-		this->readOverlapped.hEvent = this->readEventHandle;
-		if (!ResetEvent(this->readEventHandle)) {
-			printError("error %lu in SerialPort:readBytes:ResetEvent: %s");
-			return 0;
-		}
-
-		// Initiate read operation
 		unsigned long receivedBytes;
-		if (!ReadFile(this->comPortHandle, buffer, bufferCapacity, &receivedBytes, &this->readOverlapped)) {
 
-			// If not completed yet, check if error
-			if (GetLastError() != ERROR_IO_PENDING) {
-				printError("error %lu in SerialPort:readBytes:ReadFile: %s");
-				return 0;
+		// Check if there is already an operation pending
+		if (this->readOverlapped.hEvent == INVALID_HANDLE_VALUE) {
+
+			// If not, initiate new operation
+
+			// Create overlapped event
+			ZeroMemory(&this->readOverlapped, sizeof(OVERLAPPED));
+			this->readOverlapped.hEvent = this->readEventHandle;
+			if (!ResetEvent(this->readEventHandle)) {
+				printError("error %lu in SerialPort:readBytes:ResetEvent: %s");
+				return -2;
 			}
 
-			// If not, wait for completition
-			if (!GetOverlappedResult(this->comPortHandle, &this->readOverlapped, &receivedBytes, TRUE)) {
-				if (GetLastError() == ERROR_OPERATION_ABORTED)
-					return 0; // port closed
-				printError("error %lu in SerialPort:readBytes:GetOverlappedResult: %s");
-				return 0;
+			// Initiate read operation
+			if (!ReadFile(this->comPortHandle, buffer, bufferCapacity, &receivedBytes, &this->readOverlapped)) {
+
+				// If not completed yet, check if error
+				if (GetLastError() != ERROR_IO_PENDING) {
+					printError("error %lu in SerialPort:readBytes:ReadFile: %s");
+					return -2;
+				}
+
+			} else {
+
+				// Already completed, return results
+				this->readOverlapped.hEvent = INVALID_HANDLE_VALUE;
+				return receivedBytes;
+
 			}
 
 		}
+
+		// Wait for completition
+		if (!GetOverlappedResult(this->comPortHandle, &this->readOverlapped, &receivedBytes, wait)) {
+			if (GetLastError() == ERROR_IO_INCOMPLETE)
+				return -1; // not yet completed
+			this->readOverlapped.hEvent = INVALID_HANDLE_VALUE;
+			if (GetLastError() == ERROR_OPERATION_ABORTED)
+				return -2; // port closed
+			printError("error %lu in SerialPort:readBytes:GetOverlappedResult: %s");
+			return -2;
+		}
+		this->readOverlapped.hEvent = INVALID_HANDLE_VALUE;
 
 		return receivedBytes;
 	}
 
-	unsigned long writeBytes(const char* buffer, unsigned long bufferLength) override
+	long long int writeBytes(const char* buffer, unsigned long bufferLength, bool wait) override
 	{
 		if (this->comPortHandle == INVALID_HANDLE_VALUE) return 0;
 
-		// Create overlapped event
-		ZeroMemory(&this->writeOverlapped, sizeof(OVERLAPPED));
-		this->writeOverlapped.hEvent = this->writeEventHandle;
-		if (!ResetEvent(this->writeEventHandle)) {
-			printError("error %lu in SerialPort:writeBytes:ResetEvent: %s");
-			return 0;
-		}
-
-		// Initiate write operation
 		unsigned long writtenBytes;
-		if (!WriteFile(this->comPortHandle, buffer, bufferLength, &writtenBytes, &this->writeOverlapped)) {
 
-			// If not completed yet, check if error
-			if (GetLastError() != ERROR_IO_PENDING) {
-				printError("error %lu in SerialPort:writeBytes:WriteFile: %s");
-				return 0;
+		// Check if there is already an operation pending
+		if (this->writeOverlapped.hEvent == INVALID_HANDLE_VALUE) {
+
+			// If not, initiate new operation
+
+			// Create overlapped event
+			ZeroMemory(&this->writeOverlapped, sizeof(OVERLAPPED));
+			this->writeOverlapped.hEvent = this->writeEventHandle;
+			if (!ResetEvent(this->writeEventHandle)) {
+				printError("error %lu in SerialPort:writeBytes:ResetEvent: %s");
+				return -2;
 			}
 
-			// If not, wait for completition
-			if (!GetOverlappedResult(this->comPortHandle, &this->writeOverlapped, &writtenBytes, TRUE)) {
-				if (GetLastError() == ERROR_OPERATION_ABORTED)
-					return 0; // port closed
-				printError("error %lu in SerialPort:writeBytes:GetOverlappedResult: %s");
-				return 0;
+			// Initiate write operation
+			if (!WriteFile(this->comPortHandle, buffer, bufferLength, &writtenBytes, &this->writeOverlapped)) {
+
+				// If not completed yet, check if error
+				if (GetLastError() != ERROR_IO_PENDING) {
+					printError("error %lu in SerialPort:writeBytes:WriteFile: %s");
+					return -2;
+				}
+
+			} else {
+
+				// Already completed, return results
+				this->writeOverlapped.hEvent = INVALID_HANDLE_VALUE;
+				return writtenBytes;
+
 			}
 
 		}
+
+		// If not, wait for completition
+		if (!GetOverlappedResult(this->comPortHandle, &this->writeOverlapped, &writtenBytes, wait)) {
+			if (GetLastError() == ERROR_IO_INCOMPLETE)
+				return -1; // not yet completed
+			this->writeOverlapped.hEvent = INVALID_HANDLE_VALUE;
+			if (GetLastError() == ERROR_OPERATION_ABORTED)
+				return -2; // port closed
+			printError("error %lu in SerialPort:writeBytes:GetOverlappedResult: %s");
+			return -2;
+		}
+		this->writeOverlapped.hEvent = INVALID_HANDLE_VALUE;
 
 		return writtenBytes;
 	}
 
-	bool getRawPortState(bool& dsr, bool& cts) override
+	bool getPortState(bool& dsr, bool& cts) override
 	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+		if (!isOpen()) return false;
 
 		DWORD state;
 		if (!::GetCommModemStatus(this->comPortHandle, &state)) {
@@ -346,9 +393,9 @@ public:
 		return true;
 	}
 
-	bool setRawPortState(bool dtr, bool rts) override
+	bool setManualPortState(bool dtr, bool rts) override
 	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+		if (!isOpen()) return false;
 
 		if (!::EscapeCommFunction(this->comPortHandle, dtr ? SETDTR : CLRDTR)) {
 			printError("error %lu in SerialPort:setPortState:EscapeCommFunction(DTR): %s");
@@ -363,45 +410,93 @@ public:
 		return true;
 	}
 
-	bool getFlowControl(bool& readyState) override
-	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+	bool waitForEvents(bool& comStateChange, bool& dataReceived, bool& dataTransmitted, bool wait) {
+		if (!isOpen()) return false;
 
-		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("error %lu in SerialPort:getFlowControl:GetCommState: %s");
-			return false;
+		// Check if the event mask was changed
+		DWORD newMask = 0;
+		if (comStateChange) newMask |= EV_CTS | EV_DSR;
+		if (dataReceived) newMask |= EV_RXCHAR;
+		if (dataTransmitted) newMask |= EV_TXEMPTY;
+		if (newMask != eventMask && this->waitOverlapped.hEvent != INVALID_HANDLE_VALUE) {
+			// Cancel previous wait (will be canceled if SetCommMask runs)
+			this->waitOverlapped.hEvent = INVALID_HANDLE_VALUE;
+		}
+		eventMask = newMask;
+
+		// Check if there is already an operation pending
+		if (this->waitOverlapped.hEvent == INVALID_HANDLE_VALUE) {
+
+			// If not, initiate new operation
+
+			// If no event was requested, return
+			if (!comStateChange && !dataReceived && !dataTransmitted) return true;
+
+			// Configure event mask
+			if (!::SetCommMask(this->comPortHandle, eventMask)) {
+				printError("error %lu in SerialPort:waitForEvents:SetCommMask: %s");
+				return false;
+			}
+
+			// Create overlapped event
+			ZeroMemory(&this->waitOverlapped, sizeof(OVERLAPPED));
+			this->waitOverlapped.hEvent = this->waitEventHandle;
+			if (!ResetEvent(this->waitEventHandle)) {
+				printError("error %lu in SerialPort:waitForEvents:ResetEvent: %s");
+				return false;
+			}
+
+			// Initiate wait operation
+			if (!WaitCommEvent(this->comPortHandle, &eventMaskReturned, &this->waitOverlapped)) {
+
+				// If not completed yet, check if error
+				if (GetLastError() != ERROR_IO_PENDING) {
+					printError("error %lu in SerialPort:waitForEvents:WaitCommEvent: %s");
+					return false;
+				}
+
+			} else {
+
+				// Already completed, return results
+				this->waitOverlapped.hEvent = INVALID_HANDLE_VALUE;
+				comStateChange = eventMaskReturned & (EV_CTS | EV_DSR);
+				dataReceived = eventMaskReturned & EV_RXCHAR;
+				return true;
+
+			}
+
 		}
 
-		bool dsrState = false;
-		bool ctsState = false;
-		if (!getRawPortState(dsrState, ctsState))
+		comStateChange = false;
+		dataReceived = false;
+		dataTransmitted = false;
+
+		// If not, wait for completition
+		DWORD returnedBytes;
+		if (!GetOverlappedResult(this->comPortHandle, &this->waitOverlapped, &returnedBytes, wait)) {
+			if (GetLastError() == ERROR_IO_INCOMPLETE)
+				return true; // not yet completed
+			this->waitOverlapped.hEvent = INVALID_HANDLE_VALUE;
+			if (GetLastError() == ERROR_OPERATION_ABORTED)
+				return false; // port closed
+			printError("error %lu in SerialPort:waitForEvents:GetOverlappedResult: %s");
 			return false;
+		}
+		this->waitOverlapped.hEvent = INVALID_HANDLE_VALUE;
 
-		if (this->comPortState.fOutxCtsFlow)
-			readyState = ctsState;
-		if (this->comPortState.fOutxDsrFlow)
-			readyState = dsrState;
-
+		comStateChange = eventMaskReturned & (EV_CTS | EV_DSR);
+		dataReceived = eventMaskReturned & EV_RXCHAR;
+		dataTransmitted = eventMaskReturned & EV_TXEMPTY;
 		return true;
 	}
 
-	bool setFlowControl(bool readyState) override
+	void abortWait() override
 	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return false;
+		if (!isOpen() || this->waitOverlapped.hEvent == INVALID_HANDLE_VALUE) return;
 
-		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
-			printError("error %lu in SerialPort:setFlowControl:GetCommState: %s");
-			return false;
+		if (CancelIoEx(this->comPortHandle, &this->waitOverlapped)) {
+			this->waitOverlapped.hEvent = INVALID_HANDLE_VALUE;
 		}
-
-		bool dtrState = true;
-		bool rtsState = true;
-		if (this->comPortState.fOutxCtsFlow)
-			rtsState = readyState;
-		if (this->comPortState.fOutxDsrFlow)
-			dtrState = readyState;
-
-		return setRawPortState(dtrState, rtsState);
 	}
 
 };

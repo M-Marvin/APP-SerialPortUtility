@@ -7,11 +7,12 @@
  *      Author: Marvin Koehler (M_Marvin)
  */
 
-#ifndef SOEIMPL_HPP_
-#define SOEIMPL_HPP_
+#ifndef SOE_CONNECTION_HPP_
+#define SOE_CONNECTION_HPP_
 
 #include <netsocket.hpp>
 #include <serial_port.hpp>
+#include <virtual_serial_port.hpp>
 #include <thread>
 #include <map>
 #include <shared_mutex>
@@ -21,36 +22,30 @@
 
 namespace SerialOverEthernet {
 
-#define SOE_TCP_DEFAULT_SOE_PORT 26												// default server port
-#define SOE_TCP_FRAME_MAX_LEN 512												// max package length
+#define SOE_TCP_DEFAULT_SOE_PORT 26U											// default server port
+#define SOE_TCP_FRAME_MAX_LEN 512UL												// max package length
 #define SOE_TCP_FRAME_LEN_BYTES 3												// length of package length field
 #define SOE_TCP_PROTO_IDENT_LEN 4												// length of package identifier
 #define SOE_TCP_PROTO_IDENT 0x534F4950U											// package identifier
-#define SOE_TCP_HANDSHAKE_TIMEOUT 4000											// timeout for handshake operations and initial connection
+#define SOE_TCP_HANDSHAKE_TIMEOUT 4000UL										// timeout for handshake operations and initial connection
 #define SOE_TCP_HEADER_LEN (SOE_TCP_PROTO_IDENT_LEN + SOE_TCP_FRAME_LEN_BYTES)	// length of the package header
 #define SOE_SERIAL_BUFFER_LEN (SOE_TCP_FRAME_MAX_LEN - SOE_TCP_HEADER_LEN) - 1	// max length of received serial data for one package
+#define SOE_TCP_STREAM_BUFFER_LEN 4096UL										// ring buffer capacity for received data to transmit over serial
 
 class SOELinkHandler {
 
 public:
 	/**
-	 * Creates a new client network connection handler
-	 * @param socket The socket of the client-server connection
-	 * @param onDeath A callback invoked when the connection was closed
-	 */
-	SOELinkHandler(NetSocket::Socket* socket, std::string& hostName, std::string& hostPort, std::function<void(SOELinkHandler*)> onDeath);
-
-	/**
 	 * Closes all ports and the socket and cleans all allocated buffer memory
 	 */
-	~SOELinkHandler();
+	virtual ~SOELinkHandler() {};
 
 	/**
 	 * Attempts to open the local serial port.
 	 * @param localSerial The serial port file name
 	 * @return true if the port as opened successfully, false otherwise
 	 */
-	bool openLocalPort(const std::string& localSerial);
+	virtual bool openLocalPort(const std::string& localSerial) = 0;
 	/**
 	 * Attempts to open the remote serial port.
 	 * @param localSerial The serial port file name
@@ -63,7 +58,8 @@ public:
 	 * @param remoteConfig The serial port configuration
 	 * @return true if the configuration was applied successfully, false otherwise
 	 */
-	bool setLocalConfig(const SerialAccess::SerialPortConfiguration& localConfig);
+	virtual bool setLocalConfig(const SerialAccess::SerialPortConfiguration& localConfig) = 0;
+
 	/**
 	 * Attempts to apply the serial port configuration to the remote port
 	 * @param remoteConfig The serial port configuration
@@ -77,7 +73,7 @@ public:
 	 * If an shutdown was already issued and the function is called a second time, it returns immediately.
 	 * @return false if the method was already called before and this call did not have any effect, true if this was the first call and the shutdown was performed
 	 */
-	bool shutdown();
+	virtual bool shutdown() = 0;
 
 	/**
 	 * Attempts to release the remote port.
@@ -89,7 +85,7 @@ public:
 	 * Attempts to release the local port.
 	 * @return true if the local port could be released successfully, false otherwise
 	 */
-	bool closeLocalPort();
+	virtual bool closeLocalPort() = 0;
 
 	/**
 	 * Returns true if the network connection is still operational
@@ -97,7 +93,7 @@ public:
 	 */
 	bool isAlive();
 
-private:
+protected:
 
 	/**
 	 * Handles network package reception
@@ -106,7 +102,7 @@ private:
 	/**
 	 * Handles network package transmission
 	 */
-	void handleClientTX();
+	virtual void handleClientTX() = 0;
 
 	bool processPackage(const char* package, unsigned int packageLen);
 	bool transmitPackage(const char* package, unsigned int packageLen);
@@ -129,20 +125,27 @@ private:
 	bool sendSerialData(const char* data, unsigned int len);
 	bool processSerialData(const char* package, unsigned int packageLen);
 
+	bool sendPortState(bool dtrState, bool rtsState);
+	bool processPortState(const char* package, unsigned int packageLen);
+
 	bool sendFlowControl(bool readyState);
 	bool processFlowControl(const char* package, unsigned int packageLen);
 
-	void transmitSerialData(const char* data, unsigned int len);
-	void updateFlowControl(bool readyToReceive);
+	virtual void transmitSerialData(const char* data, unsigned int len) = 0;
+	virtual void updateFlowControl(bool readyToReceive) = 0;
 
 	std::mutex m_socketTX;									// protect against async writes to network
 	std::unique_ptr<NetSocket::Socket> socket;				// network TCP socket
-	std::string remoteHostName;									// the host name this connection was established with
-	std::string remoteHostPort;									// the host port this connection was established with
+	std::string remoteHostName;								// the host name this connection was established with
+	std::string remoteHostPort;								// the host port this connection was established with
 	std::function<void(SOELinkHandler*)> onDeath;			// callback when connection is shut down
 
 	std::thread thread_rx;									// TCP reception thread
 	std::thread thread_tx;									// TCP transmission thread
+	char receptionBuffer[SOE_TCP_STREAM_BUFFER_LEN];		// a ring buffer in which data from network to serial is buffered
+	unsigned int writePtr = 0;								// ring buffer write pointer
+	unsigned int readPtr = 0;								// ring buffer read pointer
+	unsigned int pendingPtr = 0;							// ring buffer pending pointer (transmission over serial still in progress)
 
 	std::mutex m_remoteReturn;								// protect return value against async writes
 	std::condition_variable cv_remoteReturn;				// waiting point for return value
@@ -150,13 +153,58 @@ private:
 
 	std::mutex m_localPort;									// protect local serial port against async modification
 	std::condition_variable cv_openLocalPort;				// waiting point for TX thread when port closed
-	std::unique_ptr<SerialAccess::SerialPort> localPort;	// local serial port
 	std::string localPortName;								// local serial port name currently open
 	std::string remotePortName;								// remote serial prot currently open
-	bool readyToSend = true;								// keeps track of hardware flow control to detect changes
+	bool remoteFlowEnable = true;							// keeps track of the flow control signal for the remote port
+
+};
+
+class SOELinkHandlerCOM : public SOELinkHandler {
+
+public:
+
+	/**
+	 * Creates a new client network connection handler
+	 * @param socket The socket of the client-server connection
+	 * @param onDeath A callback invoked when the connection was closed
+	 */
+	SOELinkHandlerCOM(NetSocket::Socket* socket, std::string& hostName, std::string& hostPort, std::function<void(SOELinkHandler*)> onDeath);
+	~SOELinkHandlerCOM() override;
+
+	bool shutdown() override;
+
+	bool openLocalPort(const std::string& localSerial) override;
+	bool setLocalConfig(const SerialAccess::SerialPortConfiguration& localConfig) override;
+	bool closeLocalPort() override;
+
+private:
+
+	std::unique_ptr<SerialAccess::SerialPort> localPort;	// local serial port
+
+	void handleClientTX() override;
+
+	void transmitSerialData(const char* data, unsigned int len) override;
+	void updateFlowControl(bool readyToReceive) override;
+
+};
+
+class SOELinkHandlerVCOM : public SOELinkHandler {
+
+public:
+
+	bool openLocalPort(const std::string& localSerial) override;
+	bool setLocalConfig(const SerialAccess::SerialPortConfiguration& localConfig) override;
+	bool closeLocalPort() override;
+
+private:
+
+	std::unique_ptr<SerialAccess::VirtualSerialPort> localPort;	// local serial port
+
+	void transmitSerialData(const char* data, unsigned int len) override;
+	void updateFlowControl(bool readyToReceive) override;
 
 };
 
 }
 
-#endif /* SOEIMPL_HPP_ */
+#endif /* SOE_CONNECTION_HPP_ */

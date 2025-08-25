@@ -1,4 +1,6 @@
-#pragma once
+
+#ifndef SERIAL_PORT_HPP_
+#define SERIAL_PORT_HPP_
 
 #include <string>
 #include <vector>
@@ -35,6 +37,12 @@ typedef struct SerialPortConfiguration {
 	SerialPortStopBits stopBits;
 	SerialPortParity parity;
 	SerialPortFlowControl flowControl;
+	char eofChar;
+	char errorChar;
+	char breakChar;
+	char eventChar;
+	char xonChar;
+	char xoffChar;
 } SerialPortConfig;
 
 static const SerialPortConfig DEFAULT_PORT_CONFIGURATION = {
@@ -42,7 +50,12 @@ static const SerialPortConfig DEFAULT_PORT_CONFIGURATION = {
 	.dataBits = 8,
 	.stopBits = SPC_STOPB_ONE,
 	.parity = SPC_PARITY_NONE,
-	.flowControl = SPC_FLOW_NONE
+	.flowControl = SPC_FLOW_NONE,
+	.eofChar = 0, // TODO serial events implementation
+	.errorChar = 0,
+	.eventChar = 0,
+	.xonChar = 17,
+	.xoffChar = 19
 };
 
 static const int DEFAULT_PORT_RX_TIMEOUT = -1;
@@ -90,7 +103,7 @@ public:
 	 * Sets the read write timeouts for the port.
 	 * An readTimeout of zero means no timeout. (instant return if no data is available)
 	 * An readTimeout of less than zero causes the read method to block until at least one character has arrived.
-	 * An writeTimeout of zero or less has means block until everything is sent.
+	 * An writeTimeout of zero or less has means block until everything is written.
 	 * The readTimeoutInterval defines an additional timeout that is appended to each received byte.
 	 * The port has to be open for this to work.
 	 * @param readTimeout The read timeout, if the requested amount of data is not received within this time, it returns with what it has (might be zero)
@@ -132,57 +145,59 @@ public:
 	/**
 	 * Attempts to fill the buffer by reading bytes from the port.
 	 * If not enough bytes could be read after the read timeout expires, the function returns with what was received.
+	 *
+	 * NOTE:
+	 * If wait is false, the caller has to make sure the source buffer remains valid until the event finished.
 	 * @param buffer The buffer to write the data to
 	 * @param bufferCapacity The capacity of the buffer, aka the max number of bytes to read
-	 * @return The number of bytes read
+	 * @return The number of bytes read, -1 if the event is still pending, a value less than -1 if an error occurred
 	 */
-	virtual unsigned long readBytes(char* buffer, unsigned long bufferCapacity) = 0;
+	virtual long long int readBytes(char* buffer, unsigned long bufferCapacity, bool wait = true) = 0;
 
 	/**
 	 * Attempts to write the content of the buffer to the serial port.
 	 * If not all data could be written until the write timeout expires, the function returns.
+	 *
+	 * NOTE:
+	 * If wait is false, the caller has to make sure the target buffer remains valid until the event finished.
 	 * @param buffer The buffer to read the data from
 	 * @param bufferLength The length of the buffer, aka the number of bytes to write
-	 * @return The number of bytes written
+	 * @return The number of bytes written, -1 if the event is still pending, a value less than -1 if an error occurred
 	 */
-	virtual unsigned long writeBytes(const char* buffer, unsigned long bufferLength) = 0;
+	virtual long long int writeBytes(const char* buffer, unsigned long bufferLength, bool wait = true) = 0;
 	
 	/**
-	 * Reads the current pin input states of the serial port:
+	 * Reads the current pin input states of the serial port.
+	 */
+	virtual bool getPortState(bool& dsr, bool& cts) = 0;
+
+	/**
+	 * Assigns the current pin output states of the serial port.
+	 * Only effective if the signals are not controlled by hardware flow control.
+	 */
+	virtual bool setManualPortState(bool dtr, bool rts) = 0;
+
+	/**
+	 * Waits for the requested events.
+	 * The arguments are input and outputs at the same time.
+	 * The function block until an event occurred, for which the argument was set to true.
+	 * The before returning, the function overrides the values in the arguments to signal which events occurred.
 	 *
-	 * Then input and output pins are:
-	 * OUT    IN
-	 * DTR -> DSR // flow control option 1
-	 * RTS -> CTS // flow control option 2
+	 * NOTE:
+	 * If wait is false, the function will always return immediately, but all event flags set to false until an event occurred.
+	 * The wait operation will in this case continue until an event occurred and the event was read using this method.
+	 * The wait operation is canceled and replaced by an new wait operation if this function is called with different event-arguments than the pending event.
+	 * @param comStateChange COM state (DSR, CTS) change event
+	 * @param dataReceived data received event
+	 * @param dataTransmitted transmission buffer empty event
+	 * @return false if the function returned because of an error, true otherwise
 	 */
-	virtual bool getRawPortState(bool& dsr, bool& cts) = 0;
+	virtual bool waitForEvents(bool& comStateChange, bool& dataReceived, bool& dataTransmitted, bool wait = true) = 0;
 
 	/**
-	 * Assigns the current pin output states of the serial port:
-	 *
-	 * Then input and output pins are:
-	 * OUT    IN
-	 * DTR -> DSR // flow control option 1
-	 * RTS -> CTS // flow control option 2
+	 * Cancels an pending wait for events operation.
 	 */
-	virtual bool setRawPortState(bool dtr, bool rts) = 0;
-
-	/**
-	 * Reads the correct pin states for the configured hardware flow control.
-	 * Returns always true as flow control state if no hardware flow control was configured.
-	 * @param readyState The state of the flow control, true if flow control is "on" (sending is currently possible), false if flow control is "off"
-	 * @return true if the state could be successfully read, false otherwise
-	 */
-	virtual bool getFlowControl(bool& readyState) = 0;
-
-	/**
-	 * Assigns the correct pin states for the configured hardware flow control.
-	 * Does reset hardware pins not used for flow control to their default state.
-	 * Does nothing if no hardware flow control was configured.
-	 * @param readyState The state to assign for the flow control, true if flow control is "on" (reception is currently possible), false if flow control is "off"
-	 * @return true if the state could be successfully assigned, false otherwise
-	 */
-	virtual bool setFlowControl(bool readyState) = 0;
+	virtual void abortWait() = 0;
 
 };
 
@@ -190,3 +205,5 @@ SerialPort* newSerialPort(const char* portFile);
 SerialPort* newSerialPortS(const std::string& portFile);
 
 }
+
+#endif

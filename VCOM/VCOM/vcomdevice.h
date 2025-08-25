@@ -17,6 +17,7 @@ typedef struct
 
     ULONG               BaudRate;           // The baud rate currently configured
     SERIAL_LINE_CONTROL LineControl;        // The line control register currently configured (stop, data, parity)
+    SERIAL_HANDFLOW     FlowControl;        // The flow control currently configured
     SERIAL_TIMEOUTS     Timeouts;           // The Tx/Rx timeouts currently configured
     SERIAL_CHARS        FlowChars;          // The XON/XOFF characters currently configured
     ULONG               FlowControlState;   // The manual flow control state currently configured (DTS, RTS)

@@ -158,6 +158,7 @@ static void ReInvokeRequests(QUEUE_CONTEXT* queueContext, WDFQUEUE queue) {
 
 static void TriggerMaskWait(QUEUE_CONTEXT* queueContext, ULONG triggerMask)
 {
+	if ((queueContext->WaitMask & triggerMask) == 0) return;
 
 	WDFREQUEST request;
 	NTSTATUS status = WdfIoQueueRetrieveNextRequest(queueContext->WaitMaskQueue, &request);
@@ -167,12 +168,19 @@ static void TriggerMaskWait(QUEUE_CONTEXT* queueContext, ULONG triggerMask)
 
 }
 
-static void TriggerChangeWait(QUEUE_CONTEXT* queueContext)
+static void TriggerChangeWait(QUEUE_CONTEXT* queueContext, ULONG triggerMask)
 {
+	if ((queueContext->ChangeMask & triggerMask) == 0) return;
 
 	WDFREQUEST request;
 	NTSTATUS status = WdfIoQueueRetrieveNextRequest(queueContext->WaitChangeQueue, &request);
 	if (status == STATUS_SUCCESS) {
+
+		status = CopyToRequest(request, 0, &triggerMask, sizeof(ULONG));
+		if (status != STATUS_SUCCESS) {
+			WdfRequestComplete(request, status);
+		}
+
 		WdfRequestComplete(request, STATUS_SUCCESS);
 	}
 
@@ -207,7 +215,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 			deviceContext->BaudRate = baudRateStruct.BaudRate;
 		}
 
-		TriggerChangeWait(queueContext);
+		TriggerChangeWait(queueContext, APPLINK_EVENT_CONFIG);
 
 		break;
 	}
@@ -245,7 +253,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		// read timeouts and apply to context
 		status = CopyFromRequest(requestHandle, 0, &deviceContext->Timeouts, sizeof(SERIAL_TIMEOUTS));
 
-		TriggerChangeWait(queueContext);
+		TriggerChangeWait(queueContext, APPLINK_EVENT_TIMEOUTS);
 
 		break;
 	}
@@ -268,11 +276,34 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		// read líne control and apply to context
 		status = CopyFromRequest(requestHandle, 0, &deviceContext->LineControl, sizeof(SERIAL_LINE_CONTROL));
 
-		TriggerChangeWait(queueContext);
+		TriggerChangeWait(queueContext, APPLINK_EVENT_CONFIG);
 
 		break;
 	}
 
+	case IOCTL_SERIAL_GET_HANDFLOW: // flow control configuration as an struct 
+	{
+
+		dbgprintf("[i] VCOM IOCTL_SERIAL_GET_HANDFLOW called\n");
+
+		// write line control to request
+		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowControl, sizeof(SERIAL_HANDFLOW));
+
+		break;
+	}
+	case IOCTL_SERIAL_SET_HANDFLOW:
+	{
+
+		dbgprintf("[i] VCOM IOCTL_SERIAL_SET_HANDFLOW called\n");
+
+		// read líne control and apply to context
+		status = CopyFromRequest(requestHandle, 0, &deviceContext->FlowControl, sizeof(SERIAL_HANDFLOW));
+
+		TriggerChangeWait(queueContext, APPLINK_EVENT_CONFIG);
+
+		break;
+	}
+	
 	case IOCTL_SERIAL_GET_CHARS: // the characters used for XON/XOFF flow control in an struct
 	{
 
@@ -292,7 +323,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		// read XON/XOFF chars and apply to context
 		status = CopyFromRequest(requestHandle, 0, &deviceContext->FlowChars, sizeof(SERIAL_CHARS));
 
-		TriggerChangeWait(queueContext);
+		TriggerChangeWait(queueContext, APPLINK_EVENT_CONFIG);
 
 		break;
 	}
@@ -367,7 +398,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		deviceContext->FlowControlState |= SERIAL_DTR_STATE;
 		status = STATUS_SUCCESS;
 
-		TriggerChangeWait(queueContext);
+		TriggerChangeWait(queueContext, APPLINK_EVENT_COMSTATE);
 
 		break;
 	}
@@ -380,7 +411,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		deviceContext->FlowControlState &= ~SERIAL_DTR_STATE;
 		status = STATUS_SUCCESS;
 
-		TriggerChangeWait(queueContext);
+		TriggerChangeWait(queueContext, APPLINK_EVENT_COMSTATE);
 
 		break;
 	}
@@ -394,7 +425,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		deviceContext->FlowControlState |= SERIAL_RTS_STATE;
 		status = STATUS_SUCCESS;
 
-		TriggerChangeWait(queueContext);
+		TriggerChangeWait(queueContext, APPLINK_EVENT_COMSTATE);
 
 		break;
 	}
@@ -407,7 +438,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		deviceContext->FlowControlState &= ~SERIAL_RTS_STATE;
 		status = STATUS_SUCCESS;
 
-		TriggerChangeWait(queueContext);
+		TriggerChangeWait(queueContext, APPLINK_EVENT_COMSTATE);
 
 		break;
 	}
@@ -418,8 +449,8 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_SERIAL_GET_DTRRTS called\n");
 
 		// write status value to request
-		ULONG dtrrtsTate = deviceContext->FlowControlState & (SERIAL_RTS_STATE | SERIAL_DTR_STATE);
-		status = CopyToRequest(requestHandle, 0, &dtrrtsTate, sizeof(ULONG));
+		ULONG dtrrtsState = deviceContext->FlowControlState & (SERIAL_RTS_STATE | SERIAL_DTR_STATE);
+		status = CopyToRequest(requestHandle, 0, &dtrrtsState, sizeof(ULONG));
 
 		break;
 	}
@@ -518,6 +549,17 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		break;
 	}
 
+	case IOCTL_APPLINK_GET_FLOW_CONTROL: // number of data and stop bits and parity configuration as an struct 
+	{
+
+		dbgprintf("[i] VCOM IOCTL_APPLINK_GET_FLOW_CONTROL called\n");
+
+		// write line control to request
+		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowControl, sizeof(SERIAL_HANDFLOW));
+
+		break;
+	}
+
 	case IOCTL_APPLINK_GET_CHARS: // the characters used for XON/XOFF flow control in an struct
 	{
 
@@ -540,6 +582,13 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		status = WdfIoQueueRetrieveNextRequest(queueContext->WaitChangeQueue, &previousWaitRequest);
 		if (status == STATUS_SUCCESS) {
 			WdfRequestComplete(previousWaitRequest, STATUS_UNSUCCESSFUL);
+		}
+
+		// read the event mask
+		status = CopyFromRequest(requestHandle, 0, &queueContext->ChangeMask, sizeof(ULONG));
+		if (status != STATUS_SUCCESS) {
+			dbgerrprintf("[!] VCOM CopyFromRequest failed: NTSTATUS 0x%x\n", status);
+			break;
 		}
 
 		// put the new request into the wait queue
@@ -651,8 +700,6 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 	case IOCTL_SERIAL_SET_QUEUE_SIZE:
 	case IOCTL_SERIAL_SET_XON:
 	case IOCTL_SERIAL_SET_XOFF:
-	case IOCTL_SERIAL_GET_HANDFLOW:
-	case IOCTL_SERIAL_SET_HANDFLOW:
 
 		dbgprintf("[i] VCOM IODeviceControl called: not implemented IOCTL_CODE: 0x%x\n", controlCode);
 

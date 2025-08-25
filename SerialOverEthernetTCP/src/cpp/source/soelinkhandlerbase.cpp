@@ -12,82 +12,8 @@
 #include "soeconnection.hpp"
 #include "dbgprintf.h"
 
-SerialOverEthernet::SOELinkHandler::SOELinkHandler(NetSocket::Socket* socket, std::string& hostName, std::string& hostPort, std::function<void(SOELinkHandler*)> onDeath) {
-	this->onDeath = onDeath;
-	this->remoteHostName = hostName;
-	this->remoteHostPort = hostPort;
-	this->socket.reset(socket);
-	this->socket->setTimeouts(0, 0);
-	this->socket->setNagle(false);
-	this->thread_rx = std::thread([this]() -> void {
-		this->handleClientRX();
-	});
-	this->thread_tx = std::thread([this]() -> void {
-		this->handleClientTX();
-	});
-}
-
-SerialOverEthernet::SOELinkHandler::~SOELinkHandler() {
-	shutdown();
-	printf("[DBG] joining RX thread ...\n");
-	this->thread_rx.join();
-	printf("[DBG] joined\n");
-	printf("[DBG] joining TX thread ...\n");
-	this->thread_tx.join();
-	printf("[DBG] joined\n");
-}
-
-bool SerialOverEthernet::SOELinkHandler::shutdown() {
-	if (isAlive()) {
-		printf("[i] link shutting down: %s <-> %s @ %s/%s\n", this->localPortName.c_str(), this->remotePortName.c_str(), this->remoteHostName.c_str(), this->remoteHostPort.c_str());
-		closeLocalPort();
-		this->socket->close();
-		this->remoteReturn = false;
-		this->cv_remoteReturn.notify_all();
-		this->cv_openLocalPort.notify_all();
-		this->onDeath(this);
-		dbgprintf("[DBG] client handler terminated\n");
-		return true;
-	}
-	return false;
-}
-
 bool SerialOverEthernet::SOELinkHandler::isAlive() {
 	return this->socket->isOpen();
-}
-
-bool SerialOverEthernet::SOELinkHandler::openLocalPort(const std::string& localSerial) {
-	closeLocalPort();
-	std::unique_lock<std::mutex> lock(this->m_localPort);
-	this->localPort.reset(SerialAccess::newSerialPortS(localSerial));
-	this->localPortName = localSerial;
-	dbgprintf("[DBG] opening local port: %s\n", this->localPortName.c_str());
-	bool opened = this->localPort->openPort();
-	if (opened) {
-		if (!this->localPort->setTimeouts(-1, 0, -1)) {
-			dbgprintf("[DBG] failed to configure timeouts when opening port\n");
-			this->localPort->closePort();
-			return false;
-		}
-		this->cv_openLocalPort.notify_all();
-	}
-	return opened;
-}
-
-bool SerialOverEthernet::SOELinkHandler::closeLocalPort() {
-	if (this->localPort == 0 || !this->localPort->isOpen()) return true;
-	std::unique_lock<std::mutex> lock(this->m_localPort);
-	this->localPort->closePort();
-	this->localPort.release();
-	dbgprintf("[DBG] local port closed: %s\n", this->localPortName.c_str());
-	return true;
-}
-
-bool SerialOverEthernet::SOELinkHandler::setLocalConfig(const SerialAccess::SerialPortConfiguration& localConfig) {
-	if (this->localPort == 0 || !this->localPort->isOpen()) return false;
-	std::lock_guard<std::mutex> lock(this->m_localPort);
-	dbgprintf("[DBG] changing local port configuration: %s (baud %lu)\n", this->localPortName.c_str(), localConfig.baudRate);
-	return this->localPort->setConfig(localConfig);
 }
 
 bool SerialOverEthernet::SOELinkHandler::openRemotePort(const std::string& remoteSerial) {
@@ -134,63 +60,6 @@ bool SerialOverEthernet::SOELinkHandler::setRemoteConfig(const SerialAccess::Ser
 	return this->remoteReturn;
 }
 
-void SerialOverEthernet::SOELinkHandler::handleClientTX() {
-
-	char serialData[SOE_SERIAL_BUFFER_LEN] {0};
-
-	while (isAlive()) {
-
-		if (this->localPort == 0 || !this->localPort->isOpen()) {
-			std::unique_lock<std::mutex> lock(this->m_localPort);
-			this->cv_openLocalPort.wait(lock, [this]() {
-				return (this->localPort != 0 && this->localPort->isOpen()) || !isAlive();
-			});
-			if (!isAlive()) break;
-		}
-
-		unsigned long read = this->localPort->readBytes(serialData, SOE_SERIAL_BUFFER_LEN);
-		if (read == 0) continue; // when port closed / timed out
-
-		dbgprintf("[DBG] stream data: |serial| -> [network] : >%.*s<\n", (int) read, serialData);
-
-		if (!sendSerialData(serialData, read)) {
-			printf("[!] frame error, unable to transmit serial data\n");
-			break;
-		}
-
-	}
-
-	dbgprintf("[DBG] client socket TX terminated, shutting down ...\n");
-	shutdown();
-
-}
-
-void SerialOverEthernet::SOELinkHandler::transmitSerialData(const char* data, unsigned int len) {
-
-	if (this->localPort == 0 || !this->localPort->isOpen()) return;
-
-	dbgprintf("[DBG] stream data: [serial] <- |network| : >%.*s<\n", len, data);
-
-	// detect changes in flow control, notify remote port
-	bool state;
-	if (this->localPort->getFlowControl(state) && state != readyToSend) {
-		sendFlowControl(false);
-		readyToSend = state;
-	}
-
-	// write data (blocks until ready to send again)
-	this->localPort->writeBytes(data, len);
-
-}
-
-void SerialOverEthernet::SOELinkHandler::updateFlowControl(bool readyToReceive) {
-
-	if (this->localPort == 0 || !this->localPort->isOpen()) return;
-
-	this->localPort->setFlowControl(readyToReceive);
-
-}
-
 void SerialOverEthernet::SOELinkHandler::handleClientRX() {
 
 	char packageFrame[SOE_TCP_FRAME_MAX_LEN] {0};
@@ -202,7 +71,7 @@ void SerialOverEthernet::SOELinkHandler::handleClientRX() {
 			if (socket->lastError() == 0)
 				printf("[DBG] client socket returned EOF\n");
 			else
-				printf("[DBG] client socket header RX returned with error code: %d\n", this->socket->lastError());
+				printf("[DBG] client socket RX returned with error code: %d\n", this->socket->lastError());
 			break;
 		}
 

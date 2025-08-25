@@ -11,7 +11,8 @@ typedef struct
     WDFQUEUE        WaitMaskQueue;      // Manual queue for pending ioctl wait-on-mask
     WDFQUEUE        WaitChangeQueue;    // Manual queue for pending ioctl wait-on-change
     ULONG           WaitMask;
-
+    ULONG           ChangeMask;
+    
     DEVICE_CONTEXT* DeviceContext;
 
 } QUEUE_CONTEXT;
@@ -22,7 +23,6 @@ typedef union
 {
     struct {
         ULONG BytesTransfered;
-
     } ReadWrite;
 
 } REQUEST_CONTEXT;

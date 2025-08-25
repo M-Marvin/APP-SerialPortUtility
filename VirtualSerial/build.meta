@@ -4,6 +4,7 @@ import de.m_marvin.metabuild.core.tasks.FileTask;
 import de.m_marvin.metabuild.core.tasks.FileTask.Action;
 import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
 import de.m_marvin.metabuild.maven.Maven;
+import de.m_marvin.metabuild.maven.tasks.MavenPublishTask;
 import de.m_marvin.metabuild.maven.tasks.MavenResolveTask;
 import de.m_marvin.metabuild.maven.types.Repository;
 import de.m_marvin.metabuild.maven.types.Repository.Credentials;
@@ -12,7 +13,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 
 	boolean debugging = false; // set to true to compile with debug info
 	
-	String version = "1.0";
+	String version = "1.0-SNAPSHOT";
 	
 	@Override
 	public void init() {
@@ -21,36 +22,15 @@ public class Buildfile extends CppMultiTargetBuildScript {
 
 		importBuild("libcom0com", new File("../LibCom0Com"));
 		
-		var target = makeTarget("WinAMD64", "vserial.exe");
-	//	target.linkCpp.options.add("-lcom0com");
+		var target = makeTarget("WinAMD64", "libvirtualserial.dll");
+		target.compileCpp.includes.add(new File("../VCOM"));
 		target.compileCpp.define("PLATFORM_WIN");
+		if (debugging) target.compileCpp.options.add("-g");
+		target.linkCpp.options.add("-shared");
 		target.linkCpp.options.add("-static-libgcc");
 		target.linkCpp.options.add("-static-libstdc++");
 		
 		super.init();
-		
-	}
-
-	@Override
-	public TargetConfig makeTarget(String config, String executableName) {
-		
-		var target = super.makeTarget(config, executableName);
-
-		target.linkCpp.outputFile = new File("../bin/" + config + "/" + executableName);
-		
-		var copyLibs = new FileTask("copyLibs" + config, Action.COPY, target.binaryUnzip.output, new File("../bin/" + config), true);
-		copyLibs.group = "platform";
-		copyLibs.dependsOn(target.binaryUnzip);
-		copyLibs.dependencyOf(target.build);
-		
-		if (debugging) {
-			target.compileCpp.define("ENBL_DBGPRINT");
-			target.compileCpp.options.add("-g");
-		}
-		
-		target.dependencies.dependsOn("libcom0com:publishMavenLocal");
-		
-		return target;
 		
 	}
 	
@@ -73,9 +53,25 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	@Override
 	public void dependencies(MavenResolveTask dependencies, String config) {
 		
-		dependencies.implementation("de.m_marvin.libcom0com:libcom0com:3.0.0.0::zip");
-		dependencies.implementation("de.m_marvin.libcom0com:libcom0com:3.0.0.0:headers:zip");
-		dependencies.implementation("de.m_marvin.libcom0com:libcom0com:3.0.0.0:driver64:zip");
+		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":2.3-SNAPSHOT::zip");
+		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":2.3-SNAPSHOT:headers:zip");
+		
+	}
+
+	@Override
+	public void publishing(MavenPublishTask publish, MavenPublishTask publishLocal, String config) {
+		
+		publishLocal.coordinates("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + ":" + version);
+		
+		publish.coordinates("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + ":" + version);
+		publish.repository(new Repository(
+				"GHP [SerialPortAccess]", 
+				"https://maven.pkg.github.com/m-marvin/app-serialportutility",
+				new Credentials(
+						() -> System.getenv("GITHUB_ACTOR"), 
+						() -> System.getenv("GITHUB_TOKEN")
+				)
+		));
 		
 	}
 	

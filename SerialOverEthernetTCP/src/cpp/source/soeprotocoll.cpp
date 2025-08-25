@@ -19,6 +19,7 @@
 #define SOE_TCP_OPC_CONFIGURE_PORT 0x30
 #define SOE_TCP_OPC_STREAM_SERIAL 0x40
 #define SOE_TCP_OPC_FLOW_CONTROL 0x50
+#define SOE_TCP_OPC_PORT_STATE 0x60
 
 bool SerialOverEthernet::SOELinkHandler::processPackage(const char* package, unsigned int packageLen) {
 
@@ -33,6 +34,7 @@ bool SerialOverEthernet::SOELinkHandler::processPackage(const char* package, uns
 	case SOE_TCP_OPC_CLOSE_PORT: 		return processRemoteClose(package, packageLen);
 	case SOE_TCP_OPC_CONFIGURE_PORT: 	return processRemoteConfig(package, packageLen);
 	case SOE_TCP_OPC_FLOW_CONTROL:		return processFlowControl(package, packageLen);
+	case SOE_TCP_OPC_PORT_STATE:		return processPortState(package, packageLen);
 	default: 							return sendError("undefined package code: " + std::to_string(package[0]));
 	}
 
@@ -198,6 +200,20 @@ bool SerialOverEthernet::SOELinkHandler::processFlowControl(const char* package,
 	if (packageLen < 2) return false;
 
 	updateFlowControl(package[1] == 0x1);
+
+	return true;
+}
+
+bool SerialOverEthernet::SOELinkHandler::sendPortState(bool dtrState, bool rtsState) {
+	char package[] = { SOE_TCP_OPC_PORT_STATE, dtrState ? (char) 0x1 : (char) 0x0, rtsState ? (char) 0x1 : (char) 0x0 };
+
+	return transmitPackage(package, 3);
+}
+
+bool SerialOverEthernet::SOELinkHandler::processPortState(const char* package, unsigned int packageLen) {
+	if (packageLen < 3) return false;
+
+	// TODO apply port state package
 
 	return true;
 }

@@ -8,8 +8,10 @@
  *      Author: Marvin Koehler (M_Marvin)
  */
 
-#ifndef SRC_CPP_HEADER_DBGPRINTF_H_
-#define SRC_CPP_HEADER_DBGPRINTF_H_
+#ifndef DBGPRINTF_H_
+#define DBGPRINTF_H_
+
+//#define printf
 
 #ifdef ENBL_DBGPRINT
 #define dbgprintf(...) printf(__VA_ARGS__)
@@ -17,4 +19,4 @@
 #define dbgprintf(...)
 #endif
 
-#endif /* SRC_CPP_HEADER_DBGPRINTF_H_ */
+#endif /* DBGPRINTF_H_ */

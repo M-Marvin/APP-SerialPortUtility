@@ -31,7 +31,7 @@ void cleanupDeadConnectionHandlers() {
 SerialOverEthernet::SOELinkHandler* createConnectionHandler(NetSocket::Socket* unmanagedSocket, std::string socketHostName, std::string socketHostPort) {
 	std::lock_guard<std::mutex> lock(m_clientConnections);
 	dbgprintf("[DBG] create handler for: %s/%s\n", socketHostName.c_str(), socketHostPort.c_str());
-	SerialOverEthernet::SOELinkHandler* managedHandler = new SerialOverEthernet::SOELinkHandler(unmanagedSocket, socketHostName, socketHostPort, [](SerialOverEthernet::SOELinkHandler* managedHandler) {
+	SerialOverEthernet::SOELinkHandler* managedHandler = new SerialOverEthernet::SOELinkHandlerCOM(unmanagedSocket, socketHostName, socketHostPort, [](SerialOverEthernet::SOELinkHandler* managedHandler) {
 		cv_clientConnections.notify_one(); // try to run the cleanup of closed handlers if not in server mode
 	});
 	clientConnections.push_back(managedHandler);
