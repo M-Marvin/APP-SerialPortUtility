@@ -105,6 +105,8 @@ private:
 	int txTimeout = 0;
 	struct pollfd pollfdRx[2]; // rx, evt
 	struct pollfd pollfdTx[2]; // tx, evt
+	struct pollfd pollfdWait[3]; // rx, tx, evt;
+	bool abortWaitFlag = false;
 
 public:
 
@@ -116,17 +118,65 @@ public:
 		this->pollfdTx[1].events = POLLIN;
 		this->pollfdRx[1].fd = eventfd(0, 0);
 		this->pollfdRx[1].events = POLLIN;
+		this->pollfdWait[2].fd = eventfd(0, 0);
+		this->pollfdWait[2].events = POLLIN;
 	}
 
 	~SerialPortLin() {
 		closePort();
 		::close(this->pollfdRx[1].fd);
 		::close(this->pollfdTx[1].fd);
+		::close(this->pollfdWait[1].fd);
+	}
+
+	bool openPort() override
+	{
+		if (this->comPortHandle >= 0) return false;
+		this->comPortHandle = ::open(this->portFileName, O_RDWR);
+
+		if (isOpen()) {
+			this->pollfdRx[0].fd = this->comPortHandle;
+			this->pollfdRx[0].events = POLLIN;
+			this->pollfdTx[0].fd = this->comPortHandle;
+			this->pollfdTx[0].events = POLLOUT;
+			this->pollfdWait[0].fd = this->comPortHandle;
+			this->pollfdWait[0].events = POLLIN;
+			this->pollfdWait[1].fd = this->comPortHandle;
+			this->pollfdWait[1].events = POLLOUT;
+
+			setConfig(SerialAccess::DEFAULT_PORT_CONFIGURATION);
+			setTimeouts(SerialAccess::DEFAULT_PORT_RX_TIMEOUT, SerialAccess::DEFAULT_PORT_RX_TIMEOUT_MULTIPLIER, SerialAccess::DEFAULT_PORT_TX_TIMEOUT);
+			return true;
+		}
+
+		return false;
+	}
+
+	void closePort() override
+	{
+		if (!isOpen()) return;
+		::close(this->comPortHandle);
+		this->comPortHandle = -1;
+
+		// trigger close event to release poll()
+		unsigned long long val = 1;
+		if (::write(this->pollfdRx[1].fd, (char*) &val, 8) == -1)
+			printError("error %i in SerialPort:closePort:write(evtRx): %s\n");
+		if (::write(this->pollfdTx[1].fd, (char*) &val, 8) == -1)
+			printError("error %i in SerialPort:closePort:write(evtTx): %s\n");
+		if (::write(this->pollfdWait[2].fd, (char*) &val, 8) == -1)
+			printError("error %i in SerialPort:closePort:write(evtWait): %s\n");
+
+	}
+
+	bool isOpen() override
+	{
+		return this->comPortHandle >= 0;
 	}
 
 	bool setConfig(const SerialAccess::SerialPortConfig &config) override
 	{
-		if (this->comPortHandle < 0) return false;
+		if (!isOpen()) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
 			printError("error %i in SerialPort:setConfig:tcgetattr: %s\n");
@@ -161,7 +211,7 @@ public:
 		}
 
 		switch (config.flowControl) {
-		case SerialAccess::SPC_PARITY_NONE:
+		case SerialAccess::SPC_FLOW_NONE:
 			this->comPortState.c_cflag &= ~CRTSCTS; // Disable RTS/CTS
 			this->comPortState.c_cflag &= ~IXON; // Disable XON
 			this->comPortState.c_cflag &= ~IXOFF; // Disable XON
@@ -205,6 +255,9 @@ public:
 			return false;
 		}
 
+		this->comPortState.c_cc[VSTART] = config.xonChar;
+		this->comPortState.c_cc[VSTOP] = config.xoffChar;
+
 		// Save this->comPortHandle settings, also checking for error
 		if (tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
 		  printf("error %i from tcsetattr: %s\n", errno, strerror(errno));
@@ -216,7 +269,7 @@ public:
 
 	bool getConfig(SerialAccess::SerialPortConfig &config) override
 	{
-		if (this->comPortHandle < 0) return false;
+		if (!isOpen()) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
 			printError("error %i in SerialPort:getConfig:tcgetattr: %s\n");
@@ -248,50 +301,15 @@ public:
 
 		config.stopBits = (this->comPortState.c_cflag & CSTOPB) ? SerialAccess::SPC_STOPB_TWO : SerialAccess::SPC_STOPB_ONE;
 
+		config.xonChar = this->comPortState.c_cc[VSTART];
+		config.xoffChar = this->comPortState.c_cc[VSTOP];
+
 		return true;
-	}
-
-	bool openPort() override
-	{
-		if (this->comPortHandle >= 0) return false;
-		this->comPortHandle = ::open(this->portFileName, O_RDWR);
-
-		if (isOpen()) {
-			this->pollfdRx[0].fd = this->comPortHandle;
-			this->pollfdRx[0].events = POLLIN;
-			this->pollfdTx[0].fd = this->comPortHandle;
-			this->pollfdTx[0].events = POLLOUT;
-
-			setConfig(SerialAccess::DEFAULT_PORT_CONFIGURATION);
-			setTimeouts(SerialAccess::DEFAULT_PORT_RX_TIMEOUT, SerialAccess::DEFAULT_PORT_RX_TIMEOUT_MULTIPLIER, SerialAccess::DEFAULT_PORT_TX_TIMEOUT);
-			return true;
-		}
-
-		return false;
-	}
-
-	void closePort() override
-	{
-		if (this->comPortHandle < 0) return;
-		::close(this->comPortHandle);
-		this->comPortHandle = -1;
-
-		// trigger close event to release poll()
-		unsigned long long val = 1;
-		if (::write(this->pollfdRx[1].fd, (char*) &val, 8) == -1)
-			printError("error %i in SerialPort:closePort:write(evtRx): %s\n");
-		if (::write(this->pollfdTx[1].fd, (char*) &val, 8) == -1)
-			printError("error %i in SerialPort:closePort:write(evtTx): %s\n");
-	}
-
-	bool isOpen() override
-	{
-		return this->comPortHandle >= 0;
 	}
 
 	bool setBaud(unsigned long baud) override
 	{
-		if (this->comPortHandle < 0) return false;
+		if (!isOpen()) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
 			printError("error %i in SerialPort:setBaud:tcgetattr: %s\n");
@@ -314,7 +332,7 @@ public:
 
 	unsigned long getBaud() override
 	{
-		if (this->comPortHandle < 0) return 0;
+		if (!isOpen()) return 0;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
 			printError("error %i in SerialPort:getBaud:tcgetattr: %s\n");
@@ -327,7 +345,7 @@ public:
 
 	bool setTimeouts(int readTimeout, int readTimeoutInterval, int writeTimeout) override
 	{
-		if (this->comPortHandle < 0) return false;
+		if (!isOpen()) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
 			printError("error %i in SerialPort:setTimeouts:tcgetattr: %s\n");
@@ -370,39 +388,63 @@ public:
 		return true;
 	}
 
-	unsigned long readBytes(char* buffer, unsigned long bufferCapacity) override
+	long long int readBytes(char* buffer, unsigned long bufferCapacity, bool wait) override
 	{
-		if (this->comPortHandle < 0) return 0;
+		if (!isOpen()) return -2;
 
+		// if an timeout is configured
 		if (this->rxTimeout != 0) {
+
+			// poll status of pending operation, return immediately if wait is false
 			this->pollfdRx[0].revents = this->pollfdRx[1].revents = 0;
-			int result = ::poll(this->pollfdRx, 2, this->rxTimeout);
-			if (this->pollfdRx[0].revents == 0) return 0;
+			int pollres = ::poll(this->pollfdRx, 2, wait ? this->rxTimeout : 0);
+			if (pollres < 0) {
+				return -2; // error
+			} else if (pollres == 0) {
+				return -1; // event still pending, but wait = false
+			}
+
+			// operation aborted, return error
+			if (this->pollfdRx[0].revents == 0) return -2;
+
 		}
 
+		// perform actual read
 		ssize_t receivedBytes = ::read(this->comPortHandle, buffer, bufferCapacity);
-		if (receivedBytes < 0) return 0;
+		if (receivedBytes < 0) return -2;
 		return receivedBytes;
 	}
 
-	unsigned long writeBytes(const char* buffer, unsigned long bufferLength) override
+	long long int writeBytes(const char* buffer, unsigned long bufferLength, bool wait) override
 	{
-		if (this->comPortHandle < 0) return 0;
+		if (!isOpen()) return -2;
 
+		// if an timeout is configured
 		if (this->txTimeout != 0) {
+
+			// poll status of pending operation, return immediately if wait is false
 			this->pollfdTx[0].revents = this->pollfdTx[1].revents = 0;
-			int result = ::poll(this->pollfdTx, 2, this->txTimeout);
-			if (this->pollfdTx[0].revents == 0) return 0;
+			int pollres = ::poll(this->pollfdTx, 2, wait ? this->txTimeout : 0);
+			if (pollres < 0) {
+				return -2; // error
+			} else if (pollres == 0) {
+				return -1; // operation still pending, but wait = false
+			}
+
+			// operation aborted, return error
+			if (this->pollfdTx[0].revents == 0) return -2;
+
 		}
 
+		// perform actual write
 		ssize_t writtenBytes = ::write(this->comPortHandle, buffer, bufferLength);
-		if (writtenBytes < 0) return 0;
+		if (writtenBytes < 0) return -2;
 		return writtenBytes;
 	}
 
-	bool getRawPortState(bool& dsr, bool& cts) override
+	bool getPortState(bool& dsr, bool& cts) override
 	{
-		if (this->comPortHandle < 0) return 0;
+		if (!isOpen()) return false;
 
 		int state = 0;
 		if (::ioctl(this->comPortHandle, TIOCMGET, &state) == -1) {
@@ -415,9 +457,9 @@ public:
 		return true;
 	}
 
-	bool setRawPortState(bool dtr, bool rts) override
+	bool setManualPortState(bool dtr, bool rts) override
 	{
-		if (this->comPortHandle < 0) return 0;
+		if (!isOpen()) return false;
 
 		int state = 0;
 		if (::ioctl(this->comPortHandle, TIOCMGET, &state) == -1) {
@@ -430,10 +472,13 @@ public:
 		else
 			state &= ~TIOCM_DTR;
 
-		if (rts)
-			state |= TIOCM_RTS;
-		else
-			state &= ~TIOCM_RTS;
+		// do not override hardware flow control if enabled
+		if (this->comPortState.c_cflag & CRTSCTS == 0) {
+			if (rts)
+				state |= TIOCM_RTS;
+			else
+				state &= ~TIOCM_RTS;
+		}
 
 		if (::ioctl(this->comPortHandle, TIOCMSET, &state) == -1) {
 			printError("error %d in SerialPort:setRawPortState:ioctl(TIOCMSET): %s\n");
@@ -443,41 +488,57 @@ public:
 		return true;
 	}
 
-	bool getFlowControl(bool& readyState) override
+#define PORT_STATE_POLL_INTERVAL 10
+
+	bool waitForEvents(bool& comStateChange, bool& dataReceived, bool& dataTransmitted, bool wait) override
 	{
-		if (this->comPortHandle < 0) return 0;
+		if (!isOpen()) return false;
 
-		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printError("error %i in SerialPort:getConfig:tcgetattr: %s\n");
-			return false;
-		}
+		// read current com port state
+		bool dsrState, ctsState;
+		if (!getPortState(dsrState, ctsState)) return false;
 
-		bool dsrState = false;
-		bool ctsState = false;
-		if (!getRawPortState(dsrState, ctsState))
-			return false;
+		// enable read event
+		this->pollfdWait[0].events = dataReceived ? POLLIN : 0;
+		// enable write event
+		this->pollfdWait[1].events = dataTransmitted ? POLLOUT : 0;
 
-		if (this->comPortState.c_cflag & CRTSCTS)
-			readyState = ctsState;
+		bool comStateEvent = false, dataReceiveEvent = false, dataTransmitEvent = false;
+		this->abortWaitFlag = false;
+		do {
 
+			// wait for read/write events for interval
+			this->pollfdWait[0].revents = this->pollfdTx[1].revents = this->pollfdTx[2].revents = 0;
+			int pollres = ::poll(this->pollfdWait, 3, wait ? PORT_STATE_POLL_INTERVAL : 0);
+			if (pollres < 0) return false;
+
+			// check dsr cts state
+			bool dsrNew, ctsNew;
+			if (!getPortState(dsrNew, ctsNew)) return false;
+			if (dsrNew != dsrState || ctsNew != ctsState) {
+				comStateEvent = true;
+			}
+
+			if (pollres > 0) {
+				if (this->pollfdWait[0].revents > 0) dataReceiveEvent = true;
+				if (this->pollfdWait[1].revents > 0) dataTransmitEvent = true;
+			}
+
+		} while (	(!comStateEvent || !comStateChange) &&
+					(!dataReceiveEvent || !dataReceived) &&
+					(!dataTransmitEvent || !dataTransmitted)
+					&& wait && isOpen() && !this->abortWaitFlag);
+
+		comStateChange = comStateEvent;
+		dataReceived = dataReceiveEvent;
+		dataTransmitted = dataTransmitEvent;
 		return true;
 	}
 
-	bool setFlowControl(bool readyState) override
+	void abortWait() override
 	{
-		if (this->comPortHandle < 0) return 0;
-
-		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printError("error %i in SerialPort:getConfig:tcgetattr: %s\n");
-			return false;
-		}
-
-		bool dtrState = true;
-		bool rtsState = true;
-		if (this->comPortState.c_cflag & CRTSCTS)
-			rtsState = readyState;
-
-		return setRawPortState(dtrState, rtsState);
+		// signal event wait loop to exit
+		this->abortWaitFlag = true;
 	}
 
 };

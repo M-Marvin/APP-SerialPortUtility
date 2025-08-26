@@ -113,13 +113,13 @@ bool SerialOverEthernet::SOELinkHandler::processRemoteClose(const char* package,
 }
 
 bool SerialOverEthernet::SOELinkHandler::sendRemoteConfig(const SerialAccess::SerialPortConfiguration& remoteSerial) {
-	char package[18] {0};
+	char package[20] {0};
 	package[0] = SOE_TCP_OPC_CONFIGURE_PORT;
 	package[1] = (remoteSerial.baudRate >> 24) & 0xFF;
 	package[2] = (remoteSerial.baudRate >> 16) & 0xFF;
 	package[3] = (remoteSerial.baudRate >> 8) & 0xFF;
 	package[4] = (remoteSerial.baudRate >> 0) & 0xFF;
-	package[5] = remoteSerial.dataBits & 0xFF;
+	package[5] = remoteSerial.dataBits;
 	package[6] = (remoteSerial.stopBits >> 24) & 0xFF;
 	package[7] = (remoteSerial.stopBits >> 16) & 0xFF;
 	package[8] = (remoteSerial.stopBits >> 8) & 0xFF;
@@ -132,12 +132,14 @@ bool SerialOverEthernet::SOELinkHandler::sendRemoteConfig(const SerialAccess::Se
 	package[15] = (remoteSerial.flowControl >> 16) & 0xFF;
 	package[16] = (remoteSerial.flowControl >> 8) & 0xFF;
 	package[17] = (remoteSerial.flowControl >> 0) & 0xFF;
+	package[18] = remoteSerial.xonChar;
+	package[19] = remoteSerial.xoffChar;
 
-	return transmitPackage(package, 18);
+	return transmitPackage(package, 20);
 }
 
 bool SerialOverEthernet::SOELinkHandler::processRemoteConfig(const char* package, unsigned int packageLen) {
-	if (packageLen < 18) return false;
+	if (packageLen < 20) return false;
 	SerialAccess::SerialPortConfiguration config = {
 		(unsigned long) ( // baud rate
 				(package[1] & 0xFF) << 24 |
@@ -160,7 +162,9 @@ bool SerialOverEthernet::SOELinkHandler::processRemoteConfig(const char* package
 				(package[14] & 0xFF) << 24 |
 				(package[15] & 0xFF) << 16 |
 				(package[16] & 0xFF) << 8 |
-				(package[17] & 0xFF) << 0)
+				(package[17] & 0xFF) << 0),
+		package[18],
+		package[19]
 	};
 
 	printf("[i] change port configuration from remote: %s (baud %lu)\n", this->localPortName.c_str(), config.baudRate);
@@ -213,7 +217,7 @@ bool SerialOverEthernet::SOELinkHandler::sendPortState(bool dtrState, bool rtsSt
 bool SerialOverEthernet::SOELinkHandler::processPortState(const char* package, unsigned int packageLen) {
 	if (packageLen < 3) return false;
 
-	// TODO apply port state package
+	updatePortState(package[1] == 0x1, package[2] == 0x1);;
 
 	return true;
 }

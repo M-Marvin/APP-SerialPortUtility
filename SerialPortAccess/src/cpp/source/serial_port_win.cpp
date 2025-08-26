@@ -88,7 +88,7 @@ public:
 
 	void closePort() override
 	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return;
+		if (!isOpen()) return;
 		CloseHandle(this->comPortHandle);
 		if (this->writeEventHandle != NULL)
 			CloseHandle(this->writeEventHandle);
@@ -120,15 +120,15 @@ public:
 		this->comPortState.fBinary = TRUE;
 		this->comPortState.fOutxCtsFlow = (config.flowControl == SerialAccess::SPC_FLOW_RTS_CTS);
 		this->comPortState.fOutxDsrFlow = (config.flowControl == SerialAccess::SPC_FLOW_DSR_DTR);
-		this->comPortState.fDtrControl = (config.flowControl == SerialAccess::SPC_FLOW_DSR_DTR) ? DTR_CONTROL_ENABLE : DTR_CONTROL_DISABLE;
-		this->comPortState.fDsrSensitivity = (config.flowControl == SerialAccess::SPC_FLOW_DSR_DTR);
+		this->comPortState.fDtrControl = DTR_CONTROL_ENABLE;
+		this->comPortState.fDsrSensitivity = TRUE;
 		this->comPortState.fTXContinueOnXoff = (config.flowControl == SerialAccess::SPC_FLOW_NONE);
 		this->comPortState.fOutX = (config.flowControl == SerialAccess::SPC_FLOW_XON_XOFF);
 		this->comPortState.fInX = (config.flowControl == SerialAccess::SPC_FLOW_XON_XOFF);
 		this->comPortState.fErrorChar = 0;
 		this->comPortState.fNull = 0;
-		this->comPortState.fRtsControl = (config.flowControl == SerialAccess::SPC_FLOW_RTS_CTS) ? RTS_CONTROL_TOGGLE : RTS_CONTROL_ENABLE;
-		this->comPortState.fAbortOnError = 0;
+		this->comPortState.fRtsControl = (config.flowControl == SerialAccess::SPC_FLOW_RTS_CTS) ? RTS_CONTROL_HANDSHAKE : RTS_CONTROL_ENABLE;
+		this->comPortState.fAbortOnError = FALSE;
 		this->comPortState.XonLim = 2048;
 		this->comPortState.XoffLim = 512;
 		this->comPortState.ByteSize = config.dataBits;
@@ -194,9 +194,6 @@ public:
 		}
 		config.xonChar = this->comPortState.XonChar;
 		config.xoffChar = this->comPortState.XoffChar;
-		config.errorChar = 0;
-		config.eofChar = 0;
-		config.eventChar = 0;
 
 		return true;
 	}
@@ -218,7 +215,7 @@ public:
 
 	unsigned long getBaud() override
 	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return 0;
+		if (!isOpen()) return 0;
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
 			printError("error %lu in SerialPort:getBaud:GetCommState: %s");
 			return 0;
@@ -274,7 +271,7 @@ public:
 
 	long long int readBytes(char* buffer, unsigned long bufferCapacity, bool wait) override
 	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return 0;
+		if (!isOpen()) return -2;
 
 		unsigned long receivedBytes;
 
@@ -327,7 +324,7 @@ public:
 
 	long long int writeBytes(const char* buffer, unsigned long bufferLength, bool wait) override
 	{
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) return 0;
+		if (!isOpen()) return -2;
 
 		unsigned long writtenBytes;
 
@@ -397,20 +394,28 @@ public:
 	{
 		if (!isOpen()) return false;
 
-		if (!::EscapeCommFunction(this->comPortHandle, dtr ? SETDTR : CLRDTR)) {
-			printError("error %lu in SerialPort:setPortState:EscapeCommFunction(DTR): %s");
-			return false;
+		// do not override hardware flow control if enabled
+		if (this->comPortState.fDtrControl != DTR_CONTROL_HANDSHAKE) {
+			if (!::EscapeCommFunction(this->comPortHandle, dtr ? SETDTR : CLRDTR)) {
+				printError("error %lu in SerialPort:setPortState:EscapeCommFunction(DTR): %s");
+				return false;
+			}
 		}
 
-		if (!::EscapeCommFunction(this->comPortHandle, rts ? SETRTS : CLRRTS)) {
-			printError("error %lu in SerialPort:setPortState:EscapeCommFunction(RTS): %s");
-			return false;
+		// do not override hardware flow control if enabled
+		if (this->comPortState.fRtsControl != RTS_CONTROL_HANDSHAKE) {
+			if (!::EscapeCommFunction(this->comPortHandle, rts ? SETRTS : CLRRTS)) {
+				printError("error %lu in SerialPort:setPortState:EscapeCommFunction(RTS): %s");
+				return false;
+			}
 		}
 
 		return true;
 	}
 
-	bool waitForEvents(bool& comStateChange, bool& dataReceived, bool& dataTransmitted, bool wait) {
+	bool waitForEvents(bool& comStateChange, bool& dataReceived, bool& dataTransmitted, bool wait) override
+	{
+
 		if (!isOpen()) return false;
 
 		// Check if the event mask was changed

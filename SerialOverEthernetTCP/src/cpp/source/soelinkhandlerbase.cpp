@@ -1,5 +1,5 @@
 /*
- * soelinkhandler.cpp
+ * soelinkhandlerbase.cpp
  *
  * Handles an single Serial over Ethernet/IP connection/link.
  * This file implements the generic code required, such as opening sockets and ports and the RX/TX threads.
@@ -11,6 +11,31 @@
 #include <string>
 #include "soeconnection.hpp"
 #include "dbgprintf.h"
+
+SerialOverEthernet::SOELinkHandler::SOELinkHandler(NetSocket::Socket* socket, std::string& hostName, std::string& hostPort, std::function<void(SOELinkHandler*)> onDeath) {
+	this->onDeath = onDeath;
+	this->remoteHostName = hostName;
+	this->remoteHostPort = hostPort;
+	this->socket.reset(socket);
+	this->socket->setTimeouts(0, 0);
+	this->socket->setNagle(false);
+	this->thread_rx = std::thread([this]() -> void {
+		this->doNetworkReception();
+	});
+	this->thread_tx = std::thread([this]() -> void {
+		this->doSerialReception();
+	});
+}
+
+SerialOverEthernet::SOELinkHandler::~SOELinkHandler() {
+	shutdown();
+	printf("[DBG] joining RX thread ...\n");
+	this->thread_rx.join();
+	printf("[DBG] joined\n");
+	printf("[DBG] joining TX thread ...\n");
+	this->thread_tx.join();
+	printf("[DBG] joined\n");
+}
 
 bool SerialOverEthernet::SOELinkHandler::isAlive() {
 	return this->socket->isOpen();
@@ -60,7 +85,25 @@ bool SerialOverEthernet::SOELinkHandler::setRemoteConfig(const SerialAccess::Ser
 	return this->remoteReturn;
 }
 
-void SerialOverEthernet::SOELinkHandler::handleClientRX() {
+void SerialOverEthernet::SOELinkHandler::transmitSerialData(const char* data, unsigned int len) {
+
+	// copy new data to ring buffer
+	unsigned long transfered = this->serialData.push(data, len);
+	if (transfered < len) {
+		printf("[!] reception buffer overflow, flow control failed!\n");
+		return;
+	}
+
+}
+
+void SerialOverEthernet::SOELinkHandler::updateFlowControl(bool enableTransmit) {
+
+	bool wasDisabled = !this->flowEnable;
+	this->flowEnable = enableTransmit;
+
+}
+
+void SerialOverEthernet::SOELinkHandler::doNetworkReception() {
 
 	char packageFrame[SOE_TCP_FRAME_MAX_LEN] {0};
 	unsigned int headerLen = 0;

@@ -128,14 +128,14 @@ public class SerialPort {
 	private static native boolean n_openPort(long handle);
 	private static native void n_closePort(long handle);
 	private static native boolean n_isOpen(long handle);
-	private static native String n_readDataS(long handle, int bufferCapacity);
-	private static native byte[] n_readDataB(long handle, int bufferCapacity);
-	private static native int n_writeDataS(long handle, String data);
-	private static native int n_writeDataB(long handle, byte[] data);
-	private static native boolean n_getRawPortState(long handle, boolean[] state);
-	private static native boolean n_setRawPortState(long handle, boolean dtrState, boolean rtsState);
-	private static native boolean n_getFlowControl(long handle, boolean[] state);
-	private static native boolean n_setFlowControl(long handle, boolean state);
+	private static native String n_readDataS(long handle, int bufferCapacity, boolean wait);
+	private static native byte[] n_readDataB(long handle, int bufferCapacity, boolean wait);
+	private static native int n_writeDataS(long handle, String data, boolean wait);
+	private static native int n_writeDataB(long handle, byte[] data, boolean wait);
+	private static native boolean n_getPortState(long handle, boolean[] state);
+	private static native boolean n_setManualPortState(long handle, boolean dtrState, boolean rtsState);
+	private static native boolean n_waitForEvents(long handle, boolean[] events);
+	private static native void n_abortWait(long handle);
 	
 	private final long handle;
 	private final String portName;
@@ -171,10 +171,32 @@ public class SerialPort {
 		return n_setBaud(handle, baud);
 	}
 	
+	/**
+	 * Sets the read write timeouts for the port.
+	 * An readTimeout of zero means no timeout. (instant return if no data is available)
+	 * An readTimeout of less than zero causes the read method to block until at least one character has arrived.
+	 * An writeTimeout of zero or less has means block until everything is written.
+	 * The readTimeoutInterval defines an additional timeout that is appended to each received byte.
+	 * The port has to be open for this to work.
+	 * @param readTimeout The read timeout, if the requested amount of data is not received within this time, it returns with what it has (might be zero)
+	 * @param readTimeoutInterval An additional timeout that is waited for after each received byte, only has an effect if readTimeout >= 0.
+	 * @param writeTimeout The write timeout, if the supplied data could not be written within this time, it returns with the amount of data that could be written (might be zero)
+	 * @return true if the timeouts where set, false if an error occurred
+	 */
 	public boolean setTimeouts(int readTimeout, int readTimeoutInterval, int writeTimeout) {
 		return n_setTimeouts(this.handle, readTimeout, readTimeoutInterval, writeTimeout);
 	}
 	
+	/**
+	 * Sets the read write timeouts for the port.
+	 * An readTimeout of zero means no timeout. (instant return if no data is available)
+	 * An readTimeout of less than zero causes the read method to block until at least one character has arrived.
+	 * An writeTimeout of zero or less has means block until everything is written.
+	 * The readTimeoutInterval defines an additional timeout that is appended to each received byte.
+	 * The port has to be open for this to work.
+	 * @param timeouts The read timeouts: {readTimeout, readTimeoutInterval, writeTimeout}
+	 * @return true if the timeouts where set, false if an error occurred
+	 */
 	public boolean setTimeouts(int[] timeouts) {
 		Objects.requireNonNull(timeouts, "timeout array must not be null");
 		if (timeouts.length != 3)
@@ -182,6 +204,12 @@ public class SerialPort {
 		return n_setTimeouts(this.handle, timeouts[0], timeouts[1], timeouts[2]);
 	}
 	
+	/**
+	 * Returns the current timeouts of the serial port.
+	 * The port has to be open for this to work.
+	 * @param timeouts The read timeouts: {readTimeout, readTimeoutInterval, writeTimeout}
+	 * @return true if the port was open and timeouts where read, false if the port was closed
+	 */
 	public boolean getTimeouts(int[] timeouts) {
 		Objects.requireNonNull(timeouts, "timeout array must not be null");
 		if (timeouts.length != 3)
@@ -237,10 +265,11 @@ public class SerialPort {
 	 * Reads up to bufferSize bytes, can also return with zero read bytes.
 	 * Returns the read bytes as string, or null if no bytes could be read.
 	 * @param bufferSize The max bytes that can be read in on go
+	 * @param wait If the function should block until the operation finished
 	 * @return The String value of the bytest or null if nothing could be read
 	 */
 	public String readString(int bufferSize) {
-		return n_readDataS(handle, bufferSize);
+		return n_readDataS(handle, bufferSize, true);
 	}
 	
 	/**
@@ -258,7 +287,7 @@ public class SerialPort {
 	 * @return An byte array containing the read bytes or null if nothing could be read (length of array = number of bytes read)
 	 */
 	public byte[] readData(int bufferSize) {
-		return n_readDataB(handle, bufferSize);
+		return n_readDataB(handle, bufferSize, true);
 	}
 
 	/**
@@ -272,23 +301,19 @@ public class SerialPort {
 	/**
 	 * Writes the string as bytes to the serial port.
 	 * @param data The string to be written
-	 * @return The number of bytes successfully written (can be smaller than the length of the string if an error occurred!)
+	 * @return The number of bytes successfully written, -1 if the operation has not finished yet, less than -1 if an error occurred
 	 */
 	public int writeString(String data) {
-		int writtenBytes = n_writeDataS(handle, data);
-		if (writtenBytes == 0 && !data.isEmpty()) closePort(); // Connection has been lost, close port to make isOpen() respond correctly
-		return writtenBytes;
+		return n_writeDataS(handle, data, true);
 	}
 	
 	/**
 	 * Writes the bytes to the serial port.
 	 * @param data The bytes to be written
-	 * @return The number of bytes successfully written (can be smaller than the length of the data array if an error occurred!)
+	 * @return The number of bytes successfully written, -1 if the operation has not finished yet, less than -1 if an error occurred
 	 */
 	public int writeData(byte[] data) {
-		int writtenBytes = n_writeDataB(handle, data);
-		if (writtenBytes == 0 && data.length > 0) closePort(); // Connection has been lost, close port to make isOpen() respond correctly
-		return writtenBytes;
+		return n_writeDataB(handle, data, true);
 	}
 	
 	/**
@@ -296,21 +321,22 @@ public class SerialPort {
 	 * @param state The state of the pins { DSR, CTS }
 	 * @return true if the state was read successfully, false otherwise
 	 */
-	public boolean getRawPortState(boolean[] state) {
+	public boolean getPortState(boolean[] state) {
 		Objects.requireNonNull(state, "state array must not be null");
 		if (state.length != 2)
 			throw new IllegalArgumentException("state array must be of length 3");
-		return n_getRawPortState(handle, state);
+		return n_getPortState(handle, state);
 	}
 
 	/**
-	 * Assigns the logical values of the serial port pins DTR and RTS.
+	 * Assigns the current pin output states of the serial port.
+	 * Only effective if the signals are not controlled by hardware flow control.
 	 * @param dtrState The state of the DTR pin
 	 * @param rtsState The state of the RTS pin
 	 * @return true if the state was assigned successfully, false otherwise
 	 */
-	public boolean setRawPortState(boolean dtrState, boolean rtsState) {
-		return n_setRawPortState(handle, dtrState, dtrState);
+	public boolean setManualPortState(boolean dtrState, boolean rtsState) {
+		return n_setManualPortState(handle, dtrState, dtrState);
 	}
 	
 	/**
@@ -318,30 +344,36 @@ public class SerialPort {
 	 * @param state The state of the pins { DTR, RTS }
 	 * @return true if the state was assigned successfully, false otherwise
 	 */
-	public boolean setRawPortState(boolean[] state) {
+	public boolean setManualPortState(boolean[] state) {
 		Objects.requireNonNull(state, "state array must not be null");
 		if (state.length != 2)
 			throw new IllegalArgumentException("state array must be of length 3");
-		return setRawPortState(state[0], state[1]);
+		return setManualPortState(state[0], state[1]);
 	}
 	
 	/**
-	 * Reads the current hardware flow control state.
-	 * @return true if the hardware signals that the other end is ready to receive data, false if it signals that no data can be received or if the operation to read the value failed
+	 * Waits for the requested events.
+	 * The arguments are input and outputs at the same time.
+	 * The function block until an event occurred, for which the argument was set to true.
+	 * The before returning, the function overrides the values in the arguments to signal which events occurred.
+	 *
+	 * NOTE:
+	 * If wait is false, the function will always return immediately, but all event flags set to false until an event occurred.
+	 * The wait operation will in this case continue until an event occurred and the event was read using this method.
+	 * The wait operation is canceled and replaced by an new wait operation if this function is called with different event-arguments than the pending event.
+	 * NOTE on dataTransmitted:
+	 * This event behaves different on linux and windows, but in general, if it is signaled, more data can be written
+	 * On windows, it is signaled once if the transmit buffer runs out of data.
+	 * On linux, it continuously fires until the transmit buffer is completely full.
+	 * @param events The list of booleans for the events: [comStateChanged, dataReceived, dataTransmitted]
+	 * @return false if the function returned because of an error, true otherwise
 	 */
-	public boolean getFlowControl() {
-		boolean[] state = new boolean[1];
-		if (!n_getFlowControl(handle, state)) return false;
-		return state[0];
+	public boolean waitForEvents(boolean[] events) {
+		return n_waitForEvents(handle, events);
 	}
 	
-	/**
-	 * Assigns the current hardware flow control state.
-	 * @param state true to signal that data can be received, false to signal that no data can be received
-	 * @return true if the state was assigned successfully, false otherwise
-	 */
-	public boolean setFlowControl(boolean state) {
-		return n_setFlowControl(handle, state);
+	public void abortWait() {
+		n_abortWait(handle);
 	}
 	
 	public SerialPortInputStream getInputStream(int bufferSize) {

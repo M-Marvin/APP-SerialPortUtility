@@ -10,9 +10,9 @@ import de.m_marvin.metabuild.maven.types.Repository.Credentials;
 
 public class Buildfile extends CppMultiTargetBuildScript {
 	
-	boolean debugging = true; // set to true to compile with debug info
+	boolean debugging = false; // set to true to compile with debug info
 	
-	String version = "2.1";
+	String version = "2.2-SNAPSHOT";
 	
 	@Override
 	public void init() {
@@ -83,7 +83,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 			target.compileCpp.options.add("-g");
 		}
 		
-		//target.dependencies.dependsOn("serialportaccess:publishMavenLocal");
+		target.dependencies.dependsOn("serialportaccess:publishMavenLocal" + config);
 		
 		return target;
 		
@@ -120,8 +120,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + "::zip:2.3-SNAPSHOT");
 		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":headers:zip:2.3-SNAPSHOT");
 
-		dependencies.implementation("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + "::zip:1.0-SNAPSHOT");
-		dependencies.implementation("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + ":headers:zip:1.0-SNAPSHOT");
+//		dependencies.implementation("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + "::zip:1.0-SNAPSHOT");
+//		dependencies.implementation("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + ":headers:zip:1.0-SNAPSHOT");
 
 		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + "::zip:1.1.2-SNAPSHOT");
 		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":headers:zip:1.1.2-SNAPSHOT");

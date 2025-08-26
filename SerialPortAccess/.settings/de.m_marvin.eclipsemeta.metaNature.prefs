@@ -1,4 +1,4 @@
-activeConfig=win_amd64
+activeConfig=lin_amd64_jni
 eclipse.preferences.version=1
 metaTaskConfig/lin_amd64=\:compileCppLinAMD64;\:cppDependenciesLinAMD64
 metaTaskConfig/lin_amd64_jni=\:compileCppLinAMD64jniapi;\:cppDependenciesLinAMD64jniapi

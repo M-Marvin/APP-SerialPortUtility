@@ -168,13 +168,13 @@ JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1isOp
 	return port->isOpen();
 }
 
-JNIEXPORT jstring JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readDataS(JNIEnv* env, jclass clazz, jlong handle, jint bufferCapacity)
+JNIEXPORT jstring JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readDataS(JNIEnv* env, jclass clazz, jlong handle, jint bufferCapacity, jboolean wait)
 {
 	SerialPort* port = (SerialPort*)handle;
 	char* readBuffer = (char*)malloc(bufferCapacity);
 	if (readBuffer == 0) return 0;
 	memset(readBuffer, 0, bufferCapacity);
-	unsigned long readBytes = port->readBytes(readBuffer, (unsigned long) bufferCapacity);
+	unsigned long readBytes = port->readBytes(readBuffer, (unsigned long) bufferCapacity, wait);
 	if (readBytes > 0) {
 		jstring js =  env->NewStringUTF(readBuffer);
 		free(readBuffer);
@@ -184,13 +184,13 @@ JNIEXPORT jstring JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readD
 	return 0;
 }
 
-JNIEXPORT jbyteArray JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readDataB(JNIEnv* env, jclass clazz, jlong handle, jint bufferCapacity)
+JNIEXPORT jbyteArray JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readDataB(JNIEnv* env, jclass clazz, jlong handle, jint bufferCapacity, jboolean wait)
 {
 	SerialPort* port = (SerialPort*)handle;
 	char* readBuffer = (char*)malloc(bufferCapacity);
 	if (readBuffer == 0) return 0;
 	memset(readBuffer, 0, bufferCapacity);
-	unsigned long readBytes = port->readBytes(readBuffer, (unsigned long) bufferCapacity);
+	unsigned long readBytes = port->readBytes(readBuffer, (unsigned long) bufferCapacity, wait);
 	if (readBytes > 0)
 	{
 		jbyteArray byteArr = env->NewByteArray(readBytes);
@@ -202,54 +202,56 @@ JNIEXPORT jbyteArray JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1re
 	return 0;
 }
 
-JNIEXPORT jint JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1writeDataS(JNIEnv* env, jclass clazz, jlong handle, jstring data)
+JNIEXPORT jint JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1writeDataS(JNIEnv* env, jclass clazz, jlong handle, jstring data, jboolean wait)
 {
 	SerialPort* port = (SerialPort*)handle;
 	const char* writeBuffer = env->GetStringUTFChars(data, 0);
 	unsigned long bufferLength = env->GetStringUTFLength(data);
-	return port->writeBytes(writeBuffer, bufferLength);
+	return port->writeBytes(writeBuffer, bufferLength, wait);
 }
 
-JNIEXPORT jint JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1writeDataB(JNIEnv* env, jclass clazz, jlong handle, jbyteArray data)
+JNIEXPORT jint JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1writeDataB(JNIEnv* env, jclass clazz, jlong handle, jbyteArray data, jboolean wait)
 {
 	SerialPort* port = (SerialPort*)handle;
 	const char* writeBuffer = (char*)env->GetByteArrayElements(data, 0);
 	unsigned long bufferLength = env->GetArrayLength(data);
-	return port->writeBytes(writeBuffer, bufferLength);
+	return port->writeBytes(writeBuffer, bufferLength, wait);
 }
 
-JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1getRawPortState(JNIEnv* env, jclass clazz, jlong handle, jbooleanArray state)
+JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1getPortState(JNIEnv* env, jclass clazz, jlong handle, jbooleanArray state)
 {
 	SerialPort* port = (SerialPort*)handle;
 	bool stateArr[2] { false };
-	if (port->getRawPortState(stateArr[0], stateArr[1])) {
+	if (port->getPortState(stateArr[0], stateArr[1])) {
 		env->SetBooleanArrayRegion(state, 0, 2, (jboolean*) stateArr);
 		return true;
 	}
 	return false;
 }
 
-JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1setRawPortState(JNIEnv* env, jclass clazz, jlong handle, jboolean dtrState, jboolean rtsState)
+JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1setManualPortState(JNIEnv* env, jclass clazz, jlong handle, jboolean dtrState, jboolean rtsState)
 {
 	SerialPort* port = (SerialPort*)handle;
-	return port->setRawPortState(dtrState, rtsState);
+	return port->setManualPortState(dtrState, rtsState);
 }
 
-JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1getFlowControl(JNIEnv* env, jclass clazz, jlong handle, jbooleanArray state)
+JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1waitForEvents(JNIEnv* env, jclass clazz, jlong handle, jbooleanArray events)
 {
+	bool eventsArr[3];
+	env->GetBooleanArrayRegion(events, 0, 3, (jboolean*) eventsArr);
 	SerialPort* port = (SerialPort*)handle;
-	bool stateVal;
-	if (port->getFlowControl(stateVal)) {
-		env->SetBooleanArrayRegion(state, 0, 1, (jboolean*) &stateVal);
+	bool result = port->waitForEvents(eventsArr[0], eventsArr[1], eventsArr[2]);
+	if (result) {
+		env->SetBooleanArrayRegion(events, 0, 3, (jboolean*) eventsArr);
 		return true;
 	}
 	return false;
 }
 
-JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1setFlowControl(JNIEnv* env, jclass clazz, jlong handle, jboolean state)
+JNIEXPORT void JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1abortWait(JNIEnv* env, jclass clazz, jlong handle)
 {
 	SerialPort* port = (SerialPort*)handle;
-	return port->setFlowControl(state);
+	port->abortWait();
 }
 
 #endif

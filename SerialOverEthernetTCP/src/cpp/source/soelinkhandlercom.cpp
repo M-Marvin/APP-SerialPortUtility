@@ -1,8 +1,8 @@
 /*
- * soelinkhandler.cpp
+ * soelinkhandlercom.cpp
  *
  * Handles an single Serial over Ethernet/IP connection/link.
- * This file implements the generic code required, such as opening sockets and ports and the RX/TX threads.
+ * This file implements the code specific to an serial port, in contrast to an virtual serial port.
  *
  *  Created on: 04.02.2025
  *      Author: Marvin Koehler (M_Marvin)
@@ -11,31 +11,6 @@
 #include <string>
 #include "soeconnection.hpp"
 #include "dbgprintf.h"
-
-SerialOverEthernet::SOELinkHandlerCOM::SOELinkHandlerCOM(NetSocket::Socket* socket, std::string& hostName, std::string& hostPort, std::function<void(SOELinkHandler*)> onDeath) {
-	this->onDeath = onDeath;
-	this->remoteHostName = hostName;
-	this->remoteHostPort = hostPort;
-	this->socket.reset(socket);
-	this->socket->setTimeouts(0, 0);
-	this->socket->setNagle(false);
-	this->thread_rx = std::thread([this]() -> void {
-		this->handleClientRX();
-	});
-	this->thread_tx = std::thread([this]() -> void {
-		this->handleClientTX();
-	});
-}
-
-SerialOverEthernet::SOELinkHandlerCOM::~SOELinkHandlerCOM() {
-	shutdown();
-	printf("[DBG] joining RX thread ...\n");
-	this->thread_rx.join();
-	printf("[DBG] joined\n");
-	printf("[DBG] joining TX thread ...\n");
-	this->thread_tx.join();
-	printf("[DBG] joined\n");
-}
 
 bool SerialOverEthernet::SOELinkHandlerCOM::shutdown() {
 	if (isAlive()) {
@@ -86,7 +61,7 @@ bool SerialOverEthernet::SOELinkHandlerCOM::setLocalConfig(const SerialAccess::S
 	return this->localPort->setConfig(localConfig);
 }
 
-void SerialOverEthernet::SOELinkHandlerCOM::handleClientTX() {
+void SerialOverEthernet::SOELinkHandlerCOM::doSerialReception() {
 
 	char serialData[SOE_SERIAL_BUFFER_LEN] {0};
 
@@ -101,91 +76,86 @@ void SerialOverEthernet::SOELinkHandlerCOM::handleClientTX() {
 			if (!isAlive()) break;
 		}
 
-		bool nothingToDo = false;
+		this->txNothingToDo = true;
 
 		// try to write data from ring buffer to serial
 		{
-			// get how many bytes are available, including the ones which's transmission is already pending
-			unsigned long availableBytes = (this->writePtr >= this->pendingPtr ? this->writePtr - this->pendingPtr : SOE_TCP_STREAM_BUFFER_LEN - (this->pendingPtr - this->writePtr));
+			// get how many bytes are available for transmission
+			unsigned long availableBytes = this->serialData.dataAvailable();
 
 			// if data available (or pending)
 			if (availableBytes > 0) {
-				// calculate how much can be transfered in one go (no wrapping at the buffer end)
-				unsigned long ptrToEnd = std::min(SOE_TCP_STREAM_BUFFER_LEN - this->pendingPtr - 1, availableBytes);	// bytes that can be copied before hitting the end of the buffer
 
 				// start transfer or (if already pending) check status of last transfer
-				long long int written = this->localPort->writeBytes(this->receptionBuffer + this->readPtr, ptrToEnd, false);
+				long long int written = this->localPort->writeBytes(this->serialData.dataStart(), availableBytes, false);
 				if (written < -1) {
 					continue; // when port closed / timed out
 				}
 
 				if (written < 0) {
-					dbgprintf("[DBG] pending data: [serial] <- |network| : >%.*s<\n", ptrToEnd, this->receptionBuffer + this->readPtr);
+					dbgprintf("[DBG] pending data: [serial] <- |network| : >%.*s<\n", availableBytes, this->serialData.dataStart());
 
-					// if transfer (still) pending, update read pointer to where the next operation should start
-					this->readPtr = (this->pendingPtr + ptrToEnd) % SOE_TCP_STREAM_BUFFER_LEN;
+					// the transmission buffer is to 75% full, send flow control signal
+					if (availableBytes > (SOE_TCP_STREAM_BUFFER_LEN / 4 * 3) && this->remoteFlowEnable)
+						sendFlowControl(this->remoteFlowEnable = false);
 
-					// the transmission buffer is full, send flow control signal
-					sendFlowControl(this->remoteFlowEnable = false);
-
-					nothingToDo = true; // we need to wait for the serial buffer to be ready to receive more data
+					this->txNothingToDo = true; // we need to wait for the serial buffer to be ready to receive more data
 				} else {
-					dbgprintf("[DBG] stream data: [serial] <- |network| : >%.*s<\n", written, this->receptionBuffer + this->pendingPtr);
-					if (this->pendingPtr != this->readPtr) {
-						// if pending transfer completed, increment pending pointer
-						this->pendingPtr = (this->pendingPtr + written) % SOE_TCP_STREAM_BUFFER_LEN;
-					} else {
-						// if transfer completed immediately, increment both pending and read pointer
-						this->pendingPtr = this->readPtr = (this->readPtr + ptrToEnd) % SOE_TCP_STREAM_BUFFER_LEN;;
-					}
+					dbgprintf("[DBG] stream data: [serial] <- |network| : >%.*s<\n", written, this->serialData.dataStart());
+
+					// increment read position in buffer
+					this->serialData.pushRead(written);
 				}
+
+				this->txNothingToDo = false;
 
 			} else {
 				// if flow was disabled, reactivate now
 				if (!this->remoteFlowEnable) {
 					sendFlowControl(this->remoteFlowEnable = true);
 				}
-
-				nothingToDo = true; // we need to wait for more data in the ring buffer
 			}
 
 		}
 
-		// try to read data from serial
-		{
+		// try to read data from serial, unless the remote end disabled transmission of more data trough flow control
+		if (this->flowEnable) {
 
-			// start new read operation or check status of pending operation
 			long long int read = this->localPort->readBytes(serialData, SOE_SERIAL_BUFFER_LEN, false);
+
 			if (read < -1) {
 				continue; // when port closed / timed out
+			}
+
+			if (read < 0) {
+				// if the read did not complete, wait for a brief moment and check status again, it might just need a few CPU cycles
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				read = this->localPort->readBytes(serialData, SOE_SERIAL_BUFFER_LEN, false);
 			}
 
 			if (read > 0) {
 
 				dbgprintf("[DBG] stream data: |serial| -> [network] : >%.*s<\n", (unsigned int) read, serialData);
 
-				// send data
+				// send data to remote
 				if (!sendSerialData(serialData, (unsigned int) read)) {
 					printf("[!] frame error, unable to transmit serial data\n");
 					break;
 				}
 
-			} else {
-				nothingToDo = false; // we do have work, the input is being read, we can pause after it completed
+				this->txNothingToDo = false;
+
 			}
 
 		}
 
 		// check for COM state event and (if no thing else to do) wait for more data
 		bool comStateChanged = true;
-		bool dataReceived = nothingToDo;
-		bool dataTransmitted = nothingToDo;
-		if (nothingToDo) dbgprintf("[dbg] >>> ENTER WAIT <<<\n");
-		if (!this->localPort->waitForEvents(comStateChanged, dataReceived, dataTransmitted, nothingToDo)) {
-			if (nothingToDo) dbgprintf("[dbg] >>> ERROR WAIT <<<\n");
-			continue; // when port closed / timed out
+		bool dataReceived = this->txNothingToDo;
+		bool dataTransmitted = !this->remoteFlowEnable;
+		if (!this->localPort->waitForEvents(comStateChanged, dataReceived, dataTransmitted, this->txNothingToDo)) {
+			continue; // when port closed / timed out / wait aborted
 		}
-		if (nothingToDo) dbgprintf("[dbg] >>> LEAVE WAIT <<<\n");
 
 		if (comStateChanged) {
 			// notify remote port about changed COM state
@@ -211,45 +181,37 @@ void SerialOverEthernet::SOELinkHandlerCOM::handleClientTX() {
 
 void SerialOverEthernet::SOELinkHandlerCOM::transmitSerialData(const char* data, unsigned int len) {
 
-	if (this->localPort == 0 || !this->localPort->isOpen()) return;
+	SOELinkHandler::transmitSerialData(data, len);
 
-	unsigned long freeBytes = (this->writePtr >= this->readPtr ? SOE_TCP_STREAM_BUFFER_LEN - (this->writePtr - this->readPtr) : this->readPtr - this->writePtr) - 1;
-	if (freeBytes < len) {
-		printf("[!] reception buffer overflow, flow control failed!\n");
-		return;
-	}
-
-	unsigned long ptrToEnd = std::min(SOE_TCP_STREAM_BUFFER_LEN - this->writePtr - 1, (unsigned long) len);	// bytes that can be copied before hitting the end of the buffer
-	unsigned long startToPtr = len - ptrToEnd;												// remaining bytes that then have to be copied to the start of the buffer
-
-	// TODO test tcp reception serial transmission buffer
-
-	memcpy(this->receptionBuffer + this->writePtr, data, ptrToEnd);
-	if (startToPtr > 0)
-		memcpy(this->receptionBuffer, data + this->writePtr, startToPtr);
-
-	this->writePtr = (this->writePtr + len) % SOE_TCP_STREAM_BUFFER_LEN;
-
-	// kick the TX thread out of waiting state if buffer was empty (since it will be waiting for new data)
-	//if (freeBytes == SOE_TCP_STREAM_BUFFER_LEN)
+	// kick the TX thread out of waiting state if it was waiting
+	if (this->txNothingToDo) {
 		this->localPort->abortWait();
-
-//	// detect changes in flow control, notify remote port
-//	bool state;
-//	if (this->localPort->getFlowControl(state) && state != readyToSend) {
-//		sendFlowControl(false);
-//		readyToSend = state;
-//	}
-//
-//	// write data (blocks until all data send)
-//	this->localPort->writeBytes(data, len);
+	}
 
 }
 
-void SerialOverEthernet::SOELinkHandlerCOM::updateFlowControl(bool readyToReceive) {
+void SerialOverEthernet::SOELinkHandlerCOM::updateFlowControl(bool enableTransmit) {
+
+	SOELinkHandler::updateFlowControl(enableTransmit);
+
+	// kick the TX thread out of waiting state if it was waiting
+	if (this->txNothingToDo) {
+		this->localPort->abortWait();
+	}
+
+}
+
+void SerialOverEthernet::SOELinkHandlerCOM::updatePortState(bool dtr, bool rts) {
 
 	if (this->localPort == 0 || !this->localPort->isOpen()) return;
 
-	// TODO implement tcp transmission flow control
+	if (!this->localPort->setManualPortState(dtr, rts)) {
+		printf("[!] unable to apply port state from remote!\n");
+	}
+
+	// kick the TX thread out of waiting state if it was waiting
+	if (this->txNothingToDo) {
+		this->localPort->abortWait();
+	}
 
 }

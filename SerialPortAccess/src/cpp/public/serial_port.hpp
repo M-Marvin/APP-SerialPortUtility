@@ -37,10 +37,6 @@ typedef struct SerialPortConfiguration {
 	SerialPortStopBits stopBits;
 	SerialPortParity parity;
 	SerialPortFlowControl flowControl;
-	char eofChar;
-	char errorChar;
-	char breakChar;
-	char eventChar;
 	char xonChar;
 	char xoffChar;
 } SerialPortConfig;
@@ -51,9 +47,6 @@ static const SerialPortConfig DEFAULT_PORT_CONFIGURATION = {
 	.stopBits = SPC_STOPB_ONE,
 	.parity = SPC_PARITY_NONE,
 	.flowControl = SPC_FLOW_NONE,
-	.eofChar = 0, // TODO serial events implementation
-	.errorChar = 0,
-	.eventChar = 0,
 	.xonChar = 17,
 	.xoffChar = 19
 };
@@ -167,15 +160,21 @@ public:
 	virtual long long int writeBytes(const char* buffer, unsigned long bufferLength, bool wait = true) = 0;
 	
 	/**
-	 * Reads the current pin input states of the serial port.
+	 * Reads the logical values of the serial port pins DSR and CTS.
+	 * @param dtrState The state of the DTR pin
+	 * @param rtsState The state of the RTS pin
+	 * @return true if the state was assigned successfully, false otherwise
 	 */
 	virtual bool getPortState(bool& dsr, bool& cts) = 0;
 
 	/**
 	 * Assigns the current pin output states of the serial port.
 	 * Only effective if the signals are not controlled by hardware flow control.
+	 * @param dtrState The state of the DTR pin
+	 * @param rtsState The state of the RTS pin
+	 * @return true if the state was assigned successfully, false otherwise
 	 */
-	virtual bool setManualPortState(bool dtr, bool rts) = 0;
+	virtual bool setManualPortState(bool dtrState, bool rtsState) = 0;
 
 	/**
 	 * Waits for the requested events.
@@ -187,9 +186,13 @@ public:
 	 * If wait is false, the function will always return immediately, but all event flags set to false until an event occurred.
 	 * The wait operation will in this case continue until an event occurred and the event was read using this method.
 	 * The wait operation is canceled and replaced by an new wait operation if this function is called with different event-arguments than the pending event.
+	 * NOTE on dataTransmitted:
+	 * This event behaves different on linux and windows, but in general, if it is signaled, more data can be written
+	 * On windows, it is signaled once if the transmit buffer runs out of data.
+	 * On linux, it continuously fires until the transmit buffer is completely full.
 	 * @param comStateChange COM state (DSR, CTS) change event
 	 * @param dataReceived data received event
-	 * @param dataTransmitted transmission buffer empty event
+	 * @param dataTransmitted transmission buffer is ready for new data
 	 * @return false if the function returned because of an error, true otherwise
 	 */
 	virtual bool waitForEvents(bool& comStateChange, bool& dataReceived, bool& dataTransmitted, bool wait = true) = 0;
