@@ -1,62 +1,57 @@
 /*
- * soelinkhandlercom.cpp
+ * soelinkhandlervcom.cpp
  *
  * Handles an single Serial over Ethernet/IP connection/link.
- * This file implements the code specific to an serial port, in contrast to an virtual serial port.
+ * This file implements the code specific to an virtual serial port, in contrast to an normal serial port.
  *
  *  Created on: 04.02.2025
  *      Author: Marvin Koehler (M_Marvin)
  */
 
+#ifdef PLATFORM_WIN
+
 #include <string>
 #include "soeconnection.hpp"
 #include "dbgprintf.h"
 
-bool SerialOverEthernet::SOELinkHandlerCOM::openLocalPort(const std::string& localSerial) {
+bool SerialOverEthernet::SOELinkHandlerVCOM::openLocalPort(const std::string& localSerial) {
 	closeLocalPort();
 	std::unique_lock<std::mutex> lock(this->m_localPort);
-	this->localPort.reset(SerialAccess::newSerialPortS(localSerial));
+	this->localPort.reset(SerialAccess::newVirtualSerialPortS(localSerial));
 	this->localPortName = localSerial;
 	dbgprintf("[DBG] opening local port: %s\n", this->localPortName.c_str());
-	bool opened = this->localPort->openPort();
+	bool opened = this->localPort->createPort();
 	if (opened) {
-		if (!this->localPort->setTimeouts(-1, 0, -1)) {
-			dbgprintf("[DBG] failed to configure timeouts when opening port\n");
-			this->localPort->closePort();
-			return false;
-		}
 		this->cv_openLocalPort.notify_all();
 	}
 	return opened;
 }
 
-bool SerialOverEthernet::SOELinkHandlerCOM::closeLocalPort() {
-	if (this->localPort == 0 || !this->localPort->isOpen()) return true;
+bool SerialOverEthernet::SOELinkHandlerVCOM::closeLocalPort() {
+	if (this->localPort == 0 || !this->localPort->isCreated()) return true;
 	std::unique_lock<std::mutex> lock(this->m_localPort);
-	this->localPort->closePort();
+	this->localPort->removePort();
 	this->localPort.release();
 	dbgprintf("[DBG] local port closed: %s\n", this->localPortName.c_str());
 	return true;
 }
 
-bool SerialOverEthernet::SOELinkHandlerCOM::setLocalConfig(const SerialAccess::SerialPortConfiguration& localConfig) {
-	if (this->localPort == 0 || !this->localPort->isOpen()) return false;
-	std::lock_guard<std::mutex> lock(this->m_localPort);
-	dbgprintf("[DBG] changing local port configuration: %s (baud %lu)\n", this->localPortName.c_str(), localConfig.baudRate);
-	return this->localPort->setConfig(localConfig);
+bool SerialOverEthernet::SOELinkHandlerVCOM::setLocalConfig(const SerialAccess::SerialPortConfiguration& localConfig) {
+	if (this->localPort == 0 || !this->localPort->isCreated()) return false;
+	return true; // the configuration is set by the application
 }
 
-void SerialOverEthernet::SOELinkHandlerCOM::doSerialReception() {
+void SerialOverEthernet::SOELinkHandlerVCOM::doSerialReception() {
 
 	char serialData[SOE_SERIAL_BUFFER_LEN] {0};
 
 	while (isAlive()) {
 
 		// check if port open, wait if not
-		if (this->localPort == 0 || !this->localPort->isOpen()) {
+		if (this->localPort == 0 || !this->localPort->isCreated()) {
 			std::unique_lock<std::mutex> lock(this->m_localPort);
 			this->cv_openLocalPort.wait(lock, [this]() {
-				return (this->localPort != 0 && this->localPort->isOpen()) || !isAlive();
+				return (this->localPort != 0 && this->localPort->isCreated()) || !isAlive();
 			});
 			if (!isAlive()) break;
 		}
@@ -135,10 +130,12 @@ void SerialOverEthernet::SOELinkHandlerCOM::doSerialReception() {
 		}
 
 		// check for COM state event and (if no thing else to do) wait for more data
+		bool configChanged = true;
+		bool timeoutChanged = false;
 		bool comStateChanged = true;
 		bool dataReceived = this->txNothingToDo;
 		bool dataTransmitted = !this->remoteFlowEnable;
-		if (!this->localPort->waitForEvents(comStateChanged, dataReceived, dataTransmitted, this->txNothingToDo)) {
+		if (!this->localPort->waitForEvents(configChanged, timeoutChanged, comStateChanged, dataReceived, dataTransmitted, this->txNothingToDo)) {
 			continue; // when port closed / timed out / wait aborted
 		}
 
@@ -157,6 +154,26 @@ void SerialOverEthernet::SOELinkHandlerCOM::doSerialReception() {
 			}
 		}
 
+		if (configChanged) {
+
+			// we need to make sure all config changes are applied before reding them
+			// the event is fired as soon as the first changed is made
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+			// notify remote port about new configuration
+			SerialAccess::SerialPortConfiguration config;
+			if (!this->localPort->getConfig(config)) {
+				continue; // when port closed
+			}
+
+			dbgprintf("[DBG] stream port config: |serial| -> [network] (baud %u)\n", config.baudRate);
+
+			if (!sendRemoteConfig(config)) {
+				printf("[!] frame error, unable to transmit serial configuration\n");
+				break;
+			}
+		}
+
 	}
 
 	dbgprintf("[DBG] client socket TX terminated, shutting down ...\n");
@@ -164,7 +181,7 @@ void SerialOverEthernet::SOELinkHandlerCOM::doSerialReception() {
 
 }
 
-void SerialOverEthernet::SOELinkHandlerCOM::transmitSerialData(const char* data, unsigned int len) {
+void SerialOverEthernet::SOELinkHandlerVCOM::transmitSerialData(const char* data, unsigned int len) {
 
 	SOELinkHandler::transmitSerialData(data, len);
 
@@ -175,7 +192,7 @@ void SerialOverEthernet::SOELinkHandlerCOM::transmitSerialData(const char* data,
 
 }
 
-void SerialOverEthernet::SOELinkHandlerCOM::updateFlowControl(bool enableTransmit) {
+void SerialOverEthernet::SOELinkHandlerVCOM::updateFlowControl(bool enableTransmit) {
 
 	SOELinkHandler::updateFlowControl(enableTransmit);
 
@@ -186,9 +203,9 @@ void SerialOverEthernet::SOELinkHandlerCOM::updateFlowControl(bool enableTransmi
 
 }
 
-void SerialOverEthernet::SOELinkHandlerCOM::updatePortState(bool dtr, bool rts) {
+void SerialOverEthernet::SOELinkHandlerVCOM::updatePortState(bool dtr, bool rts) {
 
-	if (this->localPort == 0 || !this->localPort->isOpen()) return;
+	if (this->localPort == 0 || !this->localPort->isCreated()) return;
 
 	if (!this->localPort->setManualPortState(dtr, rts)) {
 		printf("[!] unable to apply port state from remote!\n");
@@ -200,3 +217,5 @@ void SerialOverEthernet::SOELinkHandlerCOM::updatePortState(bool dtr, bool rts) 
 	}
 
 }
+
+#endif

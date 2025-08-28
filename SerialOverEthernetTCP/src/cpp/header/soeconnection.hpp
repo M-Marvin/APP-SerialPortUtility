@@ -81,7 +81,7 @@ public:
 	 * If an shutdown was already issued and the function is called a second time, it returns immediately.
 	 * @return false if the method was already called before and this call did not have any effect, true if this was the first call and the shutdown was performed
 	 */
-	virtual bool shutdown() { return true; };
+	bool shutdown();
 
 	/**
 	 * Attempts to release the remote port.
@@ -172,14 +172,11 @@ class SOELinkHandlerCOM : public SOELinkHandler {
 public:
 	using SOELinkHandler::SOELinkHandler;
 
-	bool shutdown() override;
-
 	bool openLocalPort(const std::string& localSerial) override;
 	bool setLocalConfig(const SerialAccess::SerialPortConfiguration& localConfig) override;
 	bool closeLocalPort() override;
 
 private:
-
 	std::unique_ptr<SerialAccess::SerialPort> localPort;				// local serial port
 
 	void doSerialReception() override;
@@ -190,24 +187,37 @@ private:
 
 };
 
-// TODO virtual port integration
-//class SOELinkHandlerVCOM : public SOELinkHandler {
-//
-//public:
-//
-//	bool openLocalPort(const std::string& localSerial) override;
-//	bool setLocalConfig(const SerialAccess::SerialPortConfiguration& localConfig) override;
-//	bool closeLocalPort() override;
-//
-//private:
-//
-//	std::unique_ptr<SerialAccess::VirtualSerialPort> localPort;	// local serial port
-//
-//	void transmitSerialData(const char* data, unsigned int len) override;
-//	void updatePortState(bool dtr, bool rts) override;
-//
-//};
 
 }
+
+#ifdef PLATFORM_WIN
+
+#include <virtual_serial_port.hpp>
+
+namespace SerialOverEthernet {
+
+class SOELinkHandlerVCOM : public SOELinkHandler {
+
+public:
+	using SOELinkHandler::SOELinkHandler;
+
+	bool openLocalPort(const std::string& localSerial) override;
+	bool setLocalConfig(const SerialAccess::SerialPortConfiguration& localConfig) override;
+	bool closeLocalPort() override;
+
+private:
+	std::unique_ptr<SerialAccess::VirtualSerialPort> localPort;	// local serial port
+
+	void doSerialReception() override;
+
+	void transmitSerialData(const char* data, unsigned int len) override;
+	void updateFlowControl(bool enableTransmit) override;
+	void updatePortState(bool dtr, bool rts) override;
+
+};
+
+}
+
+#endif
 
 #endif /* SOE_CONNECTION_HPP_ */

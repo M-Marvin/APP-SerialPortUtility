@@ -418,6 +418,9 @@ public:
 
 		if (!isOpen()) return false;
 
+		// if no event was requested, return
+		if (!comStateChange && !dataReceived && !dataTransmitted) return true;
+
 		// Check if the event mask was changed
 		DWORD newMask = 0;
 		if (comStateChange) newMask |= EV_CTS | EV_DSR;

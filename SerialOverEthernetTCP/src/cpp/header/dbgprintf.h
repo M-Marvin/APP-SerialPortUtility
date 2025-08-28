@@ -11,8 +11,6 @@
 #ifndef DBGPRINTF_H_
 #define DBGPRINTF_H_
 
-//#define printf
-
 #ifdef ENBL_DBGPRINT
 #define dbgprintf(...) printf(__VA_ARGS__)
 #else

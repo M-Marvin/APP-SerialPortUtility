@@ -173,16 +173,22 @@ static void TriggerChangeWait(QUEUE_CONTEXT* queueContext, ULONG triggerMask)
 	if ((queueContext->ChangeMask & triggerMask) == 0) return;
 
 	WDFREQUEST request;
-	NTSTATUS status = WdfIoQueueRetrieveNextRequest(queueContext->WaitChangeQueue, &request);
-	if (status == STATUS_SUCCESS) {
+	NTSTATUS status;
+	do {
+		status = WdfIoQueueRetrieveNextRequest(queueContext->WaitChangeQueue, &request);
+		if (status == STATUS_SUCCESS) {
 
-		status = CopyToRequest(request, 0, &triggerMask, sizeof(ULONG));
-		if (status != STATUS_SUCCESS) {
-			WdfRequestComplete(request, status);
+			dbgprintf("[i] VCOM IOCTL_APPLINK_WAIT_FOR_CHANGE complete wait: %x\n", triggerMask);
+
+			NTSTATUS status2 = CopyToRequest(request, 0, &triggerMask, sizeof(ULONG));
+			if (status2 != STATUS_SUCCESS) {
+				dbgprintf("[!] VCOM TriggerChangeWait failed: NTSTATUS 0x%x\n", status2);
+				WdfRequestComplete(request, status2);
+			}
+
+			WdfRequestCompleteWithInformation(request, STATUS_SUCCESS, sizeof(ULONG));
 		}
-
-		WdfRequestComplete(request, STATUS_SUCCESS);
-	}
+	} while (status == STATUS_SUCCESS);
 
 }
 
@@ -197,6 +203,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 	DEVICE_CONTEXT* deviceContext = queueContext->DeviceContext;
 	BUFFER_CONTEXT* bufferContext = &deviceContext->BufferContext;
 	REQUEST_CONTEXT* requestContext = GetRequestContext(requestHandle);
+	ULONG bytesReturned = 0;
 
 	switch (controlCode) {
 
@@ -229,7 +236,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		};
 
 		// write baud rate to request
-		status = CopyToRequest(requestHandle, 0, &baudRateStruct, sizeof(SERIAL_BAUD_RATE));
+		status = CopyToRequest(requestHandle, 0, &baudRateStruct, bytesReturned = sizeof(SERIAL_BAUD_RATE));
 		
 		break;
 	}
@@ -241,7 +248,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_SERIAL_GET_TIMEOUTS called\n");
 
 		// write timeouts to request
-		status = CopyToRequest(requestHandle, 0, &deviceContext->Timeouts, sizeof(SERIAL_TIMEOUTS));
+		status = CopyToRequest(requestHandle, 0, &deviceContext->Timeouts, bytesReturned = sizeof(SERIAL_TIMEOUTS));
 
 		break;
 	}
@@ -264,7 +271,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_SERIAL_GET_LINE_CONTROL called\n");
 
 		// write line control to request
-		status = CopyToRequest(requestHandle, 0, &deviceContext->LineControl, sizeof(SERIAL_LINE_CONTROL));
+		status = CopyToRequest(requestHandle, 0, &deviceContext->LineControl, bytesReturned = sizeof(SERIAL_LINE_CONTROL));
 
 		break;
 	}
@@ -287,7 +294,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_SERIAL_GET_HANDFLOW called\n");
 
 		// write line control to request
-		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowControl, sizeof(SERIAL_HANDFLOW));
+		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowControl, bytesReturned = sizeof(SERIAL_HANDFLOW));
 
 		break;
 	}
@@ -310,7 +317,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_SERIAL_GET_CHARS called\n");
 
 		// write XON/XOFF chars to request
-		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowChars, sizeof(SERIAL_CHARS));
+		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowChars, bytesReturned = sizeof(SERIAL_CHARS));
 
 		break;
 	}
@@ -369,7 +376,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 
 			// zero indicates that no event was actualy triggered, but the wait ended because of this set mask request
 			ULONG eventMask = 0;
-			status = CopyToRequest(previousWaitRequest, 0, &eventMask, sizeof(eventMask));
+			status = CopyToRequest(previousWaitRequest, 0, &eventMask, bytesReturned = sizeof(eventMask));
 
 			WdfRequestComplete(previousWaitRequest, STATUS_SUCCESS);
 
@@ -384,7 +391,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_SERIAL_GET_WAIT_MASK called\n");
 
 		// write wait mask to request
-		status = CopyToRequest(requestHandle, 0, &queueContext->WaitMask, sizeof(ULONG));
+		status = CopyToRequest(requestHandle, 0, &queueContext->WaitMask, bytesReturned = sizeof(ULONG));
 
 		break;
 	}
@@ -450,7 +457,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 
 		// write status value to request
 		ULONG dtrrtsState = deviceContext->FlowControlState & (SERIAL_RTS_STATE | SERIAL_DTR_STATE);
-		status = CopyToRequest(requestHandle, 0, &dtrrtsState, sizeof(ULONG));
+		status = CopyToRequest(requestHandle, 0, &dtrrtsState, bytesReturned = sizeof(ULONG));
 
 		break;
 	}
@@ -460,7 +467,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_SERIAL_GET_DTRRTS called\n");
 
 		// write status value to request
-		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowControlState, sizeof(ULONG));
+		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowControlState, bytesReturned = sizeof(ULONG));
 
 		break;
 	}
@@ -486,7 +493,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_APPLINK_GET_COMSTATUS called\n");
 
 		// write status value to request
-		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowControlState, sizeof(ULONG));
+		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowControlState, bytesReturned = sizeof(ULONG));
 
 		break;
 
@@ -498,7 +505,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 
 		// write status value to request
 		ULONG state = deviceContext->FlowControlState;
-		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowControlState, sizeof(ULONG));
+		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowControlState, bytesReturned = sizeof(ULONG));
 
 		// notify wait requests about changed
 		state ^= deviceContext->FlowControlState;
@@ -522,7 +529,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		};
 
 		// write baud rate to request
-		status = CopyToRequest(requestHandle, 0, &baudRateStruct, sizeof(SERIAL_BAUD_RATE));
+		status = CopyToRequest(requestHandle, 0, &baudRateStruct, bytesReturned = sizeof(SERIAL_BAUD_RATE));
 
 		break;
 	}
@@ -533,7 +540,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_APPLINK_GET_TIMEOUTS called\n");
 
 		// write timeouts to request
-		status = CopyToRequest(requestHandle, 0, &deviceContext->Timeouts, sizeof(SERIAL_TIMEOUTS));
+		status = CopyToRequest(requestHandle, 0, &deviceContext->Timeouts, bytesReturned = sizeof(SERIAL_TIMEOUTS));
 
 		break;
 	}
@@ -544,7 +551,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_APPLINK_GET_LINE_CONTROL called\n");
 
 		// write line control to request
-		status = CopyToRequest(requestHandle, 0, &deviceContext->LineControl, sizeof(SERIAL_LINE_CONTROL));
+		status = CopyToRequest(requestHandle, 0, &deviceContext->LineControl, bytesReturned = sizeof(SERIAL_LINE_CONTROL));
 
 		break;
 	}
@@ -555,7 +562,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_APPLINK_GET_FLOW_CONTROL called\n");
 
 		// write line control to request
-		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowControl, sizeof(SERIAL_HANDFLOW));
+		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowControl, bytesReturned = sizeof(SERIAL_HANDFLOW));
 
 		break;
 	}
@@ -566,7 +573,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_APPLINK_GET_CHARS called\n");
 
 		// write XON/XOFF chars to request
-		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowChars, sizeof(SERIAL_CHARS));
+		status = CopyToRequest(requestHandle, 0, &deviceContext->FlowChars, bytesReturned = sizeof(SERIAL_CHARS));
 
 		break;
 	}
@@ -576,13 +583,14 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 
 		dbgprintf("[i] VCOM IOCTL_APPLINK_WAIT_FOR_CHANGE called\n");
 
-		WDFREQUEST previousWaitRequest;
-
+		// TODO this causes the current request to be completed with the same error code for some reason
+		//WDFREQUEST previousWaitRequest;
 		// abort the previous wait request, if there is one
-		status = WdfIoQueueRetrieveNextRequest(queueContext->WaitChangeQueue, &previousWaitRequest);
-		if (status == STATUS_SUCCESS) {
-			WdfRequestComplete(previousWaitRequest, STATUS_UNSUCCESSFUL);
-		}
+		//status = WdfIoQueueRetrieveNextRequest(queueContext->WaitChangeQueue, &previousWaitRequest);
+		//if (status == STATUS_SUCCESS) {
+		//	dbgprintf("[i] VCOM IOCTL_APPLINK_WAIT_FOR_CHANGE abort previous wait\n");
+		//	WdfRequestComplete(previousWaitRequest, STATUS_UNSUCCESSFUL);
+		//}
 
 		// read the event mask
 		status = CopyFromRequest(requestHandle, 0, &queueContext->ChangeMask, sizeof(ULONG));
@@ -598,6 +606,8 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 			break;
 		}
 
+
+		dbgprintf("[i] VCOM IOCTL_APPLINK_WAIT_FOR_CHANGE pending\n");
 		return; // do not continue, don't complete the request
 
 	}
@@ -621,7 +631,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_APPLINK_GET_BUFFER_SIZES called\n");
 
 		// write buffer sizes to request
-		status = CopyToRequest(requestHandle, 0, &bufferContext->BufferSizes, sizeof(BUFFER_SIZES));
+		status = CopyToRequest(requestHandle, 0, &bufferContext->BufferSizes, bytesReturned = sizeof(BUFFER_SIZES));
 		
 		break;
 	}
@@ -632,10 +642,10 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_APPLINK_WRITE_BUFFER called\n");
 
 		ULONG bytesWritten;
-		ULONG bufferSize;
+		ULONG bufferContent;
 
 		// attempt to write the full buffer length to the reception buffer
-		status = WriteReception(bufferContext, requestHandle, (ULONG) inputBufferLength, &bytesWritten, &bufferSize);
+		status = WriteReception(bufferContext, requestHandle, (ULONG) inputBufferLength, &bytesWritten, &bufferContent);
 		if (status != STATUS_SUCCESS) {
 			dbgerrprintf("[!] VCOM IOCTL_APPLINK_WRITE_BUFFER:WriteReception failed: NTSTATUS 0x%x\n", status);
 			break;
@@ -655,7 +665,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		// invoke pending read requests, let them attempt to use the new data in the buffer
 		ReInvokeRequests(queueContext, queueContext->ReadQueue);
 
-		TriggerMaskWait(queueContext, SERIAL_EV_RXCHAR | (bufferSize > (bufferContext->BufferSizes.ReceiveSize * 0.8) ? SERIAL_EV_RX80FULL : 0));
+		TriggerMaskWait(queueContext, SERIAL_EV_RXCHAR | (bufferContent > (bufferContext->BufferSizes.ReceiveSize * 0.8) ? SERIAL_EV_RX80FULL : 0));
 
 		return;
 	}
@@ -665,10 +675,10 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		dbgprintf("[i] VCOM IOCTL_APPLINK_READ_BUFFER called\n");
 
 		ULONG bytesRead;
-		ULONG bufferSize;
+		ULONG bufferContent;
 
 		// attempt to read the full buffer length from the transmission buffer
-		status = ReadTransmittion(bufferContext, requestHandle, (ULONG) outputBufferLength, &bytesRead, &bufferSize);
+		status = ReadTransmittion(bufferContext, requestHandle, (ULONG) outputBufferLength, &bytesRead, &bufferContent);
 		if (status != STATUS_SUCCESS) {
 			dbgerrprintf("[!] VCOM IOCTL_APPLINK_READ_BUFFER:ReadTransmittion failed: NTSTATUS 0x%x\n", status);
 			break;
@@ -688,7 +698,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 		// invoke pending write requests, let them attempt to use the freed space in the buffer
 		ReInvokeRequests(queueContext, queueContext->WriteQueue);
 
-		if (bufferSize == 0) {
+		if (bufferContent == 0) {
 			TriggerMaskWait(queueContext, SERIAL_EV_TXEMPTY);
 		}
 
@@ -731,7 +741,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 
 	}
 
-	WdfRequestComplete(requestHandle, status);
+	WdfRequestCompleteWithInformation(requestHandle, status, bytesReturned);
 
 }
 
@@ -746,10 +756,10 @@ void IORead(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t length)
 	BUFFER_CONTEXT* bufferContext = &deviceContext->BufferContext;
 	REQUEST_CONTEXT* requestContext = GetRequestContext(requestHandle);
 	ULONG bytesRead;
-	ULONG bufferSize;
+	ULONG bufferContent;
 
 	// attempt to read the full buffer length from the reception buffer
-	status = ReadReception(bufferContext, requestHandle, (ULONG) length, &bytesRead, &bufferSize);
+	status = ReadReception(bufferContext, requestHandle, (ULONG) length, &bytesRead, &bufferContent);
 	if (status != STATUS_SUCCESS) {
 		dbgerrprintf("[!] VCOM IORead:ReadReception failed: NTSTATUS 0x%x\n", status);
 		WdfRequestComplete(requestHandle, status);
@@ -758,6 +768,9 @@ void IORead(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t length)
 
 	// update the number of bytes transfered in the context
 	requestContext->ReadWrite.BytesTransfered += bytesRead;
+
+	if (bufferContent == 0)
+		TriggerChangeWait(queueContext, APPLINK_EVENT_TXEMPTY);
 
 	// complete or re-queue request if not all bytes have ben read yet
 	if (requestContext->ReadWrite.BytesTransfered < length) {
@@ -783,10 +796,10 @@ void IOWrite(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t length)
 	BUFFER_CONTEXT* bufferContext = &deviceContext->BufferContext;
 	REQUEST_CONTEXT* requestContext = GetRequestContext(requestHandle);
 	ULONG bytesWritten;
-	ULONG bufferSize;
+	ULONG bufferContent;
 
 	// attempt to write the full buffer length to the transmission buffer
-	status = WriteTransmittion(bufferContext, requestHandle, (ULONG) length, &bytesWritten, &bufferSize);
+	status = WriteTransmittion(bufferContext, requestHandle, (ULONG) length, &bytesWritten, &bufferContent);
 	if (status != STATUS_SUCCESS) {
 		dbgerrprintf("[!] VCOM IOWrite:WriteTransmittion failed: NTSTATUS 0x%x\n", status);
 		WdfRequestComplete(requestHandle, status);
@@ -795,6 +808,9 @@ void IOWrite(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t length)
 
 	// update the number of bytes transfered in the context
 	requestContext->ReadWrite.BytesTransfered += bytesWritten;
+
+	if (bufferContent > 0)
+		TriggerChangeWait(queueContext, APPLINK_EVENT_RXCHAR);
 
 	// complete or re-queue request if not all bytes have ben written yet
 	if (requestContext->ReadWrite.BytesTransfered < length) {

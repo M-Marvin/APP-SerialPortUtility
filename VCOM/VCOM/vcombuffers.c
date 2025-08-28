@@ -62,14 +62,14 @@ NTSTATUS ReallocateBuffers(BUFFER_CONTEXT* bufferContext)
 
 }
 
-static NTSTATUS WriteBuffer(char* buffer, ULONG capacity, ULONG* writePtr, ULONG* readPtr, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferSize)
+static NTSTATUS WriteBuffer(char* buffer, ULONG capacity, ULONG* writePtr, ULONG* readPtr, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferContent)
 {
 
 	dbgprintf("[i] WRITE TO BUFFER: readPtr=%lu writePtr=%lu\n", *readPtr, *writePtr);
 
 	ULONG freeBytes = (*writePtr >= *readPtr ? capacity - (*writePtr - *readPtr) : *readPtr - *writePtr) - 1;
 	*bytesCopied = min(freeBytes, length);
-	*bufferSize = capacity - freeBytes;
+	*bufferContent = capacity - freeBytes;
 
 	if (*bytesCopied == 0) {
 		return STATUS_SUCCESS; // a full buffer is not considered an error here
@@ -91,7 +91,7 @@ static NTSTATUS WriteBuffer(char* buffer, ULONG capacity, ULONG* writePtr, ULONG
 		*writePtr = (*writePtr + *bytesCopied) % capacity;
 	}
 
-	*bufferSize += *bytesCopied;
+	*bufferContent += *bytesCopied;
 
 	dbgprintf("[i] WRITE TO BUFFER: readPtr=%lu writePtr=%lu\n", *readPtr, *writePtr);
 
@@ -99,14 +99,14 @@ static NTSTATUS WriteBuffer(char* buffer, ULONG capacity, ULONG* writePtr, ULONG
 
 }
 
-static NTSTATUS ReadBuffer(char* buffer, ULONG capacity, ULONG* writePtr, ULONG* readPtr, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferSize)
+static NTSTATUS ReadBuffer(char* buffer, ULONG capacity, ULONG* writePtr, ULONG* readPtr, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferContent)
 {
 
 	dbgprintf("[i] READ FROM BUFFER: readPtr=%lu writePtr=%lu\n", *readPtr, *writePtr);
 
 	ULONG availableBytes = (*writePtr >= *readPtr ? *writePtr - *readPtr : capacity - (*readPtr - *writePtr));
 	*bytesCopied = min(availableBytes, length);
-	*bufferSize = availableBytes;
+	*bufferContent = availableBytes;
 
 	if (*bytesCopied == 0) {
 		return STATUS_SUCCESS; // a full buffer is not considered an error here
@@ -128,7 +128,7 @@ static NTSTATUS ReadBuffer(char* buffer, ULONG capacity, ULONG* writePtr, ULONG*
 		*readPtr = (*readPtr + *bytesCopied) % capacity;
 	}
 
-	*bufferSize -= *bytesCopied;
+	*bufferContent -= *bytesCopied;
 
 	dbgprintf("[i] READ FROM BUFFER: readPtr=%lu writePtr=%lu\n", *readPtr, *writePtr);
 
@@ -136,7 +136,7 @@ static NTSTATUS ReadBuffer(char* buffer, ULONG capacity, ULONG* writePtr, ULONG*
 
 }
 
-NTSTATUS WriteTransmittion(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferSize)
+NTSTATUS WriteTransmittion(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferContent)
 {
 	return WriteBuffer(
 		bufferContext->TransmitBuffer,
@@ -146,11 +146,11 @@ NTSTATUS WriteTransmittion(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHand
 		requestHandle,
 		length,
 		bytesCopied,
-		bufferSize
+		bufferContent
 	);
 }
 
-NTSTATUS ReadTransmittion(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferSize)
+NTSTATUS ReadTransmittion(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferContent)
 {
 	return ReadBuffer(
 		bufferContext->TransmitBuffer,
@@ -160,11 +160,11 @@ NTSTATUS ReadTransmittion(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandl
 		requestHandle,
 		length,
 		bytesCopied,
-		bufferSize
+		bufferContent
 	);
 }
 
-NTSTATUS WriteReception(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferSize)
+NTSTATUS WriteReception(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferContent)
 {
 	return WriteBuffer(
 		bufferContext->ReceiveBuffer,
@@ -174,11 +174,11 @@ NTSTATUS WriteReception(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle,
 		requestHandle,
 		length,
 		bytesCopied,
-		bufferSize
+		bufferContent
 	);
 }
 
-NTSTATUS ReadReception(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferSize)
+NTSTATUS ReadReception(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, ULONG length, ULONG* bytesCopied, ULONG* bufferContent)
 {
 	return ReadBuffer(
 		bufferContext->ReceiveBuffer,
@@ -188,6 +188,6 @@ NTSTATUS ReadReception(BUFFER_CONTEXT* bufferContext, WDFREQUEST requestHandle, 
 		requestHandle,
 		length,
 		bytesCopied,
-		bufferSize
+		bufferContent
 	);
 }

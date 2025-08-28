@@ -37,6 +37,21 @@ SerialOverEthernet::SOELinkHandler::~SOELinkHandler() {
 	printf("[DBG] joined\n");
 }
 
+bool SerialOverEthernet::SOELinkHandler::shutdown() {
+	if (isAlive()) {
+		printf("[i] link shutting down: %s <-> %s @ %s/%s\n", this->localPortName.c_str(), this->remotePortName.c_str(), this->remoteHostName.c_str(), this->remoteHostPort.c_str());
+		closeLocalPort();
+		this->socket->close();
+		this->remoteReturn = false;
+		this->cv_remoteReturn.notify_all();
+		this->cv_openLocalPort.notify_all();
+		this->onDeath(this);
+		dbgprintf("[DBG] client handler terminated\n");
+		return true;
+	}
+	return false;
+}
+
 bool SerialOverEthernet::SOELinkHandler::isAlive() {
 	return this->socket->isOpen();
 }

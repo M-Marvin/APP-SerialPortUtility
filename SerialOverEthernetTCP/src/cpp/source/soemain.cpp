@@ -28,17 +28,31 @@ void cleanupDeadConnectionHandlers() {
 	}), clientConnections.end());
 }
 
-SerialOverEthernet::SOELinkHandler* createConnectionHandler(NetSocket::Socket* unmanagedSocket, std::string socketHostName, std::string socketHostPort) {
+SerialOverEthernet::SOELinkHandler* createConnectionHandler(NetSocket::Socket* unmanagedSocket, std::string socketHostName, std::string socketHostPort, bool virtualMode) {
 	std::lock_guard<std::mutex> lock(m_clientConnections);
 	dbgprintf("[DBG] create handler for: %s/%s\n", socketHostName.c_str(), socketHostPort.c_str());
-	SerialOverEthernet::SOELinkHandler* managedHandler = new SerialOverEthernet::SOELinkHandlerCOM(unmanagedSocket, socketHostName, socketHostPort, [](SerialOverEthernet::SOELinkHandler* managedHandler) {
-		cv_clientConnections.notify_one(); // try to run the cleanup of closed handlers if not in server mode
-	});
+	SerialOverEthernet::SOELinkHandler* managedHandler;
+	if (virtualMode) {
+#ifdef PLATFORM_WIN
+		managedHandler = new SerialOverEthernet::SOELinkHandlerVCOM(unmanagedSocket, socketHostName, socketHostPort, [](SerialOverEthernet::SOELinkHandler* managedHandler) {
+			cv_clientConnections.notify_one(); // try to run the cleanup of closed handlers if not in server mode
+		});
+#else
+		printf("[!] VIRTUAL PORT MODE NOT YET SUPPORTED ON PLATFORMS OTHER THAN WINDOWS\n");
+		managedHandler = new SerialOverEthernet::SOELinkHandlerCOM(unmanagedSocket, socketHostName, socketHostPort, [](SerialOverEthernet::SOELinkHandler* managedHandler) {
+			cv_clientConnections.notify_one(); // try to run the cleanup of closed handlers if not in server mode
+		});
+#endif
+	} else {
+		managedHandler = new SerialOverEthernet::SOELinkHandlerCOM(unmanagedSocket, socketHostName, socketHostPort, [](SerialOverEthernet::SOELinkHandler* managedHandler) {
+			cv_clientConnections.notify_one(); // try to run the cleanup of closed handlers if not in server mode
+		});
+	}
 	clientConnections.push_back(managedHandler);
 	return managedHandler;
 }
 
-bool linkRemotePort(std::string& remoteHost, std::string& remotePort, std::string& remoteSerial, std::string& localSerial, SerialAccess::SerialPortConfiguration& remoteConfig, SerialAccess::SerialPortConfiguration& localConfig) {
+bool linkRemotePort(std::string& remoteHost, std::string& remotePort, std::string& remoteSerial, std::string& localSerial, SerialAccess::SerialPortConfiguration& remoteConfig, SerialAccess::SerialPortConfiguration& localConfig, bool virtualMode) {
 	std::vector<NetSocket::INetAddress> addresses;
 	NetSocket::resolveInet(remoteHost, remotePort, true, addresses);
 	NetSocket::Socket* clientSocket = NetSocket::newSocket();
@@ -61,7 +75,7 @@ bool linkRemotePort(std::string& remoteHost, std::string& remotePort, std::strin
 		dbgprintf("[DBG] connect succeded at: %s/%s\n", serverHostName.c_str(), serverHostPortStr.c_str());
 
 		// create connection handler, try to apply configurations
-		SerialOverEthernet::SOELinkHandler* handler = createConnectionHandler(clientSocket, serverHostName, serverHostPortStr);
+		SerialOverEthernet::SOELinkHandler* handler = createConnectionHandler(clientSocket, serverHostName, serverHostPortStr, virtualMode);
 		if (!handler->openRemotePort(remoteSerial)) {
 			printf("[!] failed to open remote port: %s\n", remoteSerial.c_str());
 			handler->shutdown();
@@ -153,7 +167,7 @@ int runMain(std::string& serverHostName, std::string& serverHostPort, std::vecto
 						printf("[i] incomming connection request: %s/%s\n", clientHostName.c_str(), clientHostPort.c_str());
 
 						// create handler for connection and make new socket for next request
-						createConnectionHandler(clientSocket, clientHostName, clientHostPort);
+						createConnectionHandler(clientSocket, clientHostName, clientHostPort, false);
 						continue;
 
 					}

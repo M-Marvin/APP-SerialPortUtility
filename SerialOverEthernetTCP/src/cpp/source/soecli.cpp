@@ -27,6 +27,7 @@ void interpretFlags(const std::vector<std::string>& args) {
 	std::string localSerial;
 	SerialAccess::SerialPortConfiguration remoteConfig = SerialAccess::DEFAULT_PORT_CONFIGURATION;
 	SerialAccess::SerialPortConfiguration localConfig = SerialAccess::DEFAULT_PORT_CONFIGURATION;
+	bool virtualMode = false;
 	bool link = false;
 
 	for (auto flag = args.begin(); flag != args.end(); flag++) {
@@ -40,7 +41,8 @@ void interpretFlags(const std::vector<std::string>& args) {
 				}
 				link = false;
 
-				linkRemotePort(remoteHost, remotePort, remoteSerial, localSerial, localConfig, remoteConfig);
+				linkRemotePort(remoteHost, remotePort, remoteSerial, localSerial, localConfig, remoteConfig, virtualMode);
+				virtualMode = false;
 			}
 		}
 
@@ -93,7 +95,9 @@ void interpretFlags(const std::vector<std::string>& args) {
 		}
 		// flags without arguments
 
-		if (*flag == "-link") {
+		if (*flag == "-virtual") {
+			virtualMode = true;
+		} else if (*flag == "-link") {
 			link = true;
 		}
 	}
@@ -104,7 +108,7 @@ void interpretFlags(const std::vector<std::string>& args) {
 			return;
 		}
 
-		linkRemotePort(remoteHost, remotePort, remoteSerial, localSerial, remoteConfig, localConfig);
+		linkRemotePort(remoteHost, remotePort, remoteSerial, localSerial, remoteConfig, localConfig, virtualMode);
 	}
 }
 
@@ -126,6 +130,7 @@ int mainCPP(std::string& exec, std::vector<std::string>& args) {
 		printf(" -port [remote network port]\n");
 		printf(" -rser [remote serial port]\n");
 		printf(" -lser [serial port]\n");
+		printf(" -virtual\n");
 		printf(" -(l|r|)baud [serial baud]\n");
 		printf(" -(l|r|)bits [data bits]\n");
 		printf(" -(l|r|)flowctrl [flow control] : none|rtscts|dsrdtr\n");

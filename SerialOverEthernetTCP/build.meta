@@ -10,7 +10,7 @@ import de.m_marvin.metabuild.maven.types.Repository.Credentials;
 
 public class Buildfile extends CppMultiTargetBuildScript {
 	
-	boolean debugging = false; // set to true to compile with debug info
+	boolean debugging = true; // set to true to compile with debug info
 	
 	String version = "2.2-SNAPSHOT";
 	
@@ -26,6 +26,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
 		target.compileCpp.define("PLATFORM_WIN");
 		target.linkCpp.libraries.add("serialportaccess_x64");
+		target.linkCpp.libraries.add("virtualserial_x64");
 		target.linkCpp.libraries.add("netsocket_x64");
 		target.linkCpp.options.add("-static-libgcc");
 		target.linkCpp.options.add("-static-libstdc++");
@@ -119,10 +120,12 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		
 		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + "::zip:2.3-SNAPSHOT");
 		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":headers:zip:2.3-SNAPSHOT");
-
-//		dependencies.implementation("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + "::zip:1.0-SNAPSHOT");
-//		dependencies.implementation("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + ":headers:zip:1.0-SNAPSHOT");
-
+		
+		if (config.equals("WinAMD64")) {
+			dependencies.implementation("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + "::zip:1.0-SNAPSHOT");
+			dependencies.implementation("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + ":headers:zip:1.0-SNAPSHOT");	
+		}
+		
 		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + "::zip:1.1.2-SNAPSHOT");
 		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":headers:zip:1.1.2-SNAPSHOT");
 		

@@ -37,9 +37,10 @@ void interpretFlags(const std::vector<std::string>& args);
  * @param unmanagedSocket The dynamically created client socket, must be connected already
  * @param socketHostName The remote host name, used for log entries related to this connection
  * @param socketHostPort The remote host port, used for log entries related to this connection
+ * @param virtualMode The virtual port mode, creates an virtual port instead of claiming an existing one
  * @return An pointer to the newly created connection handler, or an nullptr if the creation failed
  */
-SerialOverEthernet::SOELinkHandler* createConnectionHandler(NetSocket::Socket* unmanagedSocket, std::string socketHostName, std::string socketHostPort);
+SerialOverEthernet::SOELinkHandler* createConnectionHandler(NetSocket::Socket* unmanagedSocket, std::string socketHostName, std::string socketHostPort, bool virtualMode);
 /**
  * Check all currently available connection handler for closed connections, and properly shutdown and delte them.
  */
@@ -52,9 +53,10 @@ void cleanupDeadConnectionHandlers();
  * @param localSerial The local serial port path
  * @param remoteConfig The remote server serial configuration
  * @param localConfig The local serial configuration
+ * @param virtualMode The virtual port mode, creates an virtual port instead of claiming an existing one
  * @return true if the connection was established successfully, false otherwise
  */
-bool linkRemotePort(std::string& remoteHost, std::string& remotePort, std::string& remoteSerial, std::string& localSerial, SerialAccess::SerialPortConfiguration& remoteConfig, SerialAccess::SerialPortConfiguration& localConfig);
+bool linkRemotePort(std::string& remoteHost, std::string& remotePort, std::string& remoteSerial, std::string& localSerial, SerialAccess::SerialPortConfiguration& remoteConfig, SerialAccess::SerialPortConfiguration& localConfig, bool virtualMode);
 
 /**
  * Main entry point of the process, with C++ compatible data types.
