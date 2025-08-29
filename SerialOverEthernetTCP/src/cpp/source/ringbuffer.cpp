@@ -11,13 +11,13 @@
 Ringbuffer::Ringbuffer(unsigned long int size)
 {
 	this->size = size;
-	this->buffer = new char[size];
-	this->writeIndex = this->readIndex = 0;
+	this->buffer = new char[size * 2];
+	this->writeIndex = this->readIndex = this->bufferEndIndex = 0;
 }
 
 Ringbuffer::~Ringbuffer()
 {
-	delete this->buffer;
+	delete[] this->buffer;
 }
 
 unsigned long int Ringbuffer::push(const char* data, unsigned long int length)
@@ -27,18 +27,11 @@ unsigned long int Ringbuffer::push(const char* data, unsigned long int length)
 			this->readIndex + (this->size - this->writeIndex - 1);
 
 	unsigned int transfer = free < length ? free : length;
+	std::memcpy(this->buffer + this->writeIndex, data, transfer);
 
-	if (this->readIndex >= this->writeIndex) {
-		std::memcpy(this->buffer + this->writeIndex, data, transfer);
-	} else {
-		unsigned long int partial = this->size - this->writeIndex;
-		if (partial > transfer) partial = transfer;
-		std::memcpy(this->buffer + this->writeIndex, data, partial);
-		if (transfer > partial)
-			std::memcpy(this->buffer, data + partial, transfer - partial);
-	}
-
-	this->writeIndex = (this->writeIndex + transfer) % this->size;
+	unsigned long int endOfBuffer = this->writeIndex + transfer;
+	if (endOfBuffer > this->bufferEndIndex) this->bufferEndIndex = endOfBuffer;
+	this->writeIndex = endOfBuffer % this->size;
 
 	return transfer;
 }
@@ -52,10 +45,13 @@ unsigned long int Ringbuffer::dataAvailable() const
 {
 	return this->readIndex <= this->writeIndex ?
 			this->writeIndex - this->readIndex :
-			this->size - this->readIndex;
+			this->bufferEndIndex - this->readIndex;
 }
 
 void Ringbuffer::pushRead(unsigned long int length)
 {
+	if (this->readIndex + length > this->size) {
+		this->bufferEndIndex = this->writeIndex;
+	}
 	this->readIndex = (this->readIndex + length) % this->size;
 }

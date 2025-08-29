@@ -15,6 +15,7 @@ private:
 	char* buffer;
 	unsigned long int writeIndex;
 	unsigned long int readIndex;
+	unsigned long int bufferEndIndex;
 
 public:
 	Ringbuffer(unsigned long int size);

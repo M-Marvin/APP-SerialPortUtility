@@ -31,6 +31,7 @@ namespace SerialOverEthernet {
 #define SOE_TCP_HEADER_LEN (SOE_TCP_PROTO_IDENT_LEN + SOE_TCP_FRAME_LEN_BYTES)	// length of the package header
 #define SOE_SERIAL_BUFFER_LEN (SOE_TCP_FRAME_MAX_LEN - SOE_TCP_HEADER_LEN) - 1	// max length of received serial data for one package
 #define SOE_TCP_STREAM_BUFFER_LEN 512UL											// ring buffer capacity for received data to transmit over serial
+#define SOE_TX_HALT_CYCLE_LIMIT 10
 
 class SOELinkHandler {
 
@@ -151,7 +152,7 @@ protected:
 
 	std::thread thread_rx;												// TCP reception thread
 	std::thread thread_tx;												// TCP transmission thread
-	bool txNothingToDo;													// true if the TX thread is currently waiting for an event to occur
+	unsigned int txHaltCycles;											// counter of cycles with no work of the TX thread, halts if limit reached
 	Ringbuffer serialData = Ringbuffer(SOE_TCP_STREAM_BUFFER_LEN);		// intermediate buffer for TCP to serial data
 	bool flowEnable = true;												// flow control for TCP transmissions
 	bool remoteFlowEnable = true;										// keeps track of the flow control signal for the remote port

@@ -56,7 +56,7 @@ void SerialOverEthernet::SOELinkHandlerVCOM::doSerialReception() {
 			if (!isAlive()) break;
 		}
 
-		this->txNothingToDo = true;
+		bool nothingToDo = this->serialData.dataAvailable() == 0;
 
 		// try to write data from ring buffer to serial
 		{
@@ -79,15 +79,15 @@ void SerialOverEthernet::SOELinkHandlerVCOM::doSerialReception() {
 					if (availableBytes > (SOE_TCP_STREAM_BUFFER_LEN / 4 * 3) && this->remoteFlowEnable)
 						sendFlowControl(this->remoteFlowEnable = false);
 
-					this->txNothingToDo = true; // we need to wait for the serial buffer to be ready to receive more data
+					nothingToDo = true; // we need to wait for the data to be transmitted
 				} else {
 					dbgprintf("[DBG] stream data: [serial] <- |network| : >%.*s<\n", written, this->serialData.dataStart());
 
 					// increment read position in buffer
 					this->serialData.pushRead(written);
-				}
 
-				this->txNothingToDo = false;
+					nothingToDo = false;
+				}
 
 			} else {
 				// if flow was disabled, reactivate now
@@ -123,21 +123,30 @@ void SerialOverEthernet::SOELinkHandlerVCOM::doSerialReception() {
 					break;
 				}
 
-				this->txNothingToDo = false;
-
+				nothingToDo = false;
 			}
 
 		}
+
+		// halt after some cycles with no work
+		if (nothingToDo) {
+			this->txHaltCycles++;
+		} else {
+			this->txHaltCycles = 0;
+		}
+		bool doHalt = this->txHaltCycles > SOE_TX_HALT_CYCLE_LIMIT;
 
 		// check for COM state event and (if no thing else to do) wait for more data
 		bool configChanged = true;
 		bool timeoutChanged = false;
 		bool comStateChanged = true;
-		bool dataReceived = this->txNothingToDo;
+		bool dataReceived = true;
 		bool dataTransmitted = !this->remoteFlowEnable;
-		if (!this->localPort->waitForEvents(configChanged, timeoutChanged, comStateChanged, dataReceived, dataTransmitted, this->txNothingToDo)) {
+		if (!this->localPort->waitForEvents(configChanged, timeoutChanged, comStateChanged, dataReceived, dataTransmitted, doHalt)) {
+			if (doHalt) this->txHaltCycles = 0;
 			continue; // when port closed / timed out / wait aborted
 		}
+		if (doHalt) this->txHaltCycles = 0;
 
 		if (comStateChanged) {
 			// notify remote port about changed COM state
@@ -186,7 +195,8 @@ void SerialOverEthernet::SOELinkHandlerVCOM::transmitSerialData(const char* data
 	SOELinkHandler::transmitSerialData(data, len);
 
 	// kick the TX thread out of waiting state if it was waiting
-	if (this->txNothingToDo) {
+	if (this->txHaltCycles) {
+		this->txHaltCycles = 0;
 		this->localPort->abortWait();
 	}
 
@@ -197,7 +207,8 @@ void SerialOverEthernet::SOELinkHandlerVCOM::updateFlowControl(bool enableTransm
 	SOELinkHandler::updateFlowControl(enableTransmit);
 
 	// kick the TX thread out of waiting state if it was waiting
-	if (this->txNothingToDo) {
+	if (this->txHaltCycles) {
+		this->txHaltCycles = 0;
 		this->localPort->abortWait();
 	}
 
@@ -212,7 +223,8 @@ void SerialOverEthernet::SOELinkHandlerVCOM::updatePortState(bool dtr, bool rts)
 	}
 
 	// kick the TX thread out of waiting state if it was waiting
-	if (this->txNothingToDo) {
+	if (this->txHaltCycles) {
+		this->txHaltCycles = 0;
 		this->localPort->abortWait();
 	}
 
