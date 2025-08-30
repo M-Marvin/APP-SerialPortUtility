@@ -111,7 +111,7 @@ protected:
 	/**
 	 * Handles serial data reception
 	 */
-	virtual void doSerialReception() = 0;
+	virtual void doSerialReception() {};
 
 	bool processPackage(const char* package, unsigned int packageLen);
 	bool transmitPackage(const char* package, unsigned int packageLen);
@@ -152,14 +152,14 @@ protected:
 
 	std::thread thread_rx;												// TCP reception thread
 	std::thread thread_tx;												// TCP transmission thread
-	unsigned int txHaltCycles;											// counter of cycles with no work of the TX thread, halts if limit reached
+	unsigned int txHaltCycles = 0;										// counter of cycles with no work of the TX thread, halts if limit reached
 	Ringbuffer serialData = Ringbuffer(SOE_TCP_STREAM_BUFFER_LEN);		// intermediate buffer for TCP to serial data
 	bool flowEnable = true;												// flow control for TCP transmissions
 	bool remoteFlowEnable = true;										// keeps track of the flow control signal for the remote port
 
 	std::mutex m_remoteReturn;											// protect return value against async writes
 	std::condition_variable cv_remoteReturn;							// waiting point for return value
-	bool remoteReturn;													// remote return value set by confirm package
+	bool remoteReturn = false;											// remote return value set by confirm package
 
 	std::mutex m_localPort;												// protect local serial port against async modification
 	std::condition_variable cv_openLocalPort;							// waiting point for TX thread when port closed
