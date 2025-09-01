@@ -1,0 +1,62 @@
+import java.awt.Desktop.Action;
+import java.io.File;
+import java.lang.reflect.Executable;
+
+import de.m_marvin.metabuild.core.tasks.FileTask;
+import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
+import de.m_marvin.metabuild.maven.Maven;
+import de.m_marvin.metabuild.maven.tasks.MavenResolveTask;
+import de.m_marvin.metabuild.maven.types.Repository;
+import de.m_marvin.metabuild.maven.types.Repository.Credentials;
+
+public class Buildfile extends CppMultiTargetBuildScript {
+	
+	String version = "1.0-SNAPSHOT";
+	
+	@Override
+	public void init() {
+		
+		projectName = "virtualserialsetup";
+		
+		// Platform windows AMD 64 Client
+		var target = makeTarget("WinAMD64", "vcom.exe");
+		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
+		target.compileCpp.includes.add(new File("../VCOM"));
+		target.compileCpp.define("PLATFORM_WIN");
+		target.linkCpp.libraries.add("SetupAPI");
+		target.linkCpp.libraries.add("NewDev");
+		target.linkCpp.options.add("-static-libgcc");
+		target.linkCpp.options.add("-static-libstdc++");
+		target.compileCpp.define("BUILD_VERSION", version);
+
+		super.init();
+		
+	}
+	
+	@Override
+	public TargetConfig makeTarget(String config, String excutableName) {
+		var target = super.makeTarget(config, excutableName);
+		
+		var copyLibs = new FileTask("copyLibs" + config, de.m_marvin.metabuild.core.tasks.FileTask.Action.COPY, target.binaryUnzip.output, new File("../bin/" + config + "/"), true);
+		copyLibs.group = "platform";
+		copyLibs.dependencyOf(target.build);
+		copyLibs.dependsOn(target.binaryUnzip);
+		
+		target.linkCpp.outputFile = new File("../bin/" + config + "/" + excutableName);
+
+		return target;
+	}
+	
+	@Override
+	public void repositories(MavenResolveTask dependencies, String config) {
+		
+		dependencies.repository(Maven.mavenLocal());
+		
+	}
+	
+	@Override
+	public void dependencies(MavenResolveTask dependencies, String config) {
+		
+	}
+	
+}

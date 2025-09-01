@@ -40,6 +40,8 @@ public:
 	/**
 	 * Creates a new client network connection handler
 	 * @param socket The socket of the client-server connection
+	 * @param hostName The name of the remote host
+	 * @param hostPort The port of the remote host
 	 * @param onDeath A callback invoked when the connection was closed
 	 */
 	SOELinkHandler(NetSocket::Socket* socket, std::string& hostName, std::string& hostPort, std::function<void(SOELinkHandler*)> onDeath);

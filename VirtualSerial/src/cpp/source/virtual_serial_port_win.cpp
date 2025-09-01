@@ -8,9 +8,9 @@
 #include "VCOM/public.h"
 #include "VCOM/serial.h"
 #include <windows.h>
-#include <winioctl.h>
 #include <stdio.h>
-#include "../public/virtual_serial_port.hpp"
+#include <string.h>
+#include "virtual_serial_port.hpp"
 
 void printError(const char* format) {
 	DWORD errorCode = GetLastError();
@@ -19,6 +19,8 @@ void printError(const char* format) {
 	if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msg, 0, NULL) > 0) {
 		printf(format, errorCode, msg); fflush(stdout);
 		LocalFree(msg);
+	} else {
+		printf(format, errorCode, "<no error message defined>\n"); fflush(stdout);
 	}
 }
 
@@ -55,30 +57,44 @@ public:
 	{
 		if (isCreated()) return false;
 
-		// TODO virtual port creation
-
+		// check if port already exists
 		this->comPortHandle = CreateFileA(this->portFileName, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+		if (this->comPortHandle != INVALID_HANDLE_VALUE) {
+			// send virtual port specific IOCTL to verify virtual port
+			unsigned long tx, rx;
+			if (!getBufferSizes(&tx, &rx) || !(tx > 0 && rx > 0)) {
+				// port exits
+				CloseHandle(this->comPortHandle);
+				return false;
+			}
+		}
 
-		if (!isCreated())
+		// open port
+		this->comPortHandle = CreateFileA(this->portFileName, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+		if (this->comPortHandle == INVALID_HANDLE_VALUE) {
+			printError("error 0x%x in ViertualSerialPort:createPort:CreateFileA: %s");
 			return false;
+		}
+
+		configure:
 
 		this->writeEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
 		if (this->writeEventHandle == NULL) {
-			printError("error %lu in VirtualSerialPort:createPort:CreateEventA: %s");
+			printError("error 0x%x in VirtualSerialPort:createPort:CreateEventA: %s");
 			removePort();
 			return false;
 		}
 
 		this->readEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
 		if (this->readEventHandle == NULL) {
-			printError("error %lu in VirtualSerialPort:createPort:CreateEventA: %s");
+			printError("error 0x%x in VirtualSerialPort:createPort:CreateEventA: %s");
 			removePort();
 			return false;
 		}
 
 		this->waitEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
 		if (this->waitEventHandle == NULL) {
-			printError("error %lu in VirtualSerialPort:createPort:CreateEventA: %s");
+			printError("error 0x%x in VirtualSerialPort:createPort:CreateEventA: %s");
 			removePort();
 			return false;
 		}
@@ -100,8 +116,6 @@ public:
 		this->writeEventHandle = NULL;
 		this->readEventHandle = NULL;
 		this->waitEventHandle = NULL;
-
-		// TODO virtual port removal
 	}
 
 	bool isCreated() override
@@ -117,7 +131,7 @@ public:
 
 		SERIAL_BAUD_RATE baudRate;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_BAUD, NULL, 0, &baudRate, sizeof(SERIAL_BAUD_RATE), &bytesReturned, NULL)) {
-			printError("error %lu in VirtualSerialPort:getConfig:DeviceIoControl(IOCTL_APPLINK_GET_BAUD): %s");
+			printError("error 0x%x in VirtualSerialPort:getConfig:DeviceIoControl(IOCTL_APPLINK_GET_BAUD): %s");
 			return false;
 		}
 
@@ -125,7 +139,7 @@ public:
 
 		SERIAL_LINE_CONTROL lineControl;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_LINE_CONTROL, NULL, 0, &lineControl, sizeof(SERIAL_LINE_CONTROL), &bytesReturned, NULL)) {
-			printError("error %lu in VirtualSerialPort:getConfig:DeviceIoControl(IOCTL_APPLINK_GET_LINE_CONTROL): %s");
+			printError("error 0x%x in VirtualSerialPort:getConfig:DeviceIoControl(IOCTL_APPLINK_GET_LINE_CONTROL): %s");
 			return false;
 		}
 
@@ -149,7 +163,7 @@ public:
 
 		SERIAL_CHARS serialChars;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_CHARS, NULL, 0, &serialChars, sizeof(SERIAL_CHARS), &bytesReturned, NULL)) {
-			printError("error %lu in VirtualSerialPort:getConfig:DeviceIoControl(IOCTL_APPLINK_GET_LINE_CONTROL): %s");
+			printError("error 0x%x in VirtualSerialPort:getConfig:DeviceIoControl(IOCTL_APPLINK_GET_LINE_CONTROL): %s");
 			return false;
 		}
 
@@ -158,7 +172,7 @@ public:
 
 		SERIAL_HANDFLOW flowControl;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_FLOW_CONTROL, NULL, 0, &flowControl, sizeof(SERIAL_HANDFLOW), &bytesReturned, NULL)) {
-			printError("error %lu in VirtualSerialPort:getConfig:DeviceIoControl(IOCTL_APPLINK_GET_FLOW_CONTROL): %s");
+			printError("error 0x%x in VirtualSerialPort:getConfig:DeviceIoControl(IOCTL_APPLINK_GET_FLOW_CONTROL): %s");
 			return false;
 		}
 
@@ -182,14 +196,14 @@ public:
 
 	unsigned long getBaud() override
 	{
-		if (!isCreated()) return 0;
+		if (!isCreated()) return false;
 
 		ULONG bytesReturned;
 
 		SERIAL_BAUD_RATE serialBaud;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_BAUD, NULL, 0, &serialBaud, sizeof(SERIAL_BAUD_RATE), &bytesReturned, NULL)) {
-			printError("error %lu in VirtualSerialPort:getBaud:DeviceIoControl(IOCTL_APPLINK_GET_BAUD): %s");
-			return 0;
+			printError("error 0x%x in VirtualSerialPort:getBaud:DeviceIoControl(IOCTL_APPLINK_GET_BAUD): %s");
+			return false;
 		}
 
 		return serialBaud.BaudRate;
@@ -203,8 +217,8 @@ public:
 
 		SERIAL_TIMEOUTS serialTimeouts;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_TIMEOUTS, NULL, 0, &serialTimeouts, sizeof(SERIAL_TIMEOUTS), &bytesReturned, NULL)) {
-			printError("error %lu in VirtualSerialPort:getTimeouts:DeviceIoControl(IOCTL_APPLINK_GET_TIMEOUTS): %s");
-			return 0;
+			printError("error 0x%x in VirtualSerialPort:getTimeouts:DeviceIoControl(IOCTL_APPLINK_GET_TIMEOUTS): %s");
+			return false;
 		}
 
 		*readTimeout = (int) serialTimeouts.ReadTotalTimeoutConstant == MAXULONG32 ? -1 : serialTimeouts.ReadTotalTimeoutConstant;
@@ -228,7 +242,7 @@ public:
 			ZeroMemory(&this->readOverlapped, sizeof(OVERLAPPED));
 			this->readOverlapped.hEvent = this->readEventHandle;
 			if (!ResetEvent(this->readEventHandle)) {
-				printError("error %lu in VirtualSerialPort:readBytes:ResetEvent: %s");
+				printError("error 0x%x in VirtualSerialPort:readBytes:ResetEvent: %s");
 				return -2;
 			}
 
@@ -237,7 +251,7 @@ public:
 
 				// If not completed yet, check if error
 				if (GetLastError() != ERROR_IO_PENDING) {
-					printError("error %lu in VirtualSerialPort:readBytes:ReadFile: %s");
+					printError("error 0x%x in VirtualSerialPort:readBytes:ReadFile: %s");
 					return -2;
 				}
 
@@ -258,7 +272,7 @@ public:
 			this->readOverlapped.hEvent = INVALID_HANDLE_VALUE;
 			if (GetLastError() == ERROR_OPERATION_ABORTED)
 				return -2; // port closed
-			printError("error %lu in VirtualSerialPort:readBytes:GetOverlappedResult: %s");
+			printError("error 0x%x in VirtualSerialPort:readBytes:GetOverlappedResult: %s");
 			return -2;
 		}
 		this->readOverlapped.hEvent = INVALID_HANDLE_VALUE;
@@ -281,7 +295,7 @@ public:
 			ZeroMemory(&this->writeOverlapped, sizeof(OVERLAPPED));
 			this->writeOverlapped.hEvent = this->writeEventHandle;
 			if (!ResetEvent(this->writeEventHandle)) {
-				printError("error %lu in VirtualSerialPort:writeBytes:ResetEvent: %s");
+				printError("error 0x%x in VirtualSerialPort:writeBytes:ResetEvent: %s");
 				return -2;
 			}
 
@@ -290,7 +304,7 @@ public:
 
 				// If not completed yet, check if error
 				if (GetLastError() != ERROR_IO_PENDING) {
-					printError("error %lu in VirtualSerialPort:writeBytes:WriteFile: %s");
+					printError("error 0x%x in VirtualSerialPort:writeBytes:WriteFile: %s");
 					return -2;
 				}
 
@@ -311,12 +325,47 @@ public:
 			this->writeOverlapped.hEvent = INVALID_HANDLE_VALUE;
 			if (GetLastError() == ERROR_OPERATION_ABORTED)
 				return -2; // port closed
-			printError("error %lu in VirtualSerialPort:writeBytes:GetOverlappedResult: %s");
+			printError("error 0x%x in VirtualSerialPort:writeBytes:GetOverlappedResult: %s");
 			return -2;
 		}
 		this->writeOverlapped.hEvent = INVALID_HANDLE_VALUE;
 
 		return writtenBytes;
+	}
+
+	bool getBufferSizes(unsigned long* txBufferSize, unsigned long* rxBufferSize) override
+	{
+		if (!isCreated()) return false;
+
+		ULONG bytesReturned;
+
+		BUFFER_SIZES bufferSizes;
+		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_BUFFER_SIZES, NULL, 0, &bufferSizes, sizeof(BUFFER_SIZES), &bytesReturned, NULL)) {
+			printError("error 0x%x in VirtualSerialPort:getPortState:DeviceIoControl(IOCTL_APPLINK_GET_BUFFER_SIZES): %s");
+			return false;
+		}
+
+		*txBufferSize = bufferSizes.TransmitSize;
+		*rxBufferSize = bufferSizes.ReceiveSize;
+		return true;
+	}
+
+	bool setBufferSizes(unsigned long txBufferSize, unsigned long rxBufferSize) override
+	{
+		if (!isCreated()) return false;
+
+		ULONG bytesReturned;
+
+		BUFFER_SIZES bufferSizes;
+		bufferSizes.TransmitSize = txBufferSize;
+		bufferSizes.ReceiveSize = rxBufferSize;
+
+		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_SET_BUFFER_SIZES, &bufferSizes, sizeof(BUFFER_SIZES), NULL, 0, &bytesReturned, NULL)) {
+			printError("error 0x%x in VirtualSerialPort:getPortState:DeviceIoControl(IOCTL_APPLINK_SET_BUFFER_SIZES): %s");
+			return false;
+		}
+
+		return true;
 	}
 
 	bool getPortState(bool& dsr, bool& cts) override
@@ -327,8 +376,8 @@ public:
 
 		ULONG comStatus;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_COMSTATUS, NULL, 0, &comStatus, sizeof(ULONG), &bytesReturned, NULL)) {
-			printError("error %lu in VirtualSerialPort:getPortState:DeviceIoControl(IOCTL_APPLINK_GET_COMSTATUS): %s");
-			return 0;
+			printError("error 0x%x in VirtualSerialPort:getPortState:DeviceIoControl(IOCTL_APPLINK_GET_COMSTATUS): %s");
+			return false;
 		}
 
 		dsr = comStatus & SERIAL_DSR_STATE;
@@ -344,8 +393,8 @@ public:
 
 		ULONG comStatus;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_COMSTATUS, NULL, 0, &comStatus, sizeof(ULONG), &bytesReturned, NULL)) {
-			printError("error %lu in VirtualSerialPort:setManualPortState:DeviceIoControl(IOCTL_APPLINK_GET_COMSTATUS): %s");
-			return 0;
+			printError("error 0x%x in VirtualSerialPort:setManualPortState:DeviceIoControl(IOCTL_APPLINK_GET_COMSTATUS): %s");
+			return false;
 		}
 
 		if (dtr)
@@ -359,8 +408,8 @@ public:
 			comStatus &= ~SERIAL_RTS_STATE;
 
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_SET_COMSTATUS, &comStatus, sizeof(ULONG), NULL, 0, &bytesReturned, NULL)) {
-			printError("error %lu in VirtualSerialPort:setManualPortState:DeviceIoControl(IOCTL_APPLINK_SET_COMSTATUS): %s");
-			return 0;
+			printError("error 0x%x in VirtualSerialPort:setManualPortState:DeviceIoControl(IOCTL_APPLINK_SET_COMSTATUS): %s");
+			return false;
 		}
 
 		return true;
@@ -396,7 +445,7 @@ public:
 			ZeroMemory(&this->waitOverlapped, sizeof(OVERLAPPED));
 			this->waitOverlapped.hEvent = this->waitEventHandle;
 			if (!ResetEvent(this->waitEventHandle)) {
-				printError("error %lu in VirtualSerialPort:waitForEvents:ResetEvent: %s");
+				printError("error 0x%x in VirtualSerialPort:waitForEvents:ResetEvent: %s");
 				return false;
 			}
 
@@ -405,7 +454,7 @@ public:
 
 				// If not completed yet, check if error
 				if (GetLastError() != ERROR_IO_PENDING) {
-					printError("error %lu in VirtualSerialPort:waitForEvents:WaitCommEvent: %s");
+					printError("error 0x%x in VirtualSerialPort:waitForEvents:WaitCommEvent: %s");
 					return false;
 				}
 
@@ -437,7 +486,7 @@ public:
 			this->waitOverlapped.hEvent = INVALID_HANDLE_VALUE;
 			if (GetLastError() == ERROR_OPERATION_ABORTED)
 				return false; // port closed
-			printError("error %lu in VirtualSerialPort:waitForEvents:GetOverlappedResult: %s");
+			printError("error 0x%x in VirtualSerialPort:waitForEvents:GetOverlappedResult: %s");
 			return false;
 		}
 		this->waitOverlapped.hEvent = INVALID_HANDLE_VALUE;

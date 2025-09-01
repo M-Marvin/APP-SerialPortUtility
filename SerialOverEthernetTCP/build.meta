@@ -126,8 +126,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 			dependencies.implementation("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + ":headers:zip:1.0-SNAPSHOT");	
 		}
 		
-		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + "::zip:1.1.2-SNAPSHOT");
-		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":headers:zip:1.1.2-SNAPSHOT");
+		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + "::zip:1.1.2");
+		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":headers:zip:1.1.2");
 		
 	}
 	

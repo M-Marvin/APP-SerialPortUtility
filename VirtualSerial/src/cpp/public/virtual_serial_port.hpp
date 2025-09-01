@@ -76,6 +76,25 @@ public:
 	virtual long long int writeBytes(const char* buffer, unsigned long bufferLength, bool wait = true) = 0;
 
 	/**
+	 * Reads the current size of the internal buffers of the virtual port.
+	 *
+	 * @param txBufferSize The length in bytes of the transmission buffer
+	 * @param rxBufferSize The length in bytes of the reception buffer
+	 * @return true if the buffer sizes could be successfully read, false otherwise
+	 */
+	virtual bool getBufferSizes(unsigned long* txBufferSize, unsigned long* rxBufferSize) = 0;
+
+	/**
+	 * Sets the current size of the internal buffers of the virtual port.
+	 * This will clear the current buffers.
+	 *
+	 * @param txBufferSize The length in bytes of the transmission buffer
+	 * @param rxBufferSize The length in bytes of the reception buffer
+	 * @return true if the buffer sizes could be successfully set, false otherwise
+	 */
+	virtual bool setBufferSizes(unsigned long txBufferSize, unsigned long rxBufferSize) = 0;
+
+	/**
 	 * Assigns the current pin input states of the serial port:
 	 *
 	 * Then input and output pins are:

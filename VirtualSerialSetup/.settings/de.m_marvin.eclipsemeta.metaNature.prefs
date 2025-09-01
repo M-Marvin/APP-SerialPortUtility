@@ -1,0 +1,4 @@
+activeConfig=win_amd64
+eclipse.preferences.version=1
+metaTaskConfig/lin_amd64=\:compileCppLinAMD64;\:cppDependenciesLinAMD64
+metaTaskConfig/win_amd64=\:cppDependenciesWinAMD64;\:compileCppWinAMD64
