@@ -66,7 +66,7 @@ I don't know the exact C++ Standard they need to support, but any recently modde
 
 If only an specific platform has to be build, two options are available:
 - uncommenting the code blocks in the init() section of all build files which are labled with that version
-- calling the platform specific build tasks in each sub-project manualy (publishLocal*platform* for libraries and build*platform* for applications)
+- calling the platform specific build tasks in each sub-project manualy (publishLocal*Platform* for libraries and build*Platform* for applications)
   The correct order to build everything would be: SerialPortAccess > VirtualSerial > SerialOverEthernet | VirtualSerialSetup | TerminalSerialAccess | JSerialPortAccess
   (the first two have a strict dependency, everything else just needs them as dependency)
 
