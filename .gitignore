@@ -13,3 +13,4 @@
 *.tlog
 /VCOM/VCOM Package/x64
 /VCOM/.vs
+/VirtualSerialSetup/build

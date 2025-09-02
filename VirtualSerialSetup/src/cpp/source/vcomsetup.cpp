@@ -5,6 +5,13 @@
  *      Author: marvi
  */
 
+#ifndef BUILD_VERSION
+#define BUILD_VERSION N/A
+#endif
+// neccessary because of an weird toolchain bug not allowing quotes in -D flags
+#define STRINGIZE(x) #x
+#define ASSTRING(x) STRINGIZE(x)
+
 #include "vcom.hpp"
 
 int mainCPP(std::string& exec, std::vector<std::string>& args) {

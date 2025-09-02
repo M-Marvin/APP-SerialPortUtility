@@ -20,8 +20,6 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		
 		projectName = "virtualserial";
 
-		importBuild("libcom0com", new File("../LibCom0Com"));
-		
 		var target = makeTarget("WinAMD64", "libvirtualserial_x64.dll");
 		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
 		target.compileCpp.includes.add(new File("../VCOM"));

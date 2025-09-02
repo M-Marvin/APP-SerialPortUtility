@@ -26,8 +26,8 @@ int mainCPP(std::string& exec, std::vector<std::string>& args);
  */
 int main(int argc, const char** argv);
 
-bool installPort(std::string& portName);
-bool removePort(std::string& portName);
+bool installPort(std::string portName);
+bool removePort(std::string portName);
 bool removeAllPorts();
 bool updateDriver();
 bool installDriver();

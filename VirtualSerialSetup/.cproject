@@ -19,9 +19,9 @@
 		<pathentry include="D:/Programms/toolchains/mingw64-msvcrt/lib/gcc/x86_64-w64-mingw32/14.2.0/include" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/mingw64-msvcrt/lib/gcc/x86_64-w64-mingw32/14.2.0/include-fixed" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/mingw64-msvcrt/x86_64-w64-mingw32/include" kind="inc" path="" system="true"/>
-		<pathentry include="E:/GitHub/APP-SerialPortUtility/VirtualSerialSetup/build/WinAMD64/includeHeaders" kind="inc" path="" system="true"/>
 		<pathentry include="E:/GitHub/APP-SerialPortUtility/VirtualSerialSetup/src/cpp/header" kind="inc" path="" system="true"/>
+		<pathentry include="E:/GitHub/APP-SerialPortUtility/VCOM" kind="inc" path="" system="true"/>
 		<pathentry kind="mac" name="PLATFORM_WIN" path="" value=""/>
-		<pathentry kind="mac" name="BUILD_VERSION" path="" value="2.2"/>
+		<pathentry kind="mac" name="BUILD_VERSION" path="" value="1.0-SNAPSHOT"/>
 	</storageModule>
 </cproject>
