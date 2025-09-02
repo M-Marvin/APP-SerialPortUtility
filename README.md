@@ -30,6 +30,14 @@ Also allows two modes of operation for user input:
 * line based, enter and edit content before sending with enter, if an LF or CR is appended to the text can also be configured
 * raw input mode, only available on windows, each key typed is transmitted over serial instantly
 
+## Virtual Serial Ports
+
+The utilities contain an virtual serial port driver which allows the creation of virtual serial ports.
+These ports can be used for an arbitrary application to expose an virtual port to an another application, which can connect to it like to any other serial prot.
+The backing application of the virtual port receives all data and configurations which are applied to the virtual port.
+
+NOTE: The virtual serial functionality is not yet supported on linux
+
 ## Serial Over Ethernet/IP
 
 An low latancy real time serial over ethernet protocoll to allow an remote serial port to be linked to an local on over ethernet, while keeping the latency even for small single character messages as low as possible.
@@ -38,11 +46,30 @@ The system is designed for low latency and was originaly made to controll device
 It disables all TCP buffering to ensure minimal delay when sending serial data.
 Both remote and local serial ports can be fully configured independently from the client.
 
-It does support hardware flow control and software flow controll (XON/XOFF) is implemented by simply ignoring these characters and passing them trough.
+In combination with the virtual port utility, it is also possible to create an virtual serial port and bind it to an remote port using SOE.
+This allows configuration which are applied to the virtual port trough an application to be automatically applied to the remote port as well, no setup requierd.
+
+It does support hardware flow control and software flow controll includings the neccessary IOCTL codes.
+It does not however support special functions like EOF and BREAK characters.
 
 **IMPORTAND: The protocoll does not implement any kind of encryption or security features, it was purely developed for usage in local networks.**
 
-## Note on Com0Com
+# Building Everything
 
-The repository contains some files from https://sourceforge.net/u/vfrolov/profile located in the folder "Com0Com"
-These are not part of this project and only for testing my own code.
+The project utilizes an custom build system, but it does not require any additonals setup except an moddern Java 17+ JDK (an JRE will not work!)
+It also requires compilers for the different platforms to be available, and symbolic links which link to the correct compilers:
+- win-amd-64-g++ - The windows AMD64 compiler
+- lin-amd-64-g++ - The linux AMD64 compiler
+- lin-arm-64-g++ - The linux ARM64 compiler
+- lin-arm-32-g++ - The linux ARM32 compiler
+I don't know the exact C++ Standard they need to support, but any recently moddern compiler should work.
+
+If only an specific platform has to be build, two options are available:
+- uncommenting the code blocks in the init() section of all build files which are labled with that version
+- calling the platform specific build tasks in each sub-project manualy (publishLocal*platform* for libraries and build*platform* for applications)
+  The correct order to build everything would be: SerialPortAccess > VirtualSerial > SerialOverEthernet | VirtualSerialSetup | TerminalSerialAccess | JSerialPortAccess
+  (the first two have a strict dependency, everything else just needs them as dependency)
+
+To build everything for every platform, it would be enough to run buildAll in the BuildAll sub-directory.
+
+All tasks are run in the sub-directory of the project using ./metaw *task name*
