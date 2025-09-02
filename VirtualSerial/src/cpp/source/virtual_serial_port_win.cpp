@@ -57,7 +57,7 @@ public:
 	{
 		if (isCreated()) return false;
 
-		// check if port already exists
+		// open port
 		this->comPortHandle = CreateFileA(this->portFileName, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
 		if (this->comPortHandle != INVALID_HANDLE_VALUE) {
 			// send virtual port specific IOCTL to verify virtual port
@@ -68,15 +68,6 @@ public:
 				return false;
 			}
 		}
-
-		// open port
-		this->comPortHandle = CreateFileA(this->portFileName, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-		if (this->comPortHandle == INVALID_HANDLE_VALUE) {
-			printError("error 0x%x in ViertualSerialPort:createPort:CreateFileA: %s");
-			return false;
-		}
-
-		configure:
 
 		this->writeEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
 		if (this->writeEventHandle == NULL) {

@@ -1,9 +1,11 @@
-import java.awt.Desktop.Action;
 import java.io.File;
 import java.lang.reflect.Executable;
 
+import de.m_marvin.metabuild.core.tasks.CommandLineTask;
 import de.m_marvin.metabuild.core.tasks.FileTask;
+import de.m_marvin.metabuild.core.tasks.FileTask.Action;
 import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
+import de.m_marvin.metabuild.cpp.tasks.CppCompileTask;
 import de.m_marvin.metabuild.maven.Maven;
 import de.m_marvin.metabuild.maven.tasks.MavenResolveTask;
 import de.m_marvin.metabuild.maven.types.Repository;
@@ -28,7 +30,21 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.options.add("-static-libgcc");
 		target.linkCpp.options.add("-static-libstdc++");
 		target.compileCpp.define("BUILD_VERSION", version);
-
+		
+		// compile and include the manifest file to request admin privileges
+		var compileResWinAMD64 = new CommandLineTask("compileResWinAMD64");
+		compileResWinAMD64.group = "platformCompile";
+		compileResWinAMD64.arguments.add("src/resources/resources.rc");
+		compileResWinAMD64.arguments.add("-o");
+		compileResWinAMD64.arguments.add(new File(target.compileCpp.objectsDir, "resources.o").getPath());
+		compileResWinAMD64.executable = new File("windres");
+		compileResWinAMD64.dependencyOf(target.linkCpp);
+		compileResWinAMD64.dependsOn(target.compileCpp);
+		
+		// copy driver files from VCOM project into output directory
+		var compileDriverWinAMD64 = new FileTask("copyDriverWinAMD64", Action.COPY, new File("../VCOM/x64/Release/VCOM"), new File("../bin/WinAMD64"), true);
+		compileDriverWinAMD64.dependencyOf(target.build);
+		
 		super.init();
 		
 	}

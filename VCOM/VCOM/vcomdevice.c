@@ -53,6 +53,30 @@ void DeviceCleanup(WDFDEVICE deviceHandle)
 {
 
 	DEVICE_CONTEXT* deviceContext = GetDeviceContext(deviceHandle);
+	NTSTATUS                status;
+	WDFKEY                  deviceMapKey = NULL;
+	UNICODE_STRING          pdoString = { 0 };
+
+	DECLARE_CONST_UNICODE_STRING(deviceSubkey, SERIAL_DEVICE_MAP);
+
+	// open device map key
+	status = WdfDeviceOpenDevicemapKey(deviceHandle, &deviceSubkey, KEY_SET_VALUE, WDF_NO_OBJECT_ATTRIBUTES, &deviceMapKey);
+	if (status != STATUS_SUCCESS) {
+		dbgerrprintf("[!] VCOM WdfDeviceOpenDevicemapKey failed: NTSTATUS 0x%x\n", status);
+		goto end;
+	}
+	
+	// remove lagacy hardware key
+	RtlInitUnicodeString(&pdoString, deviceContext->PdoName);
+	status = WdfRegistryRemoveValue(deviceMapKey, &pdoString);
+	if (status != STATUS_SUCCESS) {
+		dbgerrprintf("[!] VCOM WdfRegistryRemoveValue failed: NTSTATUS 0x%x\n", status);
+		WdfRegistryClose(deviceMapKey);
+		goto end;
+	}
+
+	WdfRegistryClose(deviceMapKey);
+	end:
 
 	// cleanup buffers
 	CleanupBuffers(&deviceContext->BufferContext);
@@ -141,6 +165,47 @@ NTSTATUS DeviceConfigure(DEVICE_CONTEXT* context)
 	}
 	
 	// TODO Lagacy Hardware Key
+	{
+
+		WDF_OBJECT_ATTRIBUTES   memoryAttributes;
+		WDFMEMORY               memory;
+		WDFKEY                  deviceMapKey = NULL;
+		UNICODE_STRING          pdoString = { 0 };
+
+		DECLARE_CONST_UNICODE_STRING(deviceSubkey, SERIAL_DEVICE_MAP);
+		
+		// configure attributes for pdo name memory object
+		WDF_OBJECT_ATTRIBUTES_INIT(&memoryAttributes);
+		memoryAttributes.ParentObject = deviceHandle;
+
+		// get physical device object (pdo) name
+		status = WdfDeviceAllocAndQueryProperty(deviceHandle, DevicePropertyPhysicalDeviceObjectName, NonPagedPoolNx, &memoryAttributes, &memory);
+		if (status != STATUS_SUCCESS) {
+			dbgerrprintf("[!] VCOM WdfDeviceAllocAndQueryProperty failed: NTSTATUS 0x%x\n", status);
+			return status;
+		}
+		context->PdoName = WdfMemoryGetBuffer(memory, NULL);
+
+		dbgprintf("[!] VCOM port pdo name: %ws\n", context->PdoName);
+		
+		// open device map registry key
+		status = WdfDeviceOpenDevicemapKey(deviceHandle, &deviceSubkey, KEY_SET_VALUE, WDF_NO_OBJECT_ATTRIBUTES, &deviceMapKey);
+		if (status != STATUS_SUCCESS) {
+			dbgerrprintf("[!] VCOM WdfDeviceOpenDevicemapKey failed: NTSTATUS 0x%x\n", status);
+			return status;
+		}
+
+		// set lagacy hardware key
+		RtlInitUnicodeString(&pdoString, context->PdoName);
+		status = WdfRegistryAssignUnicodeString(deviceMapKey, &pdoString, &comPortName);
+		if (status != STATUS_SUCCESS) {
+			dbgerrprintf("[!] VCOM WdfRegistryAssignUnicodeString failed: NTSTATUS 0x%x\n", status);
+			WdfRegistryClose(deviceMapKey);
+			return status;
+		}
+
+		WdfRegistryClose(deviceMapKey);
+	}
 
 	// create new IO queue
 	status = CreateIOQueue(context);

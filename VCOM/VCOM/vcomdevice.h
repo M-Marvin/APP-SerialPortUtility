@@ -10,6 +10,7 @@ typedef struct
 {
 	
     WDFDEVICE           Device;
+    PWSTR               PdoName;            // Physical Device Object name
 
     ULONG               BaudRate;           // The baud rate currently configured
     SERIAL_LINE_CONTROL LineControl;        // The line control register currently configured (stop, data, parity)
@@ -25,6 +26,7 @@ typedef struct
 
 WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(DEVICE_CONTEXT, GetDeviceContext);
 
+#define SERIAL_DEVICE_MAP           L"SERIALCOMM"
 #define REG_VALUENAME_PORNAME L"PortName"
 
 /// <summary>

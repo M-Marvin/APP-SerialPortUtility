@@ -23,6 +23,14 @@
 #include <functional>
 #include <string.h>
 
+#define VCOM_DRIVER_INF "VCOM.inf"
+#define INF_SECTION_HWID "standard.nt"
+
+#define PROTS_ENUM_KEY "SYSTEM\\CurrentControlSet\\Enum\\ROOT\\PORTS"
+#define PORT_PARAMETERS_KEY "\\Device Parameters"
+#define PORT_HARDWARE_ID_KEY "HardwareID"
+#define PORT_NAME_KEY "PortName"
+
 void printError(int errorCode, const char* format) {
 	LPSTR msg;
 	if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msg, 0, NULL) > 0) {
@@ -38,17 +46,6 @@ void printError(const char* format) {
 	if (errorCode == 0) return;
 	printError(errorCode, format);
 }
-
-#define PORTS_ENUM_KEY "SYSTEM\\CurrentControlSet\\Enum\\ROOT\\PORTS"
-#define PORTS_PROP_NAME_SUBKEY "\\Device Parameters"
-#define PORTS_PROP_NAME_VALUE "PortName"
-#define PORTS_PROP_HWID_VALUE "HardwareID"
-
-
-#define PORTS_PROP_NAME_KEY "Device Parameters"
-
-#define VCOM_DRIVER_INF "VCOM.inf"
-#define INF_SECTION_HWID "standard.nt"
 
 bool findINFClassAndHWID(std::string* fullInfPath, std::string* hardwareID, std::string* vcomClassName, GUID* vcomClassGUID) {
 
@@ -183,7 +180,7 @@ bool removePort(std::string portName)
 			// read port name property
 			char portNameValue[256] = {0};
 			DWORD portNameValueLen = 256;
-			LSTATUS status = RegGetValueA(portKeyHandle, "", PORTS_PROP_NAME_VALUE, RRF_RT_REG_SZ, NULL, portNameValue, &portNameValueLen);
+			LSTATUS status = RegGetValueA(portKeyHandle, "", PORT_NAME_KEY, RRF_RT_REG_SZ, NULL, portNameValue, &portNameValueLen);
 			if (status != ERROR_SUCCESS) {
 				RegCloseKey(portKeyHandle);
 
@@ -219,6 +216,70 @@ bool removePort(std::string portName)
 
 }
 
+bool tryNameFirstUnnamed(std::string portName, std::string vcomHardwareID)
+{
+
+	// open ports enum key in registry
+	HKEY portsKeyHandle;
+	LSTATUS status = RegOpenKeyA(HKEY_LOCAL_MACHINE, PROTS_ENUM_KEY, &portsKeyHandle);
+	if (status != ERROR_SUCCESS) {
+		printError(status, "error 0x%x in drvsetup:tryNameFirstUnnamed:RegOpenKeyA: %s");
+		return false;
+	}
+
+	DWORD portKeyIndex = 0;
+	do {
+
+		// request next entry key
+		char portIndexName[256] = {0};
+		DWORD portIndexNameLen = 256;
+		status = RegEnumKeyExA(portsKeyHandle, portKeyIndex++, portIndexName, &portIndexNameLen, NULL, NULL, NULL, NULL);
+		if (status != ERROR_SUCCESS) continue;
+
+		// read hardware id
+		char hardwareId[256] = {0};
+		DWORD hardwareIdLen = 256;
+		status = RegGetValueA(portsKeyHandle, portIndexName, PORT_HARDWARE_ID_KEY, RRF_RT_REG_MULTI_SZ, NULL, hardwareId, &hardwareIdLen);
+		if (status != ERROR_SUCCESS) continue;
+
+		// check if correct hardware id
+		if (std::string(hardwareId) != vcomHardwareID) continue;
+
+		// open or create device parameters key
+		HKEY portPropertiesHandle;
+		char propertiesSubkey[strlen(portIndexName) + strlen(PORT_PARAMETERS_KEY) + 1] = {0};
+		strcat(propertiesSubkey, portIndexName);
+		strcat(propertiesSubkey, PORT_PARAMETERS_KEY);
+		status = RegCreateKeyExA(portsKeyHandle, propertiesSubkey, 0, NULL, 0, KEY_SET_VALUE | KEY_QUERY_VALUE, NULL, &portPropertiesHandle, NULL);
+		if (status != ERROR_SUCCESS) continue;
+
+		// check if an port name is already set
+		char currentPortName[256] = {0};
+		DWORD currentPortNameLen = 256;
+		status = RegGetValueA(portPropertiesHandle, "", PORT_NAME_KEY, RRF_RT_REG_SZ, NULL, currentPortName, &currentPortNameLen);
+		if (status == ERROR_SUCCESS) {
+			RegCloseKey(portPropertiesHandle);
+			continue; // skip if port already has a name
+		}
+
+		// set the new port name
+		status = RegSetKeyValueA(portPropertiesHandle, "", PORT_NAME_KEY, REG_SZ, portName.c_str(), portName.length() + 1);
+		if (status != ERROR_SUCCESS) {
+			RegCloseKey(portPropertiesHandle);
+			continue;
+		}
+
+		RegCloseKey(portPropertiesHandle);
+		RegCloseKey(portsKeyHandle);
+		return true;
+
+	} while (status != ERROR_NO_MORE_ITEMS);
+
+	RegCloseKey(portsKeyHandle);
+	return false;
+
+}
+
 bool installPort(std::string portName)
 {
 
@@ -227,6 +288,11 @@ bool installPort(std::string portName)
 	std::string vcomClassName;
 	std::string vcomHardwareID;
 	if (!findINFClassAndHWID(&fullInfPath, &vcomHardwareID, &vcomClassName, &vcomClassGUID)) return false;
+
+	if (tryNameFirstUnnamed(portName, vcomHardwareID)) {
+		printf("[i] new port installed\n");
+		return true;
+	}
 
 	printf("[i] install new port %s\n", portName.c_str());
 
@@ -261,53 +327,9 @@ bool installPort(std::string portName)
 		return false;
 	}
 
-//	// test
-//	HKEY portKeyHandle;
-//	LSTATUS status = RegOpenKeyA(HKEY_LOCAL_MACHINE, "SYSTEM\CurrentControlSet\Enum\ROOT\PORTS\*port dev id*", &portKeyHandle);
-//	if (status != ERROR_SUCCESS) {
-//
-//	}
-//
-//	HKEY portKeyParameterHandle;
-//	status = RegCreateKeyExA(portKeyHandle, "Device Parameters", NULL, NULL, NULL, 0, 0, portKeyParameterHandle, NULL);
-//	if (status != ERROR_SUCCESS) {
-//
-//	}
-//
-//	RegCloseKey(portKeyParameterHandle);
-//	RegCloseKey(portKeyHandle);
-
-//	{
-//
-//		char hardwareIdValue[256] = {0};
-//		DWORD hardwareIdValueLen = 256;
-//		if (!SetupDiGetDeviceRegistryPropertyA(portInfoSet, &portInfoData, SPDRP_HARDWAREID, NULL, (unsigned char*) hardwareIdValue, hardwareIdValueLen, &hardwareIdValueLen)) {
-//			printError("error 0x%x in drvsetup:installPort:SetupDiGetDeviceRegistryPropertyA(SPDRP_HARDWAREID): %s");
-//
-//		}
-//
-//	}
-
-	// open device registry key
-	// DIREG_DEV is requivalent to HKLM\SYSTEM\CurrentControlSet\Enum\ROOT\PORTS\*port dev id*\Device Parameters
-	HKEY portKeyHandle = SetupDiOpenDevRegKey(portInfoSet, &portInfoData, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_SET_VALUE | KEY_CREATE_SUB_KEY );
-	if (portKeyHandle == INVALID_HANDLE_VALUE) {
-		printError("error 0x%x in drvsetup:installPort:SetupDiOpenDevRegKey(): %s");
-		SetupDiDestroyDeviceInfoList(portInfoSet);
-		return false;
+	if (!tryNameFirstUnnamed(portName, vcomHardwareID)) {
+		printf("[!] unable to configure port name\n");
 	}
-
-	// write port name property
-	LSTATUS status = RegSetKeyValueA(portKeyHandle, "", PORTS_PROP_NAME_VALUE, RRF_RT_REG_SZ, portName.c_str(), portName.length() + 1);
-	if (status != ERROR_SUCCESS) {
-		printError(status, "error 0x%x in drvsetup:installPort:RegSetKeyValueA: %s");
-		RegCloseKey(portKeyHandle);
-		SetupDiDestroyDeviceInfoList(portInfoSet);
-		return false;
-	}
-
-	RegCloseKey(portKeyHandle);
-	SetupDiDestroyDeviceInfoList(portInfoSet);
 
 	printf("[i] new port installed\n");
 	return true;
@@ -332,11 +354,81 @@ bool updateDriver()
 	return true;
 }
 
+// for some reason you can not link against DiInstallDriverA directly, so we have to locate it manually
+typedef BOOL (WINAPI *DiInstallDriverAProto)(	HWND hwndParent OPTIONAL,
+												LPCSTR InfPath,
+												DWORD Flags,
+												PBOOL NeedReboot OPTIONAL
+												);
+#define DIINSTALLDRIVER "DiInstallDriverA"
+typedef BOOL (WINAPI *DiUninstallDriverAProto)(	HWND hwndParent OPTIONAL,
+												LPCSTR InfPath,
+												DWORD Flags,
+												PBOOL NeedReboot OPTIONAL
+												);
+#define DIUNINSTALLDRIVER "DiUninstallDriverA"
+
 bool installDriver()
 {
-	return false;
+	std::string fullInfPath;
+	if (!findINFClassAndHWID(&fullInfPath, NULL, NULL, NULL)) return false;
+
+	printf("[i] installing driver from local INF file\n");
+
+	HMODULE newdevModule = LoadLibraryA("newdev.dll");
+	if (newdevModule == INVALID_HANDLE_VALUE) {
+		printf("internal error, unable to load newdev.dll\n");
+		return false;
+	}
+	DiInstallDriverAProto InstallFn = (DiInstallDriverAProto) GetProcAddress(newdevModule, DIINSTALLDRIVER);
+	if (InstallFn == 0) {
+		printf("internal error, unable to locate DiInstallDriverA function\n");
+		FreeLibrary(newdevModule);
+		return false;
+	}
+
+	if (!InstallFn(NULL, fullInfPath.c_str(), 0, NULL)) {
+		printError("error 0x%x in drvsetup:installDriver:DiInstallDriverA: %s");
+		return false;
+	}
+
+	FreeLibrary(newdevModule);
+
+	printf("[i] driver installed\n");
+	return true;
 }
 bool uninstallDriver()
 {
-	return false;
+	std::string fullInfPath;
+	if (!findINFClassAndHWID(&fullInfPath, NULL, NULL, NULL)) return false;
+
+	printf("[i] NOTE: un-installing the driver does leave the virtual ports registered, run with -removeall to remove all ports as well\n");
+
+	printf("[i] un-installing driver from local INF file\n");
+
+	HMODULE newdevModule = LoadLibraryA("newdev.dll");
+	if (newdevModule == INVALID_HANDLE_VALUE) {
+		printf("internal error, unable to load newdev.dll\n");
+		return false;
+	}
+	DiUninstallDriverAProto UninstallFn = (DiUninstallDriverAProto) GetProcAddress(newdevModule, DIUNINSTALLDRIVER);
+	if (UninstallFn == 0) {
+		printf("internal error, unable to locate DiUninstallDriverA function\n");
+		FreeLibrary(newdevModule);
+		return false;
+	}
+
+	if (!UninstallFn(NULL, fullInfPath.c_str(), 0, NULL)) {
+		if (GetLastError() == ERROR_NOT_FOUND) {
+			printf("[i] driver not installed\n");
+			return true;
+		}
+		printError("error 0x%x in drvsetup:installDriver:DiUninstallDriverA: %s");
+		return false;
+	}
+
+	FreeLibrary(newdevModule);
+
+	printf("[i] driver un-installed\n");
+	return true;
 }

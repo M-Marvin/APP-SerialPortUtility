@@ -46,7 +46,7 @@ int mainCPP(std::string& exec, std::vector<std::string>& args) {
 		} else if (*flag == "-drvinstall") {
 			if (!installDriver()) return -1;
 		} else if (*flag == "-drvuninstall") {
-			if (!installDriver()) return -1;
+			if (!uninstallDriver()) return -1;
 		} else if (*flag == "-update") {
 			if (!updateDriver()) return -1;
 		}
