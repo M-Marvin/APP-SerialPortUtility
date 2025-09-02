@@ -1,6 +1,7 @@
 import java.io.File;
 
 import de.m_marvin.metabuild.core.tasks.FileTask;
+import de.m_marvin.metabuild.core.tasks.ZipTask;
 import de.m_marvin.metabuild.core.tasks.FileTask.Action;
 import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
 import de.m_marvin.metabuild.maven.Maven;
@@ -15,11 +16,18 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	
 	String version = "1.0-SNAPSHOT";
 	
+	public ZipTask driverZipWinAMD64;
+	
 	@Override
 	public void init() {
 		
 		projectName = "virtualserial";
 
+		driverZipWinAMD64 = new ZipTask("driverZipWinAMD64");
+		driverZipWinAMD64.group = "platformPackaging";
+		driverZipWinAMD64.entries.put(new File("../VCOM/x64/Release/VCOM"), "");
+		driverZipWinAMD64.archive = new File("build/WinAMD64/bin/libvirtualserial_x64-driver.zip");
+		
 		var target = makeTarget("WinAMD64", "libvirtualserial_x64.dll");
 		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
 		target.compileCpp.includes.add(new File("../VCOM"));
@@ -28,6 +36,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.options.add("-shared");
 		target.linkCpp.options.add("-static-libgcc");
 		target.linkCpp.options.add("-static-libstdc++");
+
+		driverZipWinAMD64.dependencyOf(target.build);
 		
 		super.init();
 		
@@ -52,17 +62,19 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	@Override
 	public void dependencies(MavenResolveTask dependencies, String config) {
 		
-		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":2.3-SNAPSHOT::zip");
-		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":2.3-SNAPSHOT:headers:zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3-SNAPSHOT::zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3-SNAPSHOT:headers:zip");
 		
 	}
 
 	@Override
 	public void publishing(MavenPublishTask publish, MavenPublishTask publishLocal, String config) {
 		
-		publishLocal.coordinates("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + ":" + version);
+		publishLocal.coordinates("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":" + version);
 		
-		publish.coordinates("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + ":" + version);
+		publishLocal.artifacts.put("drivers", driverZipWinAMD64.archive);
+		
+		publish.coordinates("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":" + version);
 		publish.repository(new Repository(
 				"GHP [SerialPortAccess]", 
 				"https://maven.pkg.github.com/m-marvin/app-serialportutility",
@@ -71,6 +83,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 						() -> System.getenv("GITHUB_TOKEN")
 				)
 		));
+
+		publish.artifacts.put("drivers", driverZipWinAMD64.archive);
 		
 	}
 	

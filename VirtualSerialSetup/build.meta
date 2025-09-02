@@ -41,10 +41,6 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		compileResWinAMD64.dependencyOf(target.linkCpp);
 		compileResWinAMD64.dependsOn(target.compileCpp);
 		
-		// copy driver files from VCOM project into output directory
-		var compileDriverWinAMD64 = new FileTask("copyDriverWinAMD64", Action.COPY, new File("../VCOM/x64/Release/VCOM"), new File("../bin/WinAMD64"), true);
-		compileDriverWinAMD64.dependencyOf(target.build);
-		
 		super.init();
 		
 	}

@@ -10,7 +10,7 @@ import de.m_marvin.metabuild.maven.types.Repository.Credentials;
 
 public class Buildfile extends CppMultiTargetBuildScript {
 	
-	boolean debugging = true; // set to true to compile with debug info
+	boolean debugging = false; // set to true to compile with debug info
 	
 	String version = "2.2-SNAPSHOT";
 	
@@ -19,8 +19,6 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		
 		projectName = "serialoverethernet";
 
-		importBuild("serialportaccess", new File("../SerialPortAccess"));
-		
 		// Platform windows AMD 64 Client
 		var target = makeTarget("WinAMD64", "soe.exe");
 		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
@@ -83,9 +81,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 			target.compileCpp.define("ENBL_DBGPRINT");
 			target.compileCpp.options.add("-g");
 		}
-		
-		target.dependencies.dependsOn("serialportaccess:publishMavenLocal" + config);
-		
+
 		return target;
 		
 	}
@@ -118,16 +114,17 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	@Override
 	public void dependencies(MavenResolveTask dependencies, String config) {
 		
-		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + "::zip:2.3-SNAPSHOT");
-		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":headers:zip:2.3-SNAPSHOT");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3-SNAPSHOT::zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3-SNAPSHOT:headers:zip");
 		
 		if (config.equals("WinAMD64")) {
-			dependencies.implementation("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + "::zip:1.0-SNAPSHOT");
-			dependencies.implementation("de.m_marvin.serialportaccess:virtualserialport-" + config.toLowerCase() + ":headers:zip:1.0-SNAPSHOT");	
+			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.0-SNAPSHOT::zip");
+			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.0-SNAPSHOT:drivers:zip");
+			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.0-SNAPSHOT:headers:zip");	
 		}
 		
-		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + "::zip:1.1.2");
-		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":headers:zip:1.1.2");
+		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":1.1.2::zip");
+		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":1.1.2:headers:zip");
 		
 	}
 	

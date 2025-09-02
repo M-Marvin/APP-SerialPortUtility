@@ -1,0 +1,45 @@
+import java.io.File;
+
+import de.m_marvin.metabuild.core.script.BuildScript;
+import de.m_marvin.metabuild.core.tasks.BuildTask;
+
+public class Buildfile extends BuildScript {
+	
+	@Override
+	public void init() {
+		
+		importBuild("serialportaccess", new File("../SerialPortAccess"));
+		importBuild("virtualserial", new File("../VirtualSerial"));
+		importBuild("virtualserialsetup", new File("../VirtualSerialSetup"));
+		importBuild("jserialportaccess", new File("../JSerialPortAccess"));
+		importBuild("terminalserialaccess", new File("../TerminalSerialAccess"));
+		importBuild("serialoverethernet", new File("../SerialOverEthernet"));
+		
+		var cleanAll = new BuildTask("cleanAll");
+		cleanAll.dependsOn("serialportaccess:clean");
+		cleanAll.dependsOn("virtualserial:clean");
+		cleanAll.dependsOn("virtualserialsetup:clean");
+		cleanAll.dependsOn("jserialportaccess:clean");
+		cleanAll.dependsOn("terminalserialaccess:clean");
+		cleanAll.dependsOn("serialoverethernet:clean");
+		
+		var buildAllLibs = new BuildTask("buildAllLibs");
+		taskNamed("serialportaccess:publishMavenLocal").dependencyOf("virtualserial:dependencies");
+		taskNamed("serialportaccess:publishMavenLocal").dependencyOf("jserialportaccess:copyNatives");
+		buildAllLibs.dependsOn("serialportaccess:publishMavenLocal");
+		buildAllLibs.dependsOn("jserialportaccess:publishMavenLocal");
+		buildAllLibs.dependsOn("virtualserial:publishMavenLocal");
+
+		var buildAll = new BuildTask("buildAll");
+		taskNamed("serialportaccess:publishMavenLocal").dependencyOf("terminalserialaccess:dependencies");
+		taskNamed("serialportaccess:publishMavenLocal").dependencyOf("serialoverethernet:dependencies");
+		taskNamed("virtualserial:publishMavenLocal").dependencyOf("serialoverethernet:dependencies");
+		buildAll.dependsOn("terminalserialaccess:build");
+		buildAll.dependsOn("serialoverethernet:build");
+		buildAll.dependsOn("virtualserialsetup:build");
+		
+		super.init();
+		
+	}
+	
+}

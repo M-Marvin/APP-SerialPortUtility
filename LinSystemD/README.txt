@@ -1,0 +1,2 @@
+These are systemd auto start files that can be used to add an Server instance of SOE to the autostart on an Linux system.
+They have to be copied into the same directory as the binaries and then be registered as an systemd service.

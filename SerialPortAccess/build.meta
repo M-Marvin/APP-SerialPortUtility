@@ -123,11 +123,11 @@ public class Buildfile extends CppMultiTargetBuildScript {
 			dependencies.systemOpt("local:jserialportaccess-header:1", "../JSerialPortAccess/build/headers/main/java");
 			
 			// java JNI headers
-			dependencies.systemOpt("local:java-jni-headers::h:1", "${env.JAVA_HOME}/include");
+			dependencies.systemOpt("local:java-jni-headers:1::h", "${env.JAVA_HOME}/include");
 			if (config.startsWith("Win"))
-				dependencies.systemOpt("local:java-jni-win32-headers::h:1", "${env.JAVA_HOME}/include/win32");
+				dependencies.systemOpt("local:java-jni-win32-headers:1::h", "${env.JAVA_HOME}/include/win32");
 			if (config.startsWith("Lin"))
-				dependencies.systemOpt("local:java-jni-win32-headers::h:1", "${env.JAVA_HOME}/include/linux");
+				dependencies.systemOpt("local:java-jni-win32-headers:1::h", "${env.JAVA_HOME}/include/linux");
 			
 		}
 		
@@ -136,9 +136,9 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	@Override
 	public void publishing(MavenPublishTask publish, MavenPublishTask publishLocal, String config) {
 		
-		publishLocal.coordinates("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":" + version);
+		publishLocal.coordinates("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":" + version);
 		
-		publish.coordinates("de.m_marvin.serialportaccess:serialportaccess-" + config.toLowerCase() + ":" + version);
+		publish.coordinates("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":" + version);
 		publish.repository(new Repository(
 				"GHP [SerialPortAccess]", 
 				"https://maven.pkg.github.com/m-marvin/app-serialportutility",

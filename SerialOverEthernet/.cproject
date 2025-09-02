@@ -19,8 +19,8 @@
 		<pathentry include="D:/Programms/toolchains/mingw64-msvcrt/lib/gcc/x86_64-w64-mingw32/14.2.0/include" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/mingw64-msvcrt/lib/gcc/x86_64-w64-mingw32/14.2.0/include-fixed" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/mingw64-msvcrt/x86_64-w64-mingw32/include" kind="inc" path="" system="true"/>
-		<pathentry include="E:/GitHub/APP-SerialPortUtility/SerialOverEthernetTCP/build/WinAMD64/includeHeaders" kind="inc" path="" system="true"/>
-		<pathentry include="E:/GitHub/APP-SerialPortUtility/SerialOverEthernetTCP/src/cpp/header" kind="inc" path="" system="true"/>
+		<pathentry include="E:/GitHub/APP-SerialPortUtility/SerialOverEthernet/build/WinAMD64/includeHeaders" kind="inc" path="" system="true"/>
+		<pathentry include="E:/GitHub/APP-SerialPortUtility/SerialOverEthernet/src/cpp/header" kind="inc" path="" system="true"/>
 		<pathentry kind="mac" name="PLATFORM_WIN" path="" value=""/>
 		<pathentry kind="mac" name="BUILD_VERSION" path="" value="2.2-SNAPSHOT"/>
 		<pathentry kind="mac" name="ENBL_DBGPRINT" path="" value=""/>

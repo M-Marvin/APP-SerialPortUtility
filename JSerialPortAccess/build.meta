@@ -50,9 +50,9 @@ public class Buildfile extends JavaBuildScript {
 		
 		super.publishing();
 		
-		publishMavenLocal.coordinates("de.m_marvin.serialportaccess:jserialportaccess:" + version);
+		publishMavenLocal.coordinates("de.m_marvin.serialutility:jserialportaccess:" + version);
 		
-		publishMaven.coordinates("de.m_marvin.serialportaccess:jserialportaccess:" + version);
+		publishMaven.coordinates("de.m_marvin.serialutility:jserialportaccess:" + version);
 		publishMaven.repository(new Repository(
 				"GHP [SerialPortAccess]", 
 				"https://maven.pkg.github.com/m-marvin/app-serialportutility",
