@@ -21,6 +21,7 @@ public:
 	Ringbuffer(unsigned long int size);
 	~Ringbuffer();
 
+	unsigned long int free();
 	unsigned long int push(const char* data, unsigned long int length);
 	unsigned long int dataAvailable() const;
 	const char* dataStart() const;

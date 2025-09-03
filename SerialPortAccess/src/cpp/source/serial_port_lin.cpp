@@ -179,7 +179,8 @@ public:
 		if (!isOpen()) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			printError("error %i in SerialPort:setConfig:tcgetattr: %s\n");
+			if (errno != EBADF)
+				printError("error %i in SerialPort:setConfig:tcgetattr: %s\n");
 			return false;
 		}
 
@@ -260,8 +261,9 @@ public:
 
 		// Save this->comPortHandle settings, also checking for error
 		if (tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
-		  printf("error %i from tcsetattr: %s\n", errno, strerror(errno));
-		  return 1;
+			if (errno != EBADF)
+				printf("error %i from tcsetattr: %s\n", errno, strerror(errno));
+			return 1;
 		}
 
 		return true;
@@ -448,7 +450,8 @@ public:
 
 		int state = 0;
 		if (::ioctl(this->comPortHandle, TIOCMGET, &state) == -1) {
-			printError("error %d in SerialPort:getRawPortState:ioctl(TIOCMGET): %s\n");
+			if (errno != EBADF)
+				printError("error %d in SerialPort:getPortState:ioctl(TIOCMGET): %s\n");
 			return false;
 		}
 
@@ -463,7 +466,8 @@ public:
 
 		int state = 0;
 		if (::ioctl(this->comPortHandle, TIOCMGET, &state) == -1) {
-			printError("error %d in SerialPort:setRawPortState:ioctl(TIOCMGET): %s\n");
+			if (errno != EBADF)
+				printError("error %d in SerialPort:setManualPortState:ioctl(TIOCMGET): %s\n");
 			return false;
 		}
 
@@ -481,7 +485,8 @@ public:
 		}
 
 		if (::ioctl(this->comPortHandle, TIOCMSET, &state) == -1) {
-			printError("error %d in SerialPort:setRawPortState:ioctl(TIOCMSET): %s\n");
+			if (errno != EBADF)
+				printError("error %d in SerialPort:setManualPortState:ioctl(TIOCMSET): %s\n");
 			return false;
 		}
 

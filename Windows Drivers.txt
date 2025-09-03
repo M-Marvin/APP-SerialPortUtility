@@ -11,7 +11,7 @@ In VM (VirtualBox)
 4. bcdedit /dbgsettings serial debugport:*vm port number* baudrate:115200
 5. Start WinDbg on configured pipe on host
 6. Reboot VM
-7. WinDbg will halt the VM on boot, press Ctrl+B to resume
+7. WinDbg will halt the VM on boot, press Ctrl+B to resume, also to see all debug output, the command "ed kd_IHVDRIVER_mask 0x8" has to be run in WinDBG
 
 Install Driver on VM
 In VS		=> Driver Package Project > Deploy

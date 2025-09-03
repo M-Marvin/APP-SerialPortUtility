@@ -20,11 +20,16 @@ Ringbuffer::~Ringbuffer()
 	delete[] this->buffer;
 }
 
-unsigned long int Ringbuffer::push(const char* data, unsigned long int length)
+unsigned long int Ringbuffer::free()
 {
-	unsigned int free = this->writeIndex < this->readIndex ?
+	return	this->writeIndex < this->readIndex ?
 			(this->readIndex - this->writeIndex) - 1 :
 			this->readIndex + (this->size - this->writeIndex - 1);
+}
+
+unsigned long int Ringbuffer::push(const char* data, unsigned long int length)
+{
+	unsigned int free = this->free();
 
 	unsigned int transfer = free < length ? free : length;
 	std::memcpy(this->buffer + this->writeIndex, data, transfer);

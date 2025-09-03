@@ -23,6 +23,5 @@
 		<pathentry include="E:/GitHub/APP-SerialPortUtility/SerialOverEthernet/src/cpp/header" kind="inc" path="" system="true"/>
 		<pathentry kind="mac" name="PLATFORM_WIN" path="" value=""/>
 		<pathentry kind="mac" name="BUILD_VERSION" path="" value="2.2-SNAPSHOT"/>
-		<pathentry kind="mac" name="ENBL_DBGPRINT" path="" value=""/>
 	</storageModule>
 </cproject>

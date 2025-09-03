@@ -75,12 +75,14 @@ static NTSTATUS WriteBuffer(char* buffer, ULONG capacity, ULONG* writePtr, ULONG
 		return STATUS_SUCCESS; // a full buffer is not considered an error here
 	}
 
-	ULONG ptrToEnd = min(capacity - *writePtr - 1, *bytesCopied);	// bytes that can be copied before hitting the end of the buffer
+	ULONG ptrToEnd = min(capacity - *writePtr, *bytesCopied);		// bytes that can be copied before hitting the end of the buffer
 	ULONG startToPtr = *bytesCopied - ptrToEnd;						// remaining bytes that then have to be copied to the start of the buffer
 
 	dbgprintf("[i] VARIABLES: freeBytes=%lu bytesCopied=%lu ptrToEnd=%lu startToPtr=%lu\n", freeBytes, *bytesCopied, ptrToEnd, startToPtr);
 
-	NTSTATUS status = CopyFromRequest(requestHandle, 0, buffer + *writePtr, ptrToEnd);
+	NTSTATUS status = STATUS_SUCCESS;
+	if (ptrToEnd > 0)
+		status = CopyFromRequest(requestHandle, 0, buffer + *writePtr, ptrToEnd);
 	if (status == STATUS_SUCCESS && startToPtr > 0) {
 		status = CopyFromRequest(requestHandle, ptrToEnd, buffer, startToPtr);
 	}
@@ -109,15 +111,17 @@ static NTSTATUS ReadBuffer(char* buffer, ULONG capacity, ULONG* writePtr, ULONG*
 	*bufferContent = availableBytes;
 
 	if (*bytesCopied == 0) {
-		return STATUS_SUCCESS; // a full buffer is not considered an error here
+		return STATUS_SUCCESS; // a empty buffer is not considered an error here
 	}
 
-	ULONG ptrToEnd = min(capacity - *readPtr - 1, *bytesCopied);	// bytes that can be copied before hitting the end of the buffer
+	ULONG ptrToEnd = min(capacity - *readPtr, *bytesCopied);		// bytes that can be copied before hitting the end of the buffer
 	ULONG startToPtr = *bytesCopied - ptrToEnd;						// remaining bytes that then have to be copied from the start of the buffer
 
 	dbgprintf("[i] VARIABLES: availableBytes=%lu bytesCopied=%lu ptrToEnd=%lu startToPtr=%lu\n", availableBytes, *bytesCopied, ptrToEnd, startToPtr);
 
-	NTSTATUS status = CopyToRequest(requestHandle, 0, buffer + *readPtr, ptrToEnd);
+	NTSTATUS status = STATUS_SUCCESS;
+	if (ptrToEnd > 0)
+		status = CopyToRequest(requestHandle, 0, buffer + *readPtr, ptrToEnd);
 	if (status == STATUS_SUCCESS && startToPtr > 0) {
 		status = CopyToRequest(requestHandle, ptrToEnd, buffer, startToPtr);
 	}
