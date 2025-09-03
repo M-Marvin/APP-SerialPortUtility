@@ -113,10 +113,13 @@ public:
 		if (!isOpen()) return false;
 
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in SerialPort:setConfig:GetCommState: %s");
 			return false;
 		}
-
 		this->comPortState.BaudRate = config.baudRate;
 		this->comPortState.fBinary = TRUE;
 		this->comPortState.fOutxCtsFlow = (config.flowControl == SerialAccess::SPC_FLOW_RTS_CTS);
@@ -152,6 +155,10 @@ public:
 		this->comPortState.XoffChar = config.xoffChar;
 
 		if (!SetCommState(this->comPortHandle, &this->comPortState)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in SerialPort:setConfig:SetCommState: %s");
 			return false;
 		}
@@ -164,6 +171,10 @@ public:
 		if (!isOpen()) return false;
 
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in SerialPort:getConfig:GetCommState: %s");
 			return false;
 		}
@@ -203,11 +214,19 @@ public:
 	{
 		if (!isOpen()) return false;
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in SerialPort:setBaud:GetCommState: %s");
 			return false;
 		}
 		this->comPortState.BaudRate = baud;
 		if (!SetCommState(this->comPortHandle, &this->comPortState)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in SerialPort:setBaud:SetCommState: %s");
 			return false;
 		}
@@ -218,6 +237,10 @@ public:
 	{
 		if (!isOpen()) return 0;
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in SerialPort:getBaud:GetCommState: %s");
 			return 0;
 		}
@@ -228,6 +251,10 @@ public:
 	{
 		if (!isOpen()) return false;
 		if (!GetCommTimeouts(this->comPortHandle, &this->comPortTimeouts)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in SerialPort:setTimeouts:GetCommTimeouts: %s");
 			return false;
 		}
@@ -250,6 +277,10 @@ public:
 		this->comPortTimeouts.WriteTotalTimeoutMultiplier = 0;
 
 		if (!SetCommTimeouts(this->comPortHandle, &this->comPortTimeouts)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in SerialPort:setTimeouts:SetCommTimeouts: %s");
 			return false;
 		}
@@ -260,6 +291,10 @@ public:
 	{
 		if (!isOpen()) return false;
 		if (!GetCommTimeouts(this->comPortHandle, &this->comPortTimeouts)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in SerialPort:setTimeouts:GetCommTimeouts: %s");
 			return false;
 		}
@@ -292,6 +327,11 @@ public:
 			// Initiate read operation
 			if (!ReadFile(this->comPortHandle, buffer, bufferCapacity, &receivedBytes, &this->readOverlapped)) {
 
+				if (GetLastError() == ERROR_INVALID_HANDLE) {
+					closePort();
+					return false;
+				}
+
 				// If not completed yet, check if error
 				if (GetLastError() != ERROR_IO_PENDING) {
 					printError("error 0x%x in SerialPort:readBytes:ReadFile: %s");
@@ -315,6 +355,10 @@ public:
 			this->readOverlapped.hEvent = INVALID_HANDLE_VALUE;
 			if (GetLastError() == ERROR_OPERATION_ABORTED)
 				return -2; // port closed
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in SerialPort:readBytes:GetOverlappedResult: %s");
 			return -2;
 		}
@@ -345,6 +389,11 @@ public:
 			// Initiate write operation
 			if (!WriteFile(this->comPortHandle, buffer, bufferLength, &writtenBytes, &this->writeOverlapped)) {
 
+				if (GetLastError() == ERROR_INVALID_HANDLE) {
+					closePort();
+					return false;
+				}
+
 				// If not completed yet, check if error
 				if (GetLastError() != ERROR_IO_PENDING) {
 					printError("error 0x%x in SerialPort:writeBytes:WriteFile: %s");
@@ -368,6 +417,10 @@ public:
 			this->writeOverlapped.hEvent = INVALID_HANDLE_VALUE;
 			if (GetLastError() == ERROR_OPERATION_ABORTED)
 				return -2; // port closed
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in SerialPort:writeBytes:GetOverlappedResult: %s");
 			return -2;
 		}
@@ -382,6 +435,10 @@ public:
 
 		DWORD state;
 		if (!::GetCommModemStatus(this->comPortHandle, &state)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in SerialPort:getRawPortState:GetCommModemStatus: %s");
 			return false;
 		}
@@ -398,6 +455,10 @@ public:
 		// do not override hardware flow control if enabled
 		if (this->comPortState.fDtrControl != DTR_CONTROL_HANDSHAKE) {
 			if (!::EscapeCommFunction(this->comPortHandle, dtr ? SETDTR : CLRDTR)) {
+				if (GetLastError() == ERROR_INVALID_HANDLE) {
+					closePort();
+					return false;
+				}
 				printError("error 0x%x in SerialPort:setPortState:EscapeCommFunction(DTR): %s");
 				return false;
 			}
@@ -406,6 +467,10 @@ public:
 		// do not override hardware flow control if enabled
 		if (this->comPortState.fRtsControl != RTS_CONTROL_HANDSHAKE) {
 			if (!::EscapeCommFunction(this->comPortHandle, rts ? SETRTS : CLRRTS)) {
+				if (GetLastError() == ERROR_INVALID_HANDLE) {
+					closePort();
+					return false;
+				}
 				printError("error 0x%x in SerialPort:setPortState:EscapeCommFunction(RTS): %s");
 				return false;
 			}
@@ -443,6 +508,10 @@ public:
 
 			// Configure event mask
 			if (!::SetCommMask(this->comPortHandle, eventMask)) {
+				if (GetLastError() == ERROR_INVALID_HANDLE) {
+					closePort();
+					return false;
+				}
 				printError("error 0x%x in SerialPort:waitForEvents:SetCommMask: %s");
 				return false;
 			}
@@ -457,6 +526,11 @@ public:
 
 			// Initiate wait operation
 			if (!WaitCommEvent(this->comPortHandle, &eventMaskReturned, &this->waitOverlapped)) {
+
+				if (GetLastError() == ERROR_INVALID_HANDLE) {
+					closePort();
+					return false;
+				}
 
 				// If not completed yet, check if error
 				if (GetLastError() != ERROR_IO_PENDING) {
@@ -488,6 +562,10 @@ public:
 			this->waitOverlapped.hEvent = INVALID_HANDLE_VALUE;
 			if (GetLastError() == ERROR_OPERATION_ABORTED)
 				return false; // port closed
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in SerialPort:waitForEvents:GetOverlappedResult: %s");
 			return false;
 		}

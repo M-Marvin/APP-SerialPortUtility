@@ -131,10 +131,7 @@ void SerialOverEthernet::SOELinkHandler::doNetworkReception() {
 	while (isAlive()) {
 
 		if (!this->socket->receive(packageFrame, SOE_TCP_HEADER_LEN, &headerLen)) {
-			if (socket->lastError() == 0)
-				printf("[DBG] client socket returned EOF\n");
-			else
-				printf("[DBG] client socket RX returned with error code: %d\n", this->socket->lastError());
+			dbgprintf("[DBG] client socket closed\n");
 			break;
 		}
 

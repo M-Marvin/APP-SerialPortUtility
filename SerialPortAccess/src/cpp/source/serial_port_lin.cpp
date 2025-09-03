@@ -179,8 +179,11 @@ public:
 		if (!isOpen()) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
-			if (errno != EBADF)
-				printError("error %i in SerialPort:setConfig:tcgetattr: %s\n");
+			if (errno == EBADF || errno == EIO) {
+				closePort();
+				return false;
+			}
+			printError("error %i in SerialPort:setConfig:tcgetattr: %s\n");
 			return false;
 		}
 
@@ -261,8 +264,11 @@ public:
 
 		// Save this->comPortHandle settings, also checking for error
 		if (tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
-			if (errno != EBADF)
-				printf("error %i from tcsetattr: %s\n", errno, strerror(errno));
+			if (errno == EBADF || errno == EIO) {
+				closePort();
+				return false;
+			}
+			printf("error %i from tcsetattr: %s\n", errno, strerror(errno));
 			return 1;
 		}
 
@@ -274,6 +280,10 @@ public:
 		if (!isOpen()) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
+			if (errno == EBADF || errno == EIO) {
+				closePort();
+				return false;
+			}
 			printError("error %i in SerialPort:getConfig:tcgetattr: %s\n");
 			return false;
 		}
@@ -314,6 +324,10 @@ public:
 		if (!isOpen()) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
+			if (errno == EBADF || errno == EIO) {
+				closePort();
+				return false;
+			}
 			printError("error %i in SerialPort:setBaud:tcgetattr: %s\n");
 			return false;
 		}
@@ -325,6 +339,10 @@ public:
 		}
 
 		if (::tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
+			if (errno == EBADF || errno == EIO) {
+				closePort();
+				return false;
+			}
 			printError("error %i in SerialPort:setBaud:tcsetattr: %s\n");
 			return false;
 		}
@@ -337,6 +355,10 @@ public:
 		if (!isOpen()) return 0;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
+			if (errno == EBADF || errno == EIO) {
+				closePort();
+				return false;
+			}
 			printError("error %i in SerialPort:getBaud:tcgetattr: %s\n");
 			return 0;
 		}
@@ -350,6 +372,10 @@ public:
 		if (!isOpen()) return false;
 
 		if (::tcgetattr(this->comPortHandle, &this->comPortState) != 0) {
+			if (errno == EBADF || errno == EIO) {
+				closePort();
+				return false;
+			}
 			printError("error %i in SerialPort:setTimeouts:tcgetattr: %s\n");
 			return false;
 		}
@@ -374,6 +400,10 @@ public:
 		this->txTimeout = writeTimeout < 0 ? 0 : writeTimeout;
 
 		if (::tcsetattr(this->comPortHandle, TCSANOW, &this->comPortState) != 0) {
+			if (errno == EBADF || errno == EIO) {
+				closePort();
+				return false;
+			}
 			printError("error %i in SerialPort:setTimeouts:tcsetattr: %s\n");
 			return false;
 		}
@@ -450,8 +480,11 @@ public:
 
 		int state = 0;
 		if (::ioctl(this->comPortHandle, TIOCMGET, &state) == -1) {
-			if (errno != EBADF)
-				printError("error %d in SerialPort:getPortState:ioctl(TIOCMGET): %s\n");
+			if (errno == EBADF || errno == EIO) {
+				closePort();
+				return false;
+			}
+			printError("error %d in SerialPort:getPortState:ioctl(TIOCMGET): %s\n");
 			return false;
 		}
 
@@ -466,8 +499,11 @@ public:
 
 		int state = 0;
 		if (::ioctl(this->comPortHandle, TIOCMGET, &state) == -1) {
-			if (errno != EBADF)
-				printError("error %d in SerialPort:setManualPortState:ioctl(TIOCMGET): %s\n");
+			if (errno == EBADF || errno == EIO) {
+				closePort();
+				return false;
+			}
+			printError("error %d in SerialPort:setManualPortState:ioctl(TIOCMGET): %s\n");
 			return false;
 		}
 
@@ -485,8 +521,11 @@ public:
 		}
 
 		if (::ioctl(this->comPortHandle, TIOCMSET, &state) == -1) {
-			if (errno != EBADF)
-				printError("error %d in SerialPort:setManualPortState:ioctl(TIOCMSET): %s\n");
+			if (errno == EBADF || errno == EIO) {
+				closePort();
+				return false;
+			}
+			printError("error %d in SerialPort:setManualPortState:ioctl(TIOCMSET): %s\n");
 			return false;
 		}
 

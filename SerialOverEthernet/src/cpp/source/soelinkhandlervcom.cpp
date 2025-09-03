@@ -20,7 +20,7 @@ bool SerialOverEthernet::SOELinkHandlerVCOM::openLocalPort(const std::string& lo
 	this->localPort.reset(SerialAccess::newVirtualSerialPortS(localSerial));
 	this->localPortName = localSerial;
 	dbgprintf("[DBG] opening local port: %s\n", this->localPortName.c_str());
-	bool opened = this->localPort->createPort();
+	bool opened = this->localPort->openPort();
 	if (opened) {
 		this->cv_openLocalPort.notify_all();
 	}
@@ -30,7 +30,7 @@ bool SerialOverEthernet::SOELinkHandlerVCOM::openLocalPort(const std::string& lo
 bool SerialOverEthernet::SOELinkHandlerVCOM::closeLocalPort() {
 	if (this->localPort == 0 || !this->localPort->isCreated()) return true;
 	std::unique_lock<std::mutex> lock(this->m_localPort);
-	this->localPort->removePort();
+	this->localPort->closePort();
 	this->localPort.release();
 	dbgprintf("[DBG] local port closed: %s\n", this->localPortName.c_str());
 	return true;

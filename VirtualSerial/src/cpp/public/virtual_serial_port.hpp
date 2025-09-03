@@ -18,9 +18,9 @@ class VirtualSerialPort
 public:
 	virtual ~VirtualSerialPort() {};
 
-	virtual bool createPort() = 0;
+	virtual bool openPort() = 0;
 
-	virtual void removePort() = 0;
+	virtual void closePort() = 0;
 
 	virtual bool isCreated() = 0;
 

@@ -123,8 +123,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.0-SNAPSHOT:headers:zip");	
 		}
 		
-		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":1.1.2::zip");
-		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":1.1.2:headers:zip");
+		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":1.1.3::zip");
+		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":1.1.3:headers:zip");
 		
 	}
 	

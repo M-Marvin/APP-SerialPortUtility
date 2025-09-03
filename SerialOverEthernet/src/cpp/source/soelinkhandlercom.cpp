@@ -52,6 +52,12 @@ void SerialOverEthernet::SOELinkHandlerCOM::doSerialReception() {
 
 	while (isAlive()) {
 
+		// check if port closed unexpectedly
+		if (this->localPort != 0 && !this->localPort->isOpen()) {
+			printf("[!] lost connection to local serial port, closing connection\n");
+			shutdown();
+		}
+
 		// check if port open, wait if not
 		if (this->localPort == 0 || !this->localPort->isOpen()) {
 			std::unique_lock<std::mutex> lock(this->m_localPort);

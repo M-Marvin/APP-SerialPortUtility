@@ -50,10 +50,10 @@ public:
 	}
 
 	~VirtualSerialPortWin() {
-		removePort();
+		closePort();
 	}
 
-	bool createPort() override
+	bool openPort() override
 	{
 		if (isCreated()) return false;
 
@@ -72,28 +72,28 @@ public:
 		this->writeEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
 		if (this->writeEventHandle == NULL) {
 			printError("error 0x%x in VirtualSerialPort:createPort:CreateEventA: %s");
-			removePort();
+			closePort();
 			return false;
 		}
 
 		this->readEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
 		if (this->readEventHandle == NULL) {
 			printError("error 0x%x in VirtualSerialPort:createPort:CreateEventA: %s");
-			removePort();
+			closePort();
 			return false;
 		}
 
 		this->waitEventHandle = CreateEventA(NULL, TRUE, FALSE, NULL);
 		if (this->waitEventHandle == NULL) {
 			printError("error 0x%x in VirtualSerialPort:createPort:CreateEventA: %s");
-			removePort();
+			closePort();
 			return false;
 		}
 
 		return true;
 	}
 
-	void removePort() override
+	void closePort() override
 	{
 		if (!isCreated()) return;
 		CloseHandle(this->comPortHandle);
@@ -122,6 +122,10 @@ public:
 
 		SERIAL_BAUD_RATE baudRate;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_BAUD, NULL, 0, &baudRate, sizeof(SERIAL_BAUD_RATE), &bytesReturned, NULL)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:getConfig:DeviceIoControl(IOCTL_APPLINK_GET_BAUD): %s");
 			return false;
 		}
@@ -130,6 +134,10 @@ public:
 
 		SERIAL_LINE_CONTROL lineControl;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_LINE_CONTROL, NULL, 0, &lineControl, sizeof(SERIAL_LINE_CONTROL), &bytesReturned, NULL)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:getConfig:DeviceIoControl(IOCTL_APPLINK_GET_LINE_CONTROL): %s");
 			return false;
 		}
@@ -154,6 +162,10 @@ public:
 
 		SERIAL_CHARS serialChars;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_CHARS, NULL, 0, &serialChars, sizeof(SERIAL_CHARS), &bytesReturned, NULL)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:getConfig:DeviceIoControl(IOCTL_APPLINK_GET_LINE_CONTROL): %s");
 			return false;
 		}
@@ -163,6 +175,10 @@ public:
 
 		SERIAL_HANDFLOW flowControl;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_FLOW_CONTROL, NULL, 0, &flowControl, sizeof(SERIAL_HANDFLOW), &bytesReturned, NULL)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:getConfig:DeviceIoControl(IOCTL_APPLINK_GET_FLOW_CONTROL): %s");
 			return false;
 		}
@@ -193,6 +209,10 @@ public:
 
 		SERIAL_BAUD_RATE serialBaud;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_BAUD, NULL, 0, &serialBaud, sizeof(SERIAL_BAUD_RATE), &bytesReturned, NULL)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:getBaud:DeviceIoControl(IOCTL_APPLINK_GET_BAUD): %s");
 			return false;
 		}
@@ -208,6 +228,10 @@ public:
 
 		SERIAL_TIMEOUTS serialTimeouts;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_TIMEOUTS, NULL, 0, &serialTimeouts, sizeof(SERIAL_TIMEOUTS), &bytesReturned, NULL)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:getTimeouts:DeviceIoControl(IOCTL_APPLINK_GET_TIMEOUTS): %s");
 			return false;
 		}
@@ -240,6 +264,11 @@ public:
 			// Initiate read operation
 			if (!DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_READ_BUFFER, NULL, 0, buffer, bufferCapacity, &receivedBytes, &this->readOverlapped)) {
 
+				if (GetLastError() == ERROR_INVALID_HANDLE) {
+					closePort();
+					return false;
+				}
+
 				// If not completed yet, check if error
 				if (GetLastError() != ERROR_IO_PENDING) {
 					printError("error 0x%x in VirtualSerialPort:readBytes:ReadFile: %s");
@@ -263,6 +292,10 @@ public:
 			this->readOverlapped.hEvent = INVALID_HANDLE_VALUE;
 			if (GetLastError() == ERROR_OPERATION_ABORTED)
 				return -2; // port closed
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:readBytes:GetOverlappedResult: %s");
 			return -2;
 		}
@@ -293,6 +326,11 @@ public:
 			// Initiate write operation
 			if (!DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_WRITE_BUFFER, (char*) buffer, bufferLength, NULL, 0, &writtenBytes, &this->writeOverlapped)) {
 
+				if (GetLastError() == ERROR_INVALID_HANDLE) {
+					closePort();
+					return false;
+				}
+
 				// If not completed yet, check if error
 				if (GetLastError() != ERROR_IO_PENDING) {
 					printError("error 0x%x in VirtualSerialPort:writeBytes:WriteFile: %s");
@@ -316,6 +354,10 @@ public:
 			this->writeOverlapped.hEvent = INVALID_HANDLE_VALUE;
 			if (GetLastError() == ERROR_OPERATION_ABORTED)
 				return -2; // port closed
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:writeBytes:GetOverlappedResult: %s");
 			return -2;
 		}
@@ -332,6 +374,10 @@ public:
 
 		BUFFER_SIZES bufferSizes;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_BUFFER_SIZES, NULL, 0, &bufferSizes, sizeof(BUFFER_SIZES), &bytesReturned, NULL)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:getPortState:DeviceIoControl(IOCTL_APPLINK_GET_BUFFER_SIZES): %s");
 			return false;
 		}
@@ -352,6 +398,10 @@ public:
 		bufferSizes.ReceiveSize = rxBufferSize;
 
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_SET_BUFFER_SIZES, &bufferSizes, sizeof(BUFFER_SIZES), NULL, 0, &bytesReturned, NULL)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:getPortState:DeviceIoControl(IOCTL_APPLINK_SET_BUFFER_SIZES): %s");
 			return false;
 		}
@@ -367,6 +417,10 @@ public:
 
 		ULONG comStatus;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_COMSTATUS, NULL, 0, &comStatus, sizeof(ULONG), &bytesReturned, NULL)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:getPortState:DeviceIoControl(IOCTL_APPLINK_GET_COMSTATUS): %s");
 			return false;
 		}
@@ -384,6 +438,10 @@ public:
 
 		ULONG comStatus;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_COMSTATUS, NULL, 0, &comStatus, sizeof(ULONG), &bytesReturned, NULL)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:setManualPortState:DeviceIoControl(IOCTL_APPLINK_GET_COMSTATUS): %s");
 			return false;
 		}
@@ -399,6 +457,10 @@ public:
 			comStatus &= ~SERIAL_RTS_STATE;
 
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_SET_COMSTATUS, &comStatus, sizeof(ULONG), NULL, 0, &bytesReturned, NULL)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:setManualPortState:DeviceIoControl(IOCTL_APPLINK_SET_COMSTATUS): %s");
 			return false;
 		}
@@ -443,6 +505,11 @@ public:
 			// Initiate wait operation
 			if (!DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_WAIT_FOR_CHANGE, &this->eventMask, sizeof(ULONG), &this->eventMaskReturned, sizeof(ULONG), &bytesReturned, &this->waitOverlapped)) {
 
+				if (GetLastError() == ERROR_INVALID_HANDLE) {
+					closePort();
+					return false;
+				}
+
 				// If not completed yet, check if error
 				if (GetLastError() != ERROR_IO_PENDING) {
 					printError("error 0x%x in VirtualSerialPort:waitForEvents:WaitCommEvent: %s");
@@ -477,6 +544,10 @@ public:
 			this->waitOverlapped.hEvent = INVALID_HANDLE_VALUE;
 			if (GetLastError() == ERROR_OPERATION_ABORTED)
 				return false; // port closed
+			if (GetLastError() == ERROR_INVALID_HANDLE) {
+				closePort();
+				return false;
+			}
 			printError("error 0x%x in VirtualSerialPort:waitForEvents:GetOverlappedResult: %s");
 			return false;
 		}
