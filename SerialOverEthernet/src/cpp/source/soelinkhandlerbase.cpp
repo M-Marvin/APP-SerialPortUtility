@@ -19,6 +19,11 @@ SerialOverEthernet::SOELinkHandler::SOELinkHandler(NetSocket::Socket* socket, st
 	this->socket.reset(socket);
 	this->socket->setTimeouts(0, 0);
 	this->socket->setNagle(false);
+}
+
+SerialOverEthernet::SOELinkHandler::~SOELinkHandler() {}
+
+void SerialOverEthernet::SOELinkHandler::start() {
 	this->thread_rx = std::thread([this]() -> void {
 		this->doNetworkReception();
 	});
@@ -27,7 +32,7 @@ SerialOverEthernet::SOELinkHandler::SOELinkHandler(NetSocket::Socket* socket, st
 	});
 }
 
-SerialOverEthernet::SOELinkHandler::~SOELinkHandler() {
+void SerialOverEthernet::SOELinkHandler::stop() {
 	shutdown();
 	printf("[DBG] joining RX thread ...\n");
 	this->thread_rx.join();

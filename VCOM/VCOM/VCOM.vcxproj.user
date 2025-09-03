@@ -12,4 +12,9 @@
     <ScriptName>Microsoft.DriverKit.DefaultDriverPackageInstallationClass.PerformDefaultDriverPackageInstallation</ScriptName>
     <ScriptDeviceQuery />
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <SignMode>ProductionSign</SignMode>
+    <ProductionCertificate>E:\_Cert\MMarvinK-CodeSigning.pfx</ProductionCertificate>
+    <CrossCertificateFile>E:\_Cert\MMarvinK.cer</CrossCertificateFile>
+  </PropertyGroup>
 </Project>

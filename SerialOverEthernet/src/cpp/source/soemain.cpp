@@ -21,6 +21,7 @@ void cleanupDeadConnectionHandlers() {
 	std::lock_guard<std::mutex> lock(m_clientConnections);
 	clientConnections.erase(std::remove_if(clientConnections.begin(), clientConnections.end(), [](SerialOverEthernet::SOELinkHandler* managedHandler){
 		if (!managedHandler->isAlive()) {
+			managedHandler->stop();
 			delete managedHandler;
 			return true;
 		}
@@ -49,6 +50,7 @@ SerialOverEthernet::SOELinkHandler* createConnectionHandler(NetSocket::Socket* u
 		});
 	}
 	clientConnections.push_back(managedHandler);
+	managedHandler->start();
 	return managedHandler;
 }
 

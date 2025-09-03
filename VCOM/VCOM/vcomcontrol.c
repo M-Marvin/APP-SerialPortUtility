@@ -710,6 +710,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 	case IOCTL_SERIAL_SET_QUEUE_SIZE:
 	case IOCTL_SERIAL_SET_XON:
 	case IOCTL_SERIAL_SET_XOFF:
+	case IOCTL_SERIAL_GET_COMMSTATUS:
 
 		dbgprintf("[i] VCOM IODeviceControl called: not implemented IOCTL_CODE: 0x%x\n", controlCode);
 
@@ -725,7 +726,6 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 	case IOCTL_SERIAL_SET_MODEM_CONTROL:
 	case IOCTL_SERIAL_GET_MODEM_CONTROL:
 	case IOCTL_SERIAL_SET_FIFO_CONTROL:
-	case IOCTL_SERIAL_GET_COMMSTATUS:
 
 		dbgprintf("[i] VCOM IODeviceControl called: not supported IOCTL_CODE: 0x%x\n", controlCode);
 

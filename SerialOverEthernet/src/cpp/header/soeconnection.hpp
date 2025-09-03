@@ -45,11 +45,19 @@ public:
 	 * @param onDeath A callback invoked when the connection was closed
 	 */
 	SOELinkHandler(NetSocket::Socket* socket, std::string& hostName, std::string& hostPort, std::function<void(SOELinkHandler*)> onDeath);
-
 	/**
 	 * Closes all ports and the socket and cleans all allocated buffer memory
 	 */
 	virtual ~SOELinkHandler();
+
+	/**
+	 * Has to be called once after construction to start the handler
+	 */
+	void start();
+	/**
+	 * Has to be called once before destruction to stop the handler
+	 */
+	void stop();
 
 	/**
 	 * Attempts to open the local serial port.

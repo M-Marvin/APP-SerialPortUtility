@@ -167,8 +167,8 @@ public:
 			return false;
 		}
 
-		bool dtrdsr = flowControl.ControlHandShake & (SERIAL_DTR_CONTROL | SERIAL_DSR_HANDSHAKE);
-		bool rtscts = flowControl.ControlHandShake & (SERIAL_RTS_CONTROL | SERIAL_CTS_HANDSHAKE);
+		bool dtrdsr = (flowControl.ControlHandShake & SERIAL_DTR_CONTROL) && (flowControl.ControlHandShake & SERIAL_DSR_HANDSHAKE);
+		bool rtscts = (flowControl.ControlHandShake & SERIAL_RTS_CONTROL) && (flowControl.ControlHandShake & SERIAL_CTS_HANDSHAKE);
 		bool xonxoff = flowControl.XoffLimit > 0 || flowControl.XonLimit > 0;
 		if (dtrdsr && !rtscts && !xonxoff) {
 			config.flowControl = SerialAccess::SPC_FLOW_DSR_DTR;
