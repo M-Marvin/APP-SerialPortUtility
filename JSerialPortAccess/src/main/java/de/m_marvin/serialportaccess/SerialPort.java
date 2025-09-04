@@ -92,6 +92,8 @@ public class SerialPort {
 		public SerialPortStopBits stopBits = SerialPortStopBits.STOPB_ONE;
 		public SerialPortParity parity = SerialPortParity.PARITY_NONE;
 		public SerialPortFlowControl flowControl = SerialPortFlowControl.FLOW_NONE;
+		public char xonChar;
+		public char xoffChar;
 
 		@Override
 		public boolean equals(Object obj) {
@@ -100,7 +102,9 @@ public class SerialPort {
 						this.dataBits == other.dataBits &&
 						Objects.equals(this.stopBits, other.stopBits) &&
 						Objects.equals(this.parity, other.parity) &&
-						Objects.equals(this.flowControl, other.flowControl);
+						Objects.equals(this.flowControl, other.flowControl) &&
+						this.xonChar == other.xonChar &&
+						this.xoffChar == other.xoffChar;
 			}
 			return false;
 		}

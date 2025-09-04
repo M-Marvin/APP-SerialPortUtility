@@ -73,6 +73,8 @@ JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1setC
 	jfieldID stopBitsField = FindField(env, configClass, "stopBits", "Lde/m_marvin/serialportaccess/SerialPort$SerialPortStopBits;");
 	jfieldID parityField = FindField(env, configClass, "parity", "Lde/m_marvin/serialportaccess/SerialPort$SerialPortParity;");
 	jfieldID flowControlField = FindField(env, configClass, "flowControl", "Lde/m_marvin/serialportaccess/SerialPort$SerialPortFlowControl;");
+	jfieldID xonCharField = FindField(env, configClass, "xonChar", "C");
+	jfieldID xoffCharField = FindField(env, configClass, "xoffChar", "C");
 	jclass stopBitsClass = FindClass(env, "de/m_marvin/serialportaccess/SerialPort$SerialPortStopBits");
 	jfieldID stopBitsValueField = FindField(env, stopBitsClass, "value", "I");
 	jclass parityClass = FindClass(env, "de/m_marvin/serialportaccess/SerialPort$SerialPortParity");
@@ -93,6 +95,8 @@ JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1setC
 	jobject flowControl = env->GetObjectField(config, flowControlField);
 	if (flowControl == 0) return false;
 	configuration.flowControl = static_cast<SerialPortFlowControl>(env->GetIntField(flowControl, flowControlValueField));
+	configuration.xonChar = (char) env->GetCharField(config, xonCharField);
+	configuration.xoffChar = (char) env->GetCharField(config, xoffCharField);
 
 	return port->setConfig(configuration);
 }
@@ -112,6 +116,8 @@ JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1getC
 	jfieldID stopBitsField = FindField(env, configClass, "stopBits", "Lde/m_marvin/serialportaccess/SerialPort$SerialPortStopBits;");
 	jfieldID parityField = FindField(env, configClass, "parity", "Lde/m_marvin/serialportaccess/SerialPort$SerialPortParity;");
 	jfieldID flowControlField = FindField(env, configClass, "flowControl", "Lde/m_marvin/serialportaccess/SerialPort$SerialPortFlowControl;");
+	jfieldID xonCharField = FindField(env, configClass, "xonChar", "C");
+	jfieldID xoffCharField = FindField(env, configClass, "xoffChar", "C");
 	jclass stopBitsClass = FindClass(env, "de/m_marvin/serialportaccess/SerialPort$SerialPortStopBits");
 	jmethodID stopBitsValueMethod = FindMethod(env, stopBitsClass, "fromValue", "(I)Lde/m_marvin/serialportaccess/SerialPort$SerialPortStopBits;");
 	jclass parityClass = FindClass(env, "de/m_marvin/serialportaccess/SerialPort$SerialPortParity");
@@ -129,6 +135,8 @@ JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1getC
 	env->SetObjectField(config, parityField, parityEnum);
 	jobject flowControlEnum = GetEnum(env, flowControlClass, flowControlValueMethod, (jint) configuration.flowControl);
 	env->SetObjectField(config, flowControlField, flowControlEnum);
+	env->SetCharField(config, xonCharField, configuration.xonChar);
+	env->SetCharField(config, xoffCharField, configuration.xoffChar);
 
 	return true;
 }
