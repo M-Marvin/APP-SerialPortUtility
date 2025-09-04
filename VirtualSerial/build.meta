@@ -14,7 +14,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 
 	boolean debugging = false; // set to true to compile with debug info
 	
-	String version = "1.0-SNAPSHOT";
+	String version = "1.0";
 	
 	public ZipTask driverZipWinAMD64;
 	
@@ -62,8 +62,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	@Override
 	public void dependencies(MavenResolveTask dependencies, String config) {
 		
-		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3-SNAPSHOT::zip");
-		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3-SNAPSHOT:headers:zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3::zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3:headers:zip");
 		
 	}
 

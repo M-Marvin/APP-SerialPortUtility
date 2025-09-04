@@ -12,7 +12,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	
 	boolean debugging = false; // set to true to compile with debug info
 	
-	String version = "2.2-SNAPSHOT";
+	String version = "2.2";
 	
 	@Override
 	public void init() {
@@ -114,13 +114,13 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	@Override
 	public void dependencies(MavenResolveTask dependencies, String config) {
 		
-		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3-SNAPSHOT::zip");
-		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3-SNAPSHOT:headers:zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3::zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3:headers:zip");
 		
 		if (config.equals("WinAMD64")) {
-			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.0-SNAPSHOT::zip");
-			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.0-SNAPSHOT:drivers:zip");
-			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.0-SNAPSHOT:headers:zip");	
+			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.0::zip");
+			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.0:drivers:zip");
+			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.0:headers:zip");	
 		}
 		
 		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":1.1.3::zip");

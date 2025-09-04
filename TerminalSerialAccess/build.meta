@@ -82,7 +82,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		
 		dependencies.repository(new Repository(
 				"GHP [SerialPortAccess]", 
-				"https://maven.pkg.github.com/m-marvin/library-serialportaccess",
+				"https://maven.pkg.github.com/m-marvin/app-serialportutility",
 				new Credentials(
 						() -> System.getenv("GITHUB_ACTOR"), 
 						() -> System.getenv("GITHUB_TOKEN")
@@ -96,8 +96,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	@Override
 	public void dependencies(MavenResolveTask dependencies, String config) {
 		
-		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config + ":2.3-SNAPSHOT::zip");
-		dependencies.implementation("de.m_marvin.serialportaccess:serialportaccess-" + config + ":2.3-SNAPSHOT:headers:zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config + ":2.3::zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config + ":2.3:headers:zip");
 		
 	}
 	
