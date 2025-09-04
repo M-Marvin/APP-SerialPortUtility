@@ -19,6 +19,9 @@
 		<pathentry include="D:/Programms/toolchains/SysGCC-linux/x86_64-linux-gnu/include" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/SysGCC-linux/x86_64-linux-gnu/sysroot/usr/include/x86_64-linux-gnu" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/SysGCC-linux/x86_64-linux-gnu/sysroot/usr/include" kind="inc" path="" system="true"/>
+		<pathentry include="E:/GitHub/APP-SerialPortUtility/JSerialPortAccess/build/headers/main/java" kind="inc" path="" system="true"/>
+		<pathentry include="C:/Program Files/Java/jdk-17.0.10+7/include" kind="inc" path="" system="true"/>
+		<pathentry include="C:/Program Files/Java/jdk-17.0.10+7/include/linux" kind="inc" path="" system="true"/>
 		<pathentry include="E:/GitHub/APP-SerialPortUtility/SerialPortAccess/src/cpp/public" kind="inc" path="" system="true"/>
 		<pathentry kind="mac" name="PLATFORM_LIN" path="" value=""/>
 		<pathentry kind="mac" name="INCLUDE_JNIAPI" path="" value=""/>
