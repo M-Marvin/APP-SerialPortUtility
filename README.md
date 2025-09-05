@@ -65,11 +65,10 @@ It also requires compilers for the different platforms to be available, and symb
 I don't know the exact C++ Standard they need to support, but any recently moddern compiler should work.
 
 If only an specific platform has to be build, two options are available:
-- uncommenting the code blocks in the init() section of all build files which are labled with that version
+- uncommenting the code blocks in the init() section of all build files (build.mete in the top level sub-directories) which are labled with a platform which is not required
 - calling the platform specific build tasks in each sub-project manualy (publishLocal*Platform* for libraries and build*Platform* for applications)
-  The correct order to build everything would be: SerialPortAccess > VirtualSerial > SerialOverEthernet | VirtualSerialSetup | TerminalSerialAccess | JSerialPortAccess
-  (the first two have a strict dependency, everything else just needs them as dependency)
-
+  The libraries can be downloaded frmo GitHub Packages, so it is not required to build them, unles the configured versions are SNAPSHOT versions, which generally don't get published and are only for developement.
+  If they are build and published to the maven local repository, the local ones will be prefered.
 To build everything for every platform, it would be enough to run buildAll in the BuildAll sub-directory.
 
 All tasks are run in the sub-directory of the project using ./metaw *task name*
