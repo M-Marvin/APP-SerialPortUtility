@@ -28,12 +28,13 @@ Allows to connect to any local serial port and configure its baud, data bits, st
 Also allows two modes of operation for user input:
 
 * line based, enter and edit content before sending with enter, if an LF or CR is appended to the text can also be configured
-* raw input mode, only available on windows, each key typed is transmitted over serial instantly
+* raw input mode, each key typed is transmitted over serial instantly
 
 ## Virtual Serial Ports
 
 The utilities contain an virtual serial port driver which allows the creation of virtual serial ports.
-These ports can be used for an arbitrary application to expose an virtual port to an another application, which can connect to it like to any other serial prot.
+These ports can be used for an arbitrary application to expose an virtual port to an another application, which can connect to it like to any other serial port.
+The port are created using the vcom.exe tool, which requires admin rights, but the port can be used by any application trough the virtualserial library.
 The backing application of the virtual port receives all data and configurations which are applied to the virtual port.
 
 NOTE: The virtual serial functionality is not yet supported on linux
