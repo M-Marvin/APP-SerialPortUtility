@@ -73,3 +73,8 @@ If only an specific platform has to be build, two options are available:
 To build everything for every platform, it would be enough to run buildAll in the BuildAll sub-directory.
 
 All tasks are run in the sub-directory of the project using ./metaw *task name*
+
+# Binaries
+
+The most recent binaries for all platforms, which are considered "stable", are uploaded as "SerialUtilities.zip" in the root directory.
+Since its a collection of tools, I can't think of any propper way of handling the versioning there ...
