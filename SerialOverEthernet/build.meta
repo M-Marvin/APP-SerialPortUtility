@@ -14,11 +14,20 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	
 	String version = "2.2";
 	
+	String versionSerialAccess = null;
+	String versionVirtualSerial = null;
+	
 	@Override
 	public void init() {
 		
 		projectName = "serialoverethernet";
+		
+		importBuild("serialportaccess", new File("../SerialPortAccess"));
+		importBuild("virtualserial", new File("../VirtualSerial"));
 
+		versionSerialAccess = (String) field(buildNamed("serialportaccess"), "version");
+		versionVirtualSerial = (String) field(buildNamed("virtualserial"), "version");
+		
 		// Platform windows AMD 64 Client
 		var target = makeTarget("WinAMD64", "soe.exe");
 		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
@@ -114,13 +123,13 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	@Override
 	public void dependencies(MavenResolveTask dependencies, String config) {
 		
-		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3::zip");
-		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.3:headers:zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":" + versionSerialAccess + "::zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":" + versionSerialAccess + ":headers:zip");
 		
 		if (config.equals("WinAMD64")) {
-			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.0::zip");
-			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.0:drivers:zip");
-			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.0:headers:zip");	
+			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":" + versionVirtualSerial + "::zip");
+			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":" + versionVirtualSerial + ":drivers:zip");
+			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":" + versionVirtualSerial + ":headers:zip");	
 		}
 		
 		dependencies.implementation("de.m_marvin.netsocket:netsocket-" + config.toLowerCase() + ":1.1.3::zip");

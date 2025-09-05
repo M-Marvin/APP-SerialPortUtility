@@ -11,7 +11,7 @@ import de.m_marvin.metabuild.maven.types.Repository.Credentials;
 
 public class Buildfile extends JavaBuildScript {
 	
-	String version = "2.3";
+	String version = null;
 	
 	@Override
 	public void init() {
@@ -22,6 +22,8 @@ public class Buildfile extends JavaBuildScript {
 		
 		importBuild("serialportaccess", new File("../SerialPortAccess"));
 
+		version = (String) field(buildNamed("serialportaccess"), "version");
+		
 		withSourcesJar();
 		
 		var copyNatives = new FileTask("copyNatives", Action.COPY, new File("../SerialPortAccess/build/bin/jni"), new File("src/main/resources/natives"), true);

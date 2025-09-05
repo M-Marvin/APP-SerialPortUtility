@@ -22,6 +22,6 @@
 		<pathentry include="E:/GitHub/APP-SerialPortUtility/VirtualSerialSetup/src/cpp/header" kind="inc" path="" system="true"/>
 		<pathentry include="E:/GitHub/APP-SerialPortUtility/VCOM" kind="inc" path="" system="true"/>
 		<pathentry kind="mac" name="PLATFORM_WIN" path="" value=""/>
-		<pathentry kind="mac" name="BUILD_VERSION" path="" value="1.0-SNAPSHOT"/>
+		<pathentry kind="mac" name="BUILD_VERSION" path="" value="1.0"/>
 	</storageModule>
 </cproject>

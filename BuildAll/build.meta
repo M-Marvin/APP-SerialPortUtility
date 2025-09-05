@@ -5,6 +5,12 @@ import de.m_marvin.metabuild.core.tasks.BuildTask;
 
 public class Buildfile extends BuildScript {
 	
+	void linkDependencies(String publishTask, String dependencyTask, String... targets) {
+		for (String config : targets) {
+			taskNamed(publishTask + config).dependencyOf(dependencyTask + config);
+		}
+	}
+	
 	@Override
 	public void init() {
 		
@@ -14,7 +20,7 @@ public class Buildfile extends BuildScript {
 		importBuild("jserialportaccess", new File("../JSerialPortAccess"));
 		importBuild("terminalserialaccess", new File("../TerminalSerialAccess"));
 		importBuild("serialoverethernet", new File("../SerialOverEthernet"));
-		
+	
 		var cleanAll = new BuildTask("cleanAll");
 		cleanAll.dependsOn("serialportaccess:clean");
 		cleanAll.dependsOn("virtualserial:clean");
@@ -24,19 +30,19 @@ public class Buildfile extends BuildScript {
 		cleanAll.dependsOn("serialoverethernet:clean");
 		
 		var buildAllLibs = new BuildTask("buildAllLibs");
-		taskNamed("serialportaccess:publishMavenLocal").dependencyOf("virtualserial:dependencies");
+		linkDependencies("serialportaccess:publishMavenLocal", "virtualserial:cppDependencies", "WinAMD64");
 		taskNamed("serialportaccess:publishMavenLocal").dependencyOf("jserialportaccess:copyNatives");
 		buildAllLibs.dependsOn("serialportaccess:publishMavenLocal");
 		buildAllLibs.dependsOn("jserialportaccess:publishMavenLocal");
 		buildAllLibs.dependsOn("virtualserial:publishMavenLocal");
 
-		var buildAll = new BuildTask("buildAll");
-		taskNamed("serialportaccess:publishMavenLocal").dependencyOf("terminalserialaccess:dependencies");
-		taskNamed("serialportaccess:publishMavenLocal").dependencyOf("serialoverethernet:dependencies");
-		taskNamed("virtualserial:publishMavenLocal").dependencyOf("serialoverethernet:dependencies");
-		buildAll.dependsOn("terminalserialaccess:build");
-		buildAll.dependsOn("serialoverethernet:build");
-		buildAll.dependsOn("virtualserialsetup:build");
+		var buildAllApps = new BuildTask("buildAllApps");
+		linkDependencies("serialportaccess:publishMavenLocal", "terminalserialaccess:cppDependencies", "WinAMD64", "LinAMD64", "LinARM64", "LinARM32");
+		linkDependencies("serialportaccess:publishMavenLocal", "serialoverethernet:cppDependencies", "WinAMD64", "LinAMD64", "LinARM64", "LinARM32");
+		linkDependencies("virtualserial:publishMavenLocal", "serialoverethernet:cppDependencies", "WinAMD64");
+		buildAllApps.dependsOn("terminalserialaccess:build");
+		buildAllApps.dependsOn("serialoverethernet:build");
+		buildAllApps.dependsOn("virtualserialsetup:build");
 		
 		super.init();
 		

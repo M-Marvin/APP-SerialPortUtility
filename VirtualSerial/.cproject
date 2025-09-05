@@ -18,6 +18,7 @@
 		<pathentry include="D:/Programms/toolchains/mingw64-msvcrt/lib/gcc/x86_64-w64-mingw32/14.2.0/include" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/mingw64-msvcrt/lib/gcc/x86_64-w64-mingw32/14.2.0/include-fixed" kind="inc" path="" system="true"/>
 		<pathentry include="D:/Programms/toolchains/mingw64-msvcrt/x86_64-w64-mingw32/include" kind="inc" path="" system="true"/>
+		<pathentry include="E:/GitHub/APP-SerialPortUtility/VirtualSerial/build/WinAMD64/includeHeaders" kind="inc" path="" system="true"/>
 		<pathentry include="E:/GitHub/APP-SerialPortUtility/VirtualSerial/src/cpp/public" kind="inc" path="" system="true"/>
 		<pathentry include="E:/GitHub/APP-SerialPortUtility/VCOM" kind="inc" path="" system="true"/>
 		<pathentry kind="mac" name="PLATFORM_WIN" path="" value=""/>
