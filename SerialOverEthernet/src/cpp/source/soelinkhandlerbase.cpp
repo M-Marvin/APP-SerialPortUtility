@@ -34,12 +34,12 @@ void SerialOverEthernet::SOELinkHandler::start() {
 
 void SerialOverEthernet::SOELinkHandler::stop() {
 	shutdown();
-	printf("[DBG] joining RX thread ...\n");
+	dbgprintf("[DBG] joining RX thread ...\n");
 	this->thread_rx.join();
-	printf("[DBG] joined\n");
-	printf("[DBG] joining TX thread ...\n");
+	dbgprintf("[DBG] joined\n");
+	dbgprintf("[DBG] joining TX thread ...\n");
 	this->thread_tx.join();
-	printf("[DBG] joined\n");
+	dbgprintf("[DBG] joined\n");
 }
 
 bool SerialOverEthernet::SOELinkHandler::shutdown() {

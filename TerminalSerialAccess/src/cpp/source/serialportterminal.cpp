@@ -29,6 +29,7 @@
 static bool shouldTerminate;				// if stdin was closed and the receptor thread should close
 static bool lineEditing = false;			// if line editing mode is enabled
 static char sendLineEnd = 0;				// if a ln or cr should be send after each line entered
+static bool sendLFonCR = false;				// if an CR received should be printed as LF
 static unsigned long pipeCloseDelay = 0;	// the delay for closing the receptor thread after closing stdin
 static SerialAccess::SerialPortConfiguration portConfiguration(SerialAccess::DEFAULT_PORT_CONFIGURATION);
 static SerialAccess::SerialPort* port;
@@ -50,6 +51,7 @@ int main(int argc, const char** argv) {
 		printf(" -parity [parity] : none|even|odd|mark|space\n");
 		printf(" -flowctrl [flow control] : none|xonxoff|rtscts|dsrdtr\n");
 		printf(" -lineedit (send new line) : sendlf|sendcr\n");
+		printf(" -crtolf : prints all carriage returns received as line feeds\n");
 		printf(" -dclose [pipe close delay] : [ms]\n");
 		printf("serial terminal version: " ASSTRING(BUILD_VERSION) "\n");
 		return 1;
@@ -97,6 +99,8 @@ int main(int argc, const char** argv) {
 		// flags without arguments
 		if (flag == "-lineedit") {
 			lineEditing = true;
+		} else if (flag == "-crtolf") {
+			sendLFonCR = true;
 		}
 	}
 
@@ -179,8 +183,11 @@ void receptionLoop() {
 
 	while (!shouldTerminate) {
 		receptionLen = port->readBytes(receptionBuffer, 1);
-		if (receptionLen > 0)
+		if (receptionLen > 0) {
+			if (sendLFonCR && receptionBuffer[0] == '\r')
+				receptionBuffer[0] = '\n';
 			printf("%.*s", (int) receptionLen, receptionBuffer);
+		}
 	}
 }
 
