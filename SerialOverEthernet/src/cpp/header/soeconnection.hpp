@@ -174,7 +174,7 @@ protected:
 	std::mutex m_localPort;												// protect local serial port against async modification
 	std::condition_variable cv_openLocalPort;							// waiting point for TX thread when port closed
 	std::string localPortName;											// local serial port name currently open
-	std::string remotePortName;											// remote serial prot currently open
+	std::string remotePortName;											// remote serial port currently open
 
 };
 
