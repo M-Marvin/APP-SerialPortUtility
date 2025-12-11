@@ -3,9 +3,7 @@ Description=Serial Over Ethernet Server
 
 [Service]
 Type=simple
-Environment=LD_LIBRARY_PATH=/opt/soe
-ExecStart=/opt/soe/server-start.sh
-
+ExecStart=/opt/soe/server-start.sh -addr ::
 
 [Install]
 WantedBy=multi-user.target
