@@ -125,6 +125,7 @@ int main(int argc, const char** argv) {
 	// open port
 	if (!port->openPort()) {
 		printf("[!] failed to open port: %s\n", portName.c_str());
+		setupConsole(true);
 		return -1;
 	}
 
@@ -132,6 +133,7 @@ int main(int argc, const char** argv) {
 	if (!port->setTimeouts(-1, 0, -1)) {
 		printf("[!] failed to set port timeouts: %s\n", portName.c_str());
 		port->closePort();
+		setupConsole(true);
 		return -1;
 	}
 
@@ -140,6 +142,7 @@ int main(int argc, const char** argv) {
 		printf("[!] failed to configure port: %s\n", portName.c_str());
 		printf("[i] this usualy indiciates not supported hardware configuration or an general invalid configuration\n");
 		port->closePort();
+		setupConsole(true);
 		return -1;
 	}
 
@@ -174,6 +177,7 @@ int main(int argc, const char** argv) {
 	// close port
 	port->closePort();
 
+	setupConsole(true);
 	return 0;
 }
 
