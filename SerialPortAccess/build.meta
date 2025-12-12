@@ -16,7 +16,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 
 	boolean debugging = false; // set to true to compile with debug info
 	
-	String version = "2.3";
+	String version = "2.3.1";
 	
 	@Override
 	public void init() {
@@ -69,7 +69,6 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.compileCpp.define("PLATFORM_WIN");
 		target.compileCpp.define("INCLUDE_JNIAPI");
 		if (debugging) target.compileCpp.options.add("-g");
-		target.linkCpp.libraries.add("Ws2_32");
 		target.linkCpp.options.add("-shared");
 		target.linkCpp.options.add("-static-libgcc");
 		target.linkCpp.options.add("-static-libstdc++");

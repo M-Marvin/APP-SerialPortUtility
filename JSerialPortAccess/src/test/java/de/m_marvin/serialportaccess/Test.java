@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.concurrent.CompletableFuture;
 
 import de.m_marvin.serialportaccess.SerialPort.SerialPortConfiguration;
 import de.m_marvin.serialportaccess.SerialPort.SerialPortFlowControl;
@@ -159,6 +160,19 @@ public class Test {
 			System.out.println("missmatch:\nsend:\t" + data + "\nread:\t" + readBack3);
 		}
 		
+		System.out.println("create input stream");
+		BufferedReader reader = new BufferedReader(new InputStreamReader(port.getInputStream()));
+		
+		System.out.println("start blocking read on stream to test closing behavior");
+		CompletableFuture.runAsync(() -> {
+			try {
+				reader.readLine();
+				System.out.println("stream exited, no exception");
+			} catch (IOException e) {
+				System.out.println("stream threw exception during read, success");
+			}
+		});
+		
 		System.out.println("close port");
 		port.closePort();
 		if (port.isOpen()) {
@@ -168,6 +182,8 @@ public class Test {
 		
 		System.out.println("try read port");
 		port.readData();
+		
+		Thread.sleep(1000);
 		
 		System.out.println("--- COMPLETED, NO ERRORS ---");
 		return 0;

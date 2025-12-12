@@ -182,7 +182,7 @@ JNIEXPORT jstring JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readD
 	char* readBuffer = (char*)malloc(bufferCapacity);
 	if (readBuffer == 0) return 0;
 	memset(readBuffer, 0, bufferCapacity);
-	unsigned long readBytes = port->readBytes(readBuffer, (unsigned long) bufferCapacity, wait);
+	long long readBytes = port->readBytes(readBuffer, (unsigned long) bufferCapacity, wait);
 	if (readBytes > 0) {
 		jstring js =  env->NewStringUTF(readBuffer);
 		free(readBuffer);
@@ -198,7 +198,7 @@ JNIEXPORT jbyteArray JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1re
 	char* readBuffer = (char*)malloc(bufferCapacity);
 	if (readBuffer == 0) return 0;
 	memset(readBuffer, 0, bufferCapacity);
-	unsigned long readBytes = port->readBytes(readBuffer, (unsigned long) bufferCapacity, wait);
+	long long readBytes = port->readBytes(readBuffer, (unsigned long) bufferCapacity, wait);
 	if (readBytes > 0)
 	{
 		jbyteArray byteArr = env->NewByteArray(readBytes);

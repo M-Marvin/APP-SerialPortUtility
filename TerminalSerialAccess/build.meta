@@ -12,6 +12,8 @@ import de.m_marvin.metabuild.maven.types.Repository.Credentials;
 public class Buildfile extends CppMultiTargetBuildScript {
 	
 	String version = "2.2";
+
+	String versionSerialAccess = null;
 	
 	@Override
 	public void init() {
@@ -19,6 +21,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		projectName = "terminalserial";
 
 		importBuild("serialportaccess", new File("../SerialPortAccess"));
+
+		versionSerialAccess = (String) field(buildNamed("serialportaccess"), "version");
 		
 		// Platform windows AMD 64 Client
 		var target = makeTarget("WinAMD64", "serial.exe");
@@ -96,8 +100,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	@Override
 	public void dependencies(MavenResolveTask dependencies, String config) {
 		
-		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config + ":2.3::zip");
-		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config + ":2.3:headers:zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config + ":" + versionSerialAccess + "::zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config + ":" + versionSerialAccess + ":headers:zip");
 		
 	}
 	
