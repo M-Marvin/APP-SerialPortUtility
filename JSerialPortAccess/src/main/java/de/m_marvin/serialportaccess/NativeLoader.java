@@ -3,6 +3,7 @@ package de.m_marvin.serialportaccess;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,7 +15,7 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.Map;
 
-/* NativeLoader v1.1 */
+/* NativeLoader v1.2 */
 public class NativeLoader {
 	
 	private static String libLoadConfig = "/libload.cfg";
@@ -102,15 +103,29 @@ public class NativeLoader {
 			archiveStream.close();
 			
 			File targetNativeFile;
+			String targetHash = null;
 			try {
 				MessageDigest md = MessageDigest.getInstance("MD5");
-				String hash = HexFormat.of().formatHex(md.digest(bufferStream.toByteArray()));
-				targetNativeFile = new File(targetLocation, hash + "/" + new File(nativeLocation).getName());
+				targetHash = HexFormat.of().formatHex(md.digest(bufferStream.toByteArray()));
+				targetNativeFile = new File(targetLocation, targetHash + "/" + new File(nativeLocation).getName());
 			} catch (NoSuchAlgorithmException e) {
 				targetNativeFile = new File(targetLocation, new File(nativeLocation).getName());
 			}
 			
-			targetNativeFile.getParentFile().mkdirs();
+			if (!targetNativeFile.getParentFile().isDirectory())
+				targetNativeFile.getParentFile().mkdirs();
+			
+			if (targetNativeFile.isFile() && targetHash != null) {
+				try {
+					MessageDigest md = MessageDigest.getInstance("MD5");
+					InputStream existingNativeStream = new FileInputStream(targetNativeFile);
+					String existingHash = HexFormat.of().formatHex(md.digest(existingNativeStream.readAllBytes()));
+					existingNativeStream.close();
+					if (existingHash.equals(targetHash))
+						return targetNativeFile;
+				} catch (NoSuchAlgorithmException e) {}
+			}
+			
 			OutputStream fileStream = new FileOutputStream(targetNativeFile);
 			fileStream.write(bufferStream.toByteArray());
 			fileStream.close();
