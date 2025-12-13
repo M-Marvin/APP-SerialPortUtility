@@ -269,7 +269,7 @@ public:
 		} else {
 			// Wait for readTimeout ms, then return no matter what has or has not been received
 			// When receiving a byte, wait additional readTimeoutInterval ms for another one before returning
-			this->comPortTimeouts.ReadTotalTimeoutConstant = readTimeout;
+			this->comPortTimeouts.ReadTotalTimeoutConstant = std::max(readTimeout, 1);
 			this->comPortTimeouts.ReadIntervalTimeout = readTimeoutInterval < 0 ? 0 : readTimeoutInterval;
 			this->comPortTimeouts.ReadTotalTimeoutMultiplier = 0;
 		}
