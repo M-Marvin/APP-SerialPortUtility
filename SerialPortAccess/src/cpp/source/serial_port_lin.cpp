@@ -101,7 +101,7 @@ private:
 	int comPortHandle;
 	const char* portFileName;
 	int rxTimeout = 0;
-	int rxTimeoutInterval = 0;
+	int rxTimeoutInterval = 0; // NOTE currently not supported by linux, value just stored
 	int txTimeout = 0;
 	struct pollfd pollfdRx[2]; // rx, evt
 	struct pollfd pollfdTx[2]; // tx, evt
@@ -382,16 +382,16 @@ public:
 
 		if (readTimeout < 0) {
 			// No timeout, but wait indefinitely for at least one byte
-			// When receiving a byte, wait additonal readTimeoutInterval ms for another one before returning
+			// When receiving a byte, wait additional readTimeoutInterval ms for another one before returning
 			this->rxTimeout = -1;
-			this->rxTimeoutInterval = readTimeoutInterval;
+			this->rxTimeoutInterval = readTimeoutInterval; // NOTE currently not supported by linux, value just stored
 			this->comPortState.c_cc[VTIME] = readTimeoutInterval < 0 ? 0 : (unsigned char) (readTimeoutInterval / 100);
 			this->comPortState.c_cc[VMIN] = 1;
 		} else {
 			// Wait for readTimeout ms, then return no matter what has or has not been received
 			// When receiving a byte, wait additonal readTimeoutInterval ms for another one before returning
 			this->rxTimeout = (unsigned char) (readTimeout / 100);
-			this->rxTimeoutInterval = readTimeoutInterval;
+			this->rxTimeoutInterval = readTimeoutInterval; // NOTE currently not supported by linux, value just stored
 			this->comPortState.c_cc[VTIME] = readTimeoutInterval < 0 ? 0 : (unsigned char) (readTimeoutInterval / 100);
 			this->comPortState.c_cc[VMIN] = 0;
 		}

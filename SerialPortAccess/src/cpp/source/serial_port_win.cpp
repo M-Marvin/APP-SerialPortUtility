@@ -260,7 +260,7 @@ public:
 		}
 
 		if (readTimeout < 0) {
-			// No timeout, but wait indefinitely* for at least one byte
+			// No timeout, but wait indefinitely for at least one byte
 			// When receiving a byte, wait additional readTimeoutInterval ms for another one before returning
 			this->comPortTimeouts.ReadIntervalTimeout = readTimeoutInterval < 1 ? 1 : readTimeoutInterval;
 			//																	^- interval = 0 causes read to block indefinetly because ... windows ...
@@ -268,8 +268,9 @@ public:
 			this->comPortTimeouts.ReadTotalTimeoutMultiplier = 0;
 		} else {
 			// Wait for readTimeout ms, then return no matter what has or has not been received
-			// When receiving a byte, wait additional readTimeoutInterval ms for another one before returning
-			this->comPortTimeouts.ReadTotalTimeoutConstant = std::max(readTimeout, 1);
+			// When receiving a byte, wait only readTimeoutInterval (if not zero) ms for another one then time out early.
+			this->comPortTimeouts.ReadTotalTimeoutConstant = readTimeout < 1 ? 1 : readTimeout;
+			//															     ^- interval = 0 causes read to block indefinetly because ... windows ...
 			this->comPortTimeouts.ReadIntervalTimeout = readTimeoutInterval < 0 ? 0 : readTimeoutInterval;
 			this->comPortTimeouts.ReadTotalTimeoutMultiplier = 0;
 		}

@@ -177,10 +177,16 @@ public class SerialPort {
 	
 	/**
 	 * Sets the read write timeouts for the port.
-	 * An readTimeout of zero means no timeout. (instant return if no data is available)
-	 * An readTimeout of less than zero causes the read method to block until at least one character has arrived.
-	 * An writeTimeout of zero or less has means block until everything is written.
-	 * The readTimeoutInterval defines an additional timeout that is appended to each received byte.
+	 * An readTimeout greater than zero means to wait until all requested characters have been received or time runs out.<br>
+	 * An readTimeout of zero means no timeout, instant return with what is in the buffer even if no data is available.<br>
+	 * An readTimeout of less than zero causes the read method to block until at least one character has arrived and/or is available in the buffer, then return with what is in the buffer.<br>
+	 * An writeTimeout greater than zero means to wait until everything is written or the time runs out.<br>
+	 * An writeTimeout of zero or less has means block until everything is written.<br>
+	 * The readTimeoutInterval defines an additional timeout between the reception of individual bytes, it is started (and reset) when the first byte is received and times out if no  further byte is received within this time.<br>
+	 * An readTimeoutInterval of zero or less indicates to not use this timeout and wait indefinitely (or until the normal timeout runs out)<br>
+	 * Note that readTimeoutInterval might not be supported on all platforms, some might always behave as if it where zero.<br>
+	 * In combination with readTimeout less than zero, readTimeoutInterval can act as an additional timeout after the first received byte (and all successive bytes).<br>
+	 *
 	 * The port has to be open for this to work.
 	 * @param readTimeout The read timeout, if the requested amount of data is not received within this time, it returns with what it has (might be zero)
 	 * @param readTimeoutInterval An additional timeout that is waited for after each received byte, only has an effect if readTimeout >= 0.
@@ -193,10 +199,16 @@ public class SerialPort {
 	
 	/**
 	 * Sets the read write timeouts for the port.
-	 * An readTimeout of zero means no timeout. (instant return if no data is available)
-	 * An readTimeout of less than zero causes the read method to block until at least one character has arrived.
-	 * An writeTimeout of zero or less has means block until everything is written.
-	 * The readTimeoutInterval defines an additional timeout that is appended to each received byte.
+	 * An readTimeout greater than zero means to wait until all requested characters have been received or time runs out.<br>
+	 * An readTimeout of zero means no timeout, instant return with what is in the buffer even if no data is available.<br>
+	 * An readTimeout of less than zero causes the read method to block until at least one character has arrived and/or is available in the buffer, then return with what is in the buffer.<br>
+	 * An writeTimeout greater than zero means to wait until everything is written or the time runs out.<br>
+	 * An writeTimeout of zero or less has means block until everything is written.<br>
+	 * The readTimeoutInterval defines an additional timeout between the reception of individual bytes, it is started (and reset) when the first byte is received and times out if no  further byte is received within this time.<br>
+	 * An readTimeoutInterval of zero or less indicates to not use this timeout and wait indefinitely (or until the normal timeout runs out)<br>
+	 * Note that readTimeoutInterval might not be supported on all platforms, some might always behave as if it where zero.<br>
+	 * In combination with readTimeout less than zero, readTimeoutInterval can act as an additional timeout after the first received byte (and all successive bytes).<br>
+	 *
 	 * The port has to be open for this to work.
 	 * @param timeouts The read timeouts: {readTimeout, readTimeoutInterval, writeTimeout}
 	 * @return true if the timeouts where set, false if an error occurred
