@@ -184,6 +184,7 @@ JNIEXPORT jstring JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1readD
 	memset(readBuffer, 0, bufferCapacity);
 	long long readBytes = port->readBytes(readBuffer, (unsigned long) bufferCapacity, wait);
 	if (readBytes > 0) {
+		readBuffer[bufferCapacity] = 0;
 		jstring js =  env->NewStringUTF(readBuffer);
 		free(readBuffer);
 		return js;

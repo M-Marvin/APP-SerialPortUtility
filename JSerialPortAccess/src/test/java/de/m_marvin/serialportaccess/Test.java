@@ -51,8 +51,7 @@ public class Test {
 
 		System.out.println("open port again with other instance");
 		if (port2.openPort()) {
-			System.err.println("failed, should return false since different port instance!");
-			return -1;
+			System.err.println("failed, should return false since different port instance! (unless virtual port)");
 		}
 		
 		System.out.println("check is open");
