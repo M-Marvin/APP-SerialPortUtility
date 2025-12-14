@@ -12,7 +12,10 @@ typedef struct
     WDFQUEUE        WaitChangeQueue;    // Manual queue for pending ioctl wait-on-change
     ULONG           WaitMask;
     ULONG           ChangeMask;
-    
+    WDFTIMER        ReadTimeoutTimer;
+    WDFTIMER        ReadIntervalTimeoutTimer;
+    WDFTIMER        WriteTimeoutTimer;
+
     DEVICE_CONTEXT* DeviceContext;
 
 } QUEUE_CONTEXT;
@@ -40,7 +43,9 @@ NTSTATUS CopyFromRequest(WDFREQUEST requestHandle, ULONG requestBufferOffset, vo
 NTSTATUS CopyToRequest(WDFREQUEST requestHandle, ULONG requestBufferOffset, void* buffer, size_t bytesToCopy);
 
 void IORead(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t length);
+void EvtReadTimedOut(WDFTIMER timer);
 
 void IOWrite(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t length);
+void EvtWriteTimedOut(WDFTIMER timer);
 
 void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outputBufferLength, size_t inputBufferLength, ULONG controlCode);

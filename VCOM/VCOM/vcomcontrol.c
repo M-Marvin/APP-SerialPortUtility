@@ -17,6 +17,7 @@ NTSTATUS CreateIOQueue(DEVICE_CONTEXT* deviceContext)
 	WDFQUEUE writeQueueHandle;
 	WDFQUEUE waitMaskQueueHandle;
 	WDFQUEUE waitChangeQueueHandle;
+	WDF_TIMER_CONFIG timeoutTimerConfig;
 	QUEUE_CONTEXT* context;
 
 	// configure default IO queue
@@ -85,6 +86,30 @@ NTSTATUS CreateIOQueue(DEVICE_CONTEXT* deviceContext)
 
 	context->WaitChangeQueue = waitChangeQueueHandle;
 
+	WDF_OBJECT_ATTRIBUTES_INIT(&attributes);
+	attributes.ParentObject = context->Queue;
+
+	WDF_TIMER_CONFIG_INIT(&timeoutTimerConfig, &EvtReadTimedOut);
+	timeoutTimerConfig.AutomaticSerialization = FALSE;
+	status = WdfTimerCreate(&timeoutTimerConfig, &attributes, &context->ReadTimeoutTimer);
+	if (status != STATUS_SUCCESS) {
+		dbgerrprintf("[!] VCOM WdfTimerCreate for read timeout timer failed: NTSTATUS 0x%x\n", status);
+		return status;
+	}
+	status = WdfTimerCreate(&timeoutTimerConfig, &attributes, &context->ReadIntervalTimeoutTimer);
+	if (status != STATUS_SUCCESS) {
+		dbgerrprintf("[!] VCOM WdfTimerCreate for read interval timeout timer failed: NTSTATUS 0x%x\n", status);
+		return status;
+	}
+
+	WDF_TIMER_CONFIG_INIT(&timeoutTimerConfig, &EvtWriteTimedOut);
+	timeoutTimerConfig.AutomaticSerialization = FALSE;
+	status = WdfTimerCreate(&timeoutTimerConfig, &attributes, &context->WriteTimeoutTimer);
+	if (status != STATUS_SUCCESS) {
+		dbgerrprintf("[!] VCOM WdfTimerCreate for write timeout timer failed: NTSTATUS 0x%x\n", status);
+		return status;
+	}
+
 	dbgprintf("[i] VCOM CreateIOQueue completed\n");
 
 	return STATUS_SUCCESS;
@@ -146,11 +171,31 @@ static void ReInvokeRequests(QUEUE_CONTEXT* queueContext, WDFQUEUE queue) {
 
 		if (status != STATUS_SUCCESS) break;
 
+		// terminate timeout timer if running
+
 		status = WdfRequestForwardToIoQueue(request, queueContext->Queue);
 		if (status != STATUS_SUCCESS) {
 			dbgerrprintf("[!] VCOM ReInvokeRequests:WdfRequestForwardToIoQueue failed: NTSTATUS 0x%x\n", status);
 			WdfRequestComplete(request, status);
 		}
+
+	}
+
+}
+
+static void TimeoutRequests(WDFQUEUE queue) {
+
+	NTSTATUS status;
+	WDFREQUEST request;
+
+	for (; ; ) {
+
+		status = WdfIoQueueRetrieveNextRequest(queue, &request);
+
+		if (status != STATUS_SUCCESS) break;
+
+		REQUEST_CONTEXT* requestContext = GetRequestContext(request);
+		WdfRequestCompleteWithInformation(request, STATUS_TIMEOUT, requestContext->ReadWrite.BytesTransfered);
 
 	}
 
@@ -772,16 +817,57 @@ void IORead(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t length)
 	if (bufferContent == 0)
 		TriggerChangeWait(queueContext, APPLINK_EVENT_TXEMPTY);
 
-	// complete or re-queue request if not all bytes have ben read yet
-	if (requestContext->ReadWrite.BytesTransfered < length) {
-		WdfRequestForwardToIoQueue(requestHandle, queueContext->ReadQueue);
+	// complete or re-queue request with timeouts if not all bytes have ben read yet
+	if (requestContext->ReadWrite.BytesTransfered >= length) {
+		// stop timeout timer if running
+		WdfTimerStop(queueContext->ReadTimeoutTimer, FALSE);
+		WdfTimerStop(queueContext->ReadIntervalTimeoutTimer, FALSE);
+
+		WdfRequestCompleteWithInformation(requestHandle, status, requestContext->ReadWrite.BytesTransfered);
 	}
 	else {
-		WdfRequestCompleteWithInformation(requestHandle, status, requestContext->ReadWrite.BytesTransfered);
+		ULONG timeout = (ULONG)length * deviceContext->Timeouts.ReadTotalTimeoutMultiplier + deviceContext->Timeouts.ReadTotalTimeoutConstant;
+		
+		// start timeout timer if an timeout is defined
+		if (timeout > 0) {
+			dbgprintf("[DBG] started read timeout: %d\n", timeout);
+			WdfTimerStart(queueContext->ReadTimeoutTimer, -(LONGLONG)timeout * 10000);
+		}
+
+		if (bytesRead > 0) {
+			ULONG timeoutInterval = deviceContext->Timeouts.ReadIntervalTimeout;
+
+			// start additonal interval timeout timer if an byte was received
+			if (timeoutInterval > 0) {
+				dbgprintf("[DBG] started interval timeout: %d\n", timeout);
+				WdfTimerStart(queueContext->ReadIntervalTimeoutTimer, -(LONGLONG)timeoutInterval * 10000);
+			}
+		}
+
+		// put request into parking queue
+		WdfRequestForwardToIoQueue(requestHandle, queueContext->ReadQueue);
 	}
 
 	// invoke pending write requests, let them attempt to use the freed space in the buffer
 	ReInvokeRequests(queueContext, queueContext->WriteQueue);
+
+}
+
+void EvtReadTimedOut(WDFTIMER timer) {
+
+	WDFQUEUE queueHandle = (WDFQUEUE) WdfTimerGetParentObject(timer);
+	QUEUE_CONTEXT* queueContext = GetQueueContext(queueHandle);
+
+	dbgprintf("[i] IORead timed out\n");
+
+	// stop the other read timeout to avoid unwanted trigger for next read operation
+	if (timer == queueContext->ReadTimeoutTimer)
+		WdfTimerStop(queueContext->ReadIntervalTimeoutTimer, FALSE);
+	else
+		WdfTimerStop(queueContext->ReadTimeoutTimer, FALSE);
+
+	// complete the read operation with timeout status
+	TimeoutRequests(queueContext->ReadQueue);
 
 }
 
@@ -813,14 +899,36 @@ void IOWrite(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t length)
 		TriggerChangeWait(queueContext, APPLINK_EVENT_RXCHAR);
 
 	// complete or re-queue request if not all bytes have ben written yet
-	if (requestContext->ReadWrite.BytesTransfered < length) {
-		WdfRequestForwardToIoQueue(requestHandle, queueContext->WriteQueue);
+	if (requestContext->ReadWrite.BytesTransfered >= length) {
+		// stop timeout timer if running
+		WdfTimerStop(queueContext->WriteTimeoutTimer, FALSE);
+
+		WdfRequestCompleteWithInformation(requestHandle, status, requestContext->ReadWrite.BytesTransfered);
 	}
 	else {
-		WdfRequestCompleteWithInformation(requestHandle, status, requestContext->ReadWrite.BytesTransfered);
+		ULONG timeout = (ULONG) length * deviceContext->Timeouts.WriteTotalTimeoutMultiplier + deviceContext->Timeouts.WriteTotalTimeoutConstant;
+
+		// start timeout timer if an timeout is defined
+		if (timeout > 0)
+			WdfTimerStart(queueContext->WriteTimeoutTimer, -(LONGLONG) timeout * 10000);
+
+		// put request into parking queue
+		WdfRequestForwardToIoQueue(requestHandle, queueContext->WriteQueue);
 	}
 
 	// invoke pending read requests, let them attempt to use the new data in the buffer
 	ReInvokeRequests(queueContext, queueContext->ReadQueue);
+
+}
+
+void EvtWriteTimedOut(WDFTIMER timer) {
+
+	WDFQUEUE queueHandle = (WDFQUEUE)WdfTimerGetParentObject(timer);
+	QUEUE_CONTEXT* queueContext = GetQueueContext(queueHandle);
+
+	dbgprintf("[i] IOWrite timed out\n");
+
+	// complete the read operation with timeout status
+	TimeoutRequests(queueContext->WriteQueue);
 
 }

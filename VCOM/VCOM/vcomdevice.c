@@ -186,7 +186,7 @@ NTSTATUS DeviceConfigure(DEVICE_CONTEXT* context)
 		}
 		context->PdoName = WdfMemoryGetBuffer(memory, NULL);
 
-		dbgprintf("[!] VCOM port pdo name: %ws\n", context->PdoName);
+		dbgprintf("[i] VCOM port pdo name: %ws\n", context->PdoName);
 		
 		// open device map registry key
 		status = WdfDeviceOpenDevicemapKey(deviceHandle, &deviceSubkey, KEY_SET_VALUE, WDF_NO_OBJECT_ATTRIBUTES, &deviceMapKey);
