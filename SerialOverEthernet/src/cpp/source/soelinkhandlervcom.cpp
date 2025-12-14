@@ -31,7 +31,6 @@ bool SerialOverEthernet::SOELinkHandlerVCOM::closeLocalPort() {
 	if (this->localPort == 0 || !this->localPort->isCreated()) return true;
 	std::unique_lock<std::mutex> lock(this->m_localPort);
 	this->localPort->closePort();
-	this->localPort.release();
 	dbgprintf("[DBG] local port closed: %s\n", this->localPortName.c_str());
 	return true;
 }
