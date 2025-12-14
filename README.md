@@ -17,7 +17,6 @@ Simple and easy to use JNI capable serial port access lib.
 * Java and C++ synthax almost identical
 * Unified class for serial port configuration on both linux and windows (baud, data bits, stop bits, parity, flow control)
 * Configurable timeouts (RX and TX)
-* Consecutive read function to reduce complexity in some codes
 
 The Library can be downloaded from the GitHub packages (both C++ and Java)
 
