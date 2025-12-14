@@ -47,11 +47,11 @@ void printError(const char* format) {
 	printError(errorCode, format);
 }
 
-bool findINFClassAndHWID(std::string* fullInfPath, std::string* hardwareID, std::string* vcomClassName, GUID* vcomClassGUID) {
+bool findINFClassAndHWID(std::string driverInfFolder, std::string* fullInfPath, std::string* hardwareID, std::string* vcomClassName, GUID* vcomClassGUID) {
 
 	// find driver INF
 	char infFullPathStr[MAX_PATH] = {0};
-	if (GetFullPathNameA(VCOM_DRIVER_INF, MAX_PATH, infFullPathStr, NULL) >= MAX_PATH) {
+	if (GetFullPathNameA((driverInfFolder + "\\" + std::string(VCOM_DRIVER_INF)).c_str(), MAX_PATH, infFullPathStr, NULL) >= MAX_PATH) {
 		printError("error 0x%x in drvsetup:findINFClassAndHWID:GetFullPathNameA: %s");
 		return false;
 	}
@@ -119,17 +119,17 @@ bool findINFClassAndHWID(std::string* fullInfPath, std::string* hardwareID, std:
 
 }
 
-bool removeAllPorts()
+bool removeAllPorts(std::string driverInfFolder)
 {
-	return removePort(""); // empty string makes it remove all ports
+	return removePort(driverInfFolder, ""); // empty string makes it remove all ports
 }
 
-bool removePort(std::string portName)
+bool removePort(std::string driverInfFolder, std::string portName)
 {
 
 	GUID vcomClassGUID;
 	std::string vcomHardwareID;
-	if (!findINFClassAndHWID(0, &vcomHardwareID, 0, &vcomClassGUID)) return false;
+	if (!findINFClassAndHWID(driverInfFolder, 0, &vcomHardwareID, 0, &vcomClassGUID)) return false;
 
 	if (portName.empty()) {
 		printf("[i] remove all ports\n");
@@ -280,14 +280,14 @@ bool tryNameFirstUnnamed(std::string portName, std::string vcomHardwareID)
 
 }
 
-bool installPort(std::string portName)
+bool installPort(std::string driverInfFolder, std::string portName)
 {
 
 	std::string fullInfPath;
 	GUID vcomClassGUID;
 	std::string vcomClassName;
 	std::string vcomHardwareID;
-	if (!findINFClassAndHWID(&fullInfPath, &vcomHardwareID, &vcomClassName, &vcomClassGUID)) return false;
+	if (!findINFClassAndHWID(driverInfFolder, &fullInfPath, &vcomHardwareID, &vcomClassName, &vcomClassGUID)) return false;
 
 	if (tryNameFirstUnnamed(portName, vcomHardwareID)) {
 		printf("[i] new port installed\n");
@@ -335,12 +335,12 @@ bool installPort(std::string portName)
 	return true;
 }
 
-bool updateDriver()
+bool updateDriver(std::string driverInfFolder)
 {
 
 	std::string fullInfPath;
 	std::string vcomHardwareID;
-	if (!findINFClassAndHWID(&fullInfPath, &vcomHardwareID, 0, 0)) return false;
+	if (!findINFClassAndHWID(driverInfFolder, &fullInfPath, &vcomHardwareID, 0, 0)) return false;
 
 	printf("[i] reload driver PnP devices ... (this might take some time)\n");
 
@@ -368,10 +368,10 @@ typedef BOOL (WINAPI *DiUninstallDriverAProto)(	HWND hwndParent OPTIONAL,
 												);
 #define DIUNINSTALLDRIVER "DiUninstallDriverA"
 
-bool installDriver()
+bool installDriver(std::string driverInfFolder)
 {
 	std::string fullInfPath;
-	if (!findINFClassAndHWID(&fullInfPath, NULL, NULL, NULL)) return false;
+	if (!findINFClassAndHWID(driverInfFolder, &fullInfPath, NULL, NULL, NULL)) return false;
 
 	printf("[i] installing driver from local INF file\n");
 
@@ -397,10 +397,10 @@ bool installDriver()
 	printf("[i] driver installed\n");
 	return true;
 }
-bool uninstallDriver()
+bool uninstallDriver(std::string driverInfFolder)
 {
 	std::string fullInfPath;
-	if (!findINFClassAndHWID(&fullInfPath, NULL, NULL, NULL)) return false;
+	if (!findINFClassAndHWID(driverInfFolder, &fullInfPath, NULL, NULL, NULL)) return false;
 
 	printf("[i] NOTE: un-installing the driver does leave the virtual ports registered, run with -removeall to remove all ports as well\n");
 

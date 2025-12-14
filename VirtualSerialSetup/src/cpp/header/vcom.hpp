@@ -26,11 +26,11 @@ int mainCPP(std::string& exec, std::vector<std::string>& args);
  */
 int main(int argc, const char** argv);
 
-bool installPort(std::string portName);
-bool removePort(std::string portName);
-bool removeAllPorts();
-bool updateDriver();
-bool installDriver();
-bool uninstallDriver();
+bool installPort(std::string driverInfFolder, std::string portName);
+bool removePort(std::string driverInfFolder, std::string portName);
+bool removeAllPorts(std::string driverInfFolder);
+bool updateDriver(std::string driverInfFolder);
+bool installDriver(std::string driverInfFolder);
+bool uninstallDriver(std::string driverInfFolder);
 
 #endif /* VCOM_HPP_ */

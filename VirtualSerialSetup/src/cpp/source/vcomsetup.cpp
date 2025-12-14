@@ -31,24 +31,27 @@ int mainCPP(std::string& exec, std::vector<std::string>& args) {
 	}
 
 
+	std::string execFolder = exec;
+	execFolder.erase(execFolder.find_last_of("/\\"));
+
 	for (auto flag = args.begin(); flag != args.end(); flag++) {
 		if (flag + 1 != args.end()) {
 			// flags with argument
 			if (*flag == "-install") {
-				if (!installPort(*++flag)) return -1;
+				if (!installPort(execFolder, *++flag)) return -1;
 			} else if (*flag == "-remove") {
-				if (!removePort(*++flag)) return -1;
+				if (!removePort(execFolder, *++flag)) return -1;
 			}
 		}
 		// flags without arguments
 		if (*flag == "-removeall") {
-			if (!removeAllPorts()) return -1;
+			if (!removeAllPorts(execFolder)) return -1;
 		} else if (*flag == "-drvinstall") {
-			if (!installDriver()) return -1;
+			if (!installDriver(execFolder)) return -1;
 		} else if (*flag == "-drvuninstall") {
-			if (!uninstallDriver()) return -1;
+			if (!uninstallDriver(execFolder)) return -1;
 		} else if (*flag == "-update") {
-			if (!updateDriver()) return -1;
+			if (!updateDriver(execFolder)) return -1;
 		}
 	}
 
