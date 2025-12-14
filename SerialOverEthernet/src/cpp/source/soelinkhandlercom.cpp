@@ -87,9 +87,10 @@ void SerialOverEthernet::SOELinkHandlerCOM::doSerialReception() {
 					dbgprintf("[DBG] pending data: [serial] <- |network| : >%.*s<\n", availableBytes, this->serialData.dataStart());
 
 					// the transmission buffer is to 75% full, send flow control signal
-					if (availableBytes > (SOE_TCP_STREAM_BUFFER_LEN / 4 * 3) && this->remoteFlowEnable)
+					if (availableBytes > (SOE_TCP_STREAM_BUFFER_LEN / 4 * 3) && this->remoteFlowEnable) {
+						printf("[i] send flow control to remote: txenbl = false\n");
 						sendFlowControl(this->remoteFlowEnable = false);
-
+					}
 					nothingToDo = true; // we need to wait for the data to be transmitted
 				} else {
 					dbgprintf("[DBG] stream data: [serial] <- |network| : >%.*s<\n", written, this->serialData.dataStart());
@@ -103,6 +104,7 @@ void SerialOverEthernet::SOELinkHandlerCOM::doSerialReception() {
 			} else {
 				// if flow was disabled, reactivate now
 				if (!this->remoteFlowEnable) {
+					printf("[i] send flow control to remote: txenbl = true\n");
 					sendFlowControl(this->remoteFlowEnable = true);
 				}
 			}
@@ -193,6 +195,8 @@ void SerialOverEthernet::SOELinkHandlerCOM::transmitSerialData(const char* data,
 }
 
 void SerialOverEthernet::SOELinkHandlerCOM::updateFlowControl(bool enableTransmit) {
+
+	printf("[i] received flow control: txenbl = %s\n", enableTransmit ? "true" : "false");
 
 	SOELinkHandler::updateFlowControl(enableTransmit);
 

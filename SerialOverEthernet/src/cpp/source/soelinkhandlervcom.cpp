@@ -77,7 +77,7 @@ void SerialOverEthernet::SOELinkHandlerVCOM::doSerialReception() {
 
 					// the transmission buffer is to 75% full, send flow control signal
 					if (this->serialData.free() < (SOE_TCP_STREAM_BUFFER_LEN / 4) && this->remoteFlowEnable) {
-						dbgprintf("[DBG] send flow control to remote: txenbl = false\n");
+						printf("[i] send flow control to remote: txenbl = false\n");
 						sendFlowControl(this->remoteFlowEnable = false);
 					}
 
@@ -94,7 +94,7 @@ void SerialOverEthernet::SOELinkHandlerVCOM::doSerialReception() {
 			} else {
 				// if flow was disabled, reactivate now
 				if (!this->remoteFlowEnable) {
-					dbgprintf("[DBG] send flow control to remote: txenbl = true\n");
+					printf("[i] send flow control to remote: txenbl = true\n");
 					sendFlowControl(this->remoteFlowEnable = true);
 				}
 			}
@@ -207,7 +207,7 @@ void SerialOverEthernet::SOELinkHandlerVCOM::transmitSerialData(const char* data
 
 void SerialOverEthernet::SOELinkHandlerVCOM::updateFlowControl(bool enableTransmit) {
 
-	dbgprintf("[DBG] received flow control: txenbl = %s\n", enableTransmit ? "true" : "false");
+	printf("[i] received flow control: txenbl = %s\n", enableTransmit ? "true" : "false");
 
 	SOELinkHandler::updateFlowControl(enableTransmit);
 
