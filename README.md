@@ -62,6 +62,7 @@ It also requires compilers for the different platforms to be available, and symb
 - lin-amd-64-g++ - The linux AMD64 compiler
 - lin-arm-64-g++ - The linux ARM64 compiler
 - lin-arm-32-g++ - The linux ARM32 compiler
+
 I don't know the exact C++ Standard they need to support, but any recently moddern compiler should work.
 
 If only an specific platform has to be build, two options are available:
