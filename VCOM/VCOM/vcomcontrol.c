@@ -764,6 +764,7 @@ void IODeviceControl(WDFQUEUE queueHandle, WDFREQUEST requestHandle, size_t outp
 	
 	case IOCTL_SERIAL_SET_BREAK_ON:
 	case IOCTL_SERIAL_SET_BREAK_OFF:
+		// TODO maybe implement break signal if possible
 	case IOCTL_SERIAL_XOFF_COUNTER:
 	case IOCTL_SERIAL_IMMEDIATE_CHAR:
 	case IOCTL_SERIAL_PURGE:
