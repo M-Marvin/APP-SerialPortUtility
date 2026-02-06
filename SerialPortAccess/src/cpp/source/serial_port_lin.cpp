@@ -431,19 +431,26 @@ public:
 			this->pollfdRx[0].revents = this->pollfdRx[1].revents = 0;
 			int pollres = ::poll(this->pollfdRx, 2, wait ? this->rxTimeout : 0);
 			if (pollres < 0) {
+				closePort();
 				return -2; // error
 			} else if (pollres == 0) {
 				return -1; // event still pending, but wait = false
 			}
 
 			// operation aborted, return error
-			if (this->pollfdRx[0].revents == 0) return -2;
+			if (this->pollfdRx[0].revents == 0) {
+				closePort();
+				return -2;
+			}
 
 		}
 
 		// perform actual read
 		ssize_t receivedBytes = ::read(this->comPortHandle, buffer, bufferCapacity);
-		if (receivedBytes < 0) return -2;
+		if (receivedBytes < 0) {
+			closePort();
+			return -2;
+		}
 		return receivedBytes;
 	}
 
@@ -458,19 +465,26 @@ public:
 			this->pollfdTx[0].revents = this->pollfdTx[1].revents = 0;
 			int pollres = ::poll(this->pollfdTx, 2, wait ? this->txTimeout : 0);
 			if (pollres < 0) {
+				closePort();
 				return -2; // error
 			} else if (pollres == 0) {
 				return -1; // operation still pending, but wait = false
 			}
 
 			// operation aborted, return error
-			if (this->pollfdTx[0].revents == 0) return -2;
+			if (this->pollfdTx[0].revents == 0) {
+				closePort();
+				return -2;
+			}
 
 		}
 
 		// perform actual write
 		ssize_t writtenBytes = ::write(this->comPortHandle, buffer, bufferLength);
-		if (writtenBytes < 0) return -2;
+		if (writtenBytes < 0) {
+			closePort();
+			return -2;
+		}
 		return writtenBytes;
 	}
 

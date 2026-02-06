@@ -183,7 +183,7 @@ int main(int argc, const char** argv) {
 
 void receptionLoop() {
 	char receptionBuffer[1];
-	unsigned long receptionLen = 0;
+	long long int receptionLen = 0;
 
 	while (!shouldTerminate) {
 		receptionLen = port->readBytes(receptionBuffer, 1);
@@ -191,6 +191,8 @@ void receptionLoop() {
 			if (sendLFonCR && receptionBuffer[0] == '\r')
 				receptionBuffer[0] = '\n';
 			printf("%.*s", (int) receptionLen, receptionBuffer);
+		} else if (receptionLen < 0) {
+			shouldTerminate = true;
 		}
 	}
 }

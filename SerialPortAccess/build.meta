@@ -16,7 +16,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 
 	boolean debugging = true; // set to true to compile with debug info
 	
-	String version = "2.3.3";
+	String version = "2.3.4";
 	
 	@Override
 	public void init() {

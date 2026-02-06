@@ -12,7 +12,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 	
 	boolean debugging = false; // set to true to compile with debug info
 	
-	String version = "2.2.2";
+	String version = "2.2.3";
 	
 	String versionSerialAccess = null;
 	String versionVirtualSerial = null;
