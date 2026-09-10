@@ -1,11 +1,13 @@
+/* Implements driver creation and device managment
+*/
 
 #include "vcomdriver.h"
-#include "vcomdevice.h"
+#include "vcomport.h"
 #include "dbgprint.h"
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING registryPath)
 {
-	
+
 	dbgprintf("[i] VCOM DriverEntry called: regpath: %.*ls\n", registryPath->Length, registryPath->Buffer);
 
 	NTSTATUS status;
@@ -40,16 +42,16 @@ NTSTATUS DriverDeviceAdd(WDFDRIVER driverHandle, PWDFDEVICE_INIT deviceInit)
 	DEVICE_CONTEXT* deviceContext;
 
 	// create device
-	status = DeviceCreate(driverHandle, deviceInit, &deviceContext);
+	status = PortDeviceCreate(driverHandle, deviceInit, &deviceContext);
 	if (status != STATUS_SUCCESS) {
 		dbgerrprintf("[!] VCOM DeviceCreate failed: NTSTATUS 0x%x\n", status);
 		return status;
 	}
 
 	// configure device
-	status = DeviceConfigure(deviceContext);
+	status = PortDeviceConfigure(deviceContext);
 	if (status != STATUS_SUCCESS) {
-		dbgerrprintf("[!] VCOM DeviceConfigure failed: NTSTATUS 0x%x\n", status);
+		dbgerrprintf("[!] VCOM PortDeviceConfigure failed: NTSTATUS 0x%x\n", status);
 		return status;
 	}
 

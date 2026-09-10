@@ -119,11 +119,11 @@ void SerialOverEthernet::SOELinkHandlerCOM::doSerialReception() {
 				continue; // when port closed / timed out
 			}
 
-			if (read < 0) {
-				// if the read did not complete, wait for a brief moment and check status again, it might just need a few CPU cycles
-				std::this_thread::sleep_for(std::chrono::milliseconds(10));
-				read = this->localPort->readBytes(serialData, SOE_SERIAL_BUFFER_LEN, false);
-			}
+//			if (read < 0) {
+//				// if the read did not complete, wait for a brief moment and check status again, it might just need a few CPU cycles
+//				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//				read = this->localPort->readBytes(serialData, SOE_SERIAL_BUFFER_LEN, false);
+//			}
 
 			if (read > 0) {
 
@@ -211,7 +211,7 @@ void SerialOverEthernet::SOELinkHandlerCOM::updatePortState(bool dtr, bool rts) 
 
 	if (this->localPort == 0 || !this->localPort->isOpen()) return;
 
-	if (!this->localPort->setManualPortState(dtr, rts)) {
+	if (!this->localPort->setPortState(dtr, rts)) {
 		printf("[!] unable to apply port state from remote!\n");
 	}
 

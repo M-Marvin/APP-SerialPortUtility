@@ -33,33 +33,39 @@
     <ClInclude Include="dbgprint.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="vcomdevice.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="vcomcontrol.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="serial.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="public.h">
+    <ClInclude Include="vcomioctl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="vcombuffers.h">
+    <ClInclude Include="ringbuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vcomport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="vcomdevice.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="vcomdriver.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="vcomcontrol.c">
+    <ClCompile Include="ioctlapplink.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="vcombuffers.c">
+    <ClCompile Include="ioctlserial.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ringbuffer.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vcomportdevice.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vcomportioapp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vcomportioserial.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

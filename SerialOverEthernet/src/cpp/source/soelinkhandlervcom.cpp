@@ -109,11 +109,11 @@ void SerialOverEthernet::SOELinkHandlerVCOM::doSerialReception() {
 				continue; // when port closed / timed out
 			}
 
-			if (read < 0) {
-				// if the read did not complete, wait for a brief moment and check status again, it might just need a few CPU cycles
-				std::this_thread::sleep_for(std::chrono::milliseconds(10));
-				read = this->localPort->readBytes(serialData, SOE_SERIAL_BUFFER_LEN, false);
-			}
+//			if (read < 0) {
+//				// if the read did not complete, wait for a brief moment and check status again, it might just need a few CPU cycles
+//				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//				read = this->localPort->readBytes(serialData, SOE_SERIAL_BUFFER_LEN, false);
+//			}
 
 			if (read > 0) {
 
@@ -140,11 +140,10 @@ void SerialOverEthernet::SOELinkHandlerVCOM::doSerialReception() {
 
 		// check for COM state event and (if no thing else to do) wait for more data
 		bool configChanged = true;
-		bool timeoutChanged = false;
 		bool comStateChanged = true;
 		bool dataReceived = true;
 		bool dataTransmitted = !this->remoteFlowEnable;
-		if (!this->localPort->waitForEvents(configChanged, timeoutChanged, comStateChanged, dataReceived, dataTransmitted, doHalt)) {
+		if (!this->localPort->waitForEvents(configChanged, comStateChanged, dataReceived, dataTransmitted, doHalt)) {
 			if (doHalt) this->txHaltCycles = 0;
 			continue; // when port closed / timed out / wait aborted
 		}
@@ -222,7 +221,7 @@ void SerialOverEthernet::SOELinkHandlerVCOM::updatePortState(bool dtr, bool rts)
 
 	if (this->localPort == 0 || !this->localPort->isCreated()) return;
 
-	if (!this->localPort->setManualPortState(dtr, rts)) {
+	if (!this->localPort->setPortState(dtr, rts)) {
 		printf("[!] unable to apply port state from remote!\n");
 	}
 

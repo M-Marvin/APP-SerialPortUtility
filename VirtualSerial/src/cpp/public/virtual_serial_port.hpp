@@ -40,14 +40,36 @@ public:
 	virtual unsigned long getBaud() = 0;
 
 	/**
-	 * Returns the current timeouts of the serial port.
+	 * Returns the current timeouts of the virtual port.
 	 * The port has to be open for this to work.
+	 * NOTE: These are not the timeouts configured at the serial port, but the timeouts that apply for the application reading the Rx/Tx buffers.
 	 * @param readTimeout Where to store the read timeout
 	 * @param readTimeoutInterval Where to store the read timeout multiplier
 	 * @param writeTimeout Where to store the write timeout
 	 * @return true if the port was open and timeouts where read, false if the port was closed
 	 */
 	virtual bool getTimeouts(int* readTimeout, int* readTimeoutInterval, int* writeTimeout) = 0;
+
+	/**
+	 * Sets the read write timeouts for the port.
+	 * An readTimeout greater than zero means to wait until all requested characters have been received or time runs out.<br>
+	 * An readTimeout of zero means no timeout, instant return with what is in the buffer even if no data is available.<br>
+	 * An readTimeout of less than zero causes the read method to block until at least one character has arrived and/or is available in the buffer, then return with what is in the buffer.<br>
+	 * An writeTimeout greater than zero means to wait until everything is written or the time runs out.<br>
+	 * An writeTimeout of zero or less has means block until everything is written.<br>
+	 * The readTimeoutInterval defines an additional timeout between the reception of individual bytes, it is started (and reset) when the first byte is received and times out if no  further byte is received within this time.<br>
+	 * An readTimeoutInterval of zero or less indicates to not use this timeout and wait indefinitely (or until the normal timeout runs out)<br>
+	 * Note that readTimeoutInterval might not be supported on all platforms, some might always behave as if it where zero.<br>
+	 * In combination with readTimeout less than zero, readTimeoutInterval can act as an additional timeout after the first received byte (and all successive bytes).<br>
+	 *
+	 * The port has to be open for this to work.
+	 * NOTE: These are not the timeouts configured at the serial port, but the timeouts that apply for the application reading the Rx/Tx buffers.
+	 * @param readTimeout The read timeout, if the requested amount of data is not received within this time, it returns with what it has
+	 * @param readTimeoutInterval An additional timeout between received bytes
+	 * @param writeTimeout The write timeout, if the supplied data could not be written within this time, it returns with the amount of data that could be written
+	 * @return true if the timeouts where set, false if an error occurred
+	 */
+	virtual bool setTimeouts(int readTimeout, int readTimeoutInterval, int writeTimeout) = 0;
 
 	/**
 	 * Attempts to fill the buffer by reading bytes from the port.
@@ -102,7 +124,7 @@ public:
 	 * DTR -> DSR // flow control option 1
 	 * RTS -> CTS // flow control option 2
 	 */
-	virtual bool setManualPortState(bool dsr, bool cts) = 0;
+	virtual bool setPortState(bool dsr, bool cts) = 0;
 
 	/**
 	 * Reads the current pin output states of the serial port:
@@ -120,14 +142,13 @@ public:
 	 * The function block until an event occurred, for which the argument was set to true.
 	 * The before returning, the function overrides the values in the arguments to signal which events occured.
 	 * @param configChange Configuration (baud, flow control, parity, etc) change event
-	 * @param timeoutChange Timeout change event
 	 * @param comStateChange COM state (DTR, RTS) change event
 	 * @param dataReceived New data available event
 	 * @param dataTransmitted All data was sent and the buffer is emtpy
 	 * @param wait If true, the function will block until one of the events occurred
 	 * @return false if the function returned because of an error, true otherwise
 	 */
-	virtual bool waitForEvents(bool& configChange, bool& timeoutChange, bool& comStateChange, bool& dataReceived, bool& dataTransmitted, bool wait = true) = 0;
+	virtual bool waitForEvents(bool& configChange, bool& comStateChange, bool& dataReceived, bool& dataTransmitted, bool wait = true) = 0;
 
 	virtual void abortWait() = 0;
 

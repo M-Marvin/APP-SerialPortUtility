@@ -238,10 +238,10 @@ JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1getP
 	return false;
 }
 
-JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1setManualPortState(JNIEnv* env, jclass clazz, jlong handle, jboolean dtrState, jboolean rtsState)
+JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1setPortState(JNIEnv* env, jclass clazz, jlong handle, jboolean dtrState, jboolean rtsState)
 {
 	SerialPort* port = (SerialPort*)handle;
-	return port->setManualPortState(dtrState, rtsState);
+	return port->setPortState(dtrState, rtsState);
 }
 
 JNIEXPORT jboolean JNICALL Java_de_m_1marvin_serialportaccess_SerialPort_n_1waitForEvents(JNIEnv* env, jclass clazz, jlong handle, jbooleanArray events)

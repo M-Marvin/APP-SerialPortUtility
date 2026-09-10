@@ -5,7 +5,7 @@
  *      Author: marvi
  */
 
-#include "VCOM/public.h"
+#include "VCOM/vcomioctl.h"
 #include "VCOM/serial.h"
 #include <windows.h>
 #include <stdio.h>
@@ -225,7 +225,6 @@ public:
 		if (!isCreated()) return false;
 
 		ULONG bytesReturned;
-
 		SERIAL_TIMEOUTS serialTimeouts;
 		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_TIMEOUTS, NULL, 0, &serialTimeouts, sizeof(SERIAL_TIMEOUTS), &bytesReturned, NULL)) {
 			if (GetLastError() == ERROR_INVALID_HANDLE) {
@@ -239,6 +238,41 @@ public:
 		*readTimeout = (int) serialTimeouts.ReadTotalTimeoutConstant == MAXULONG32 ? -1 : serialTimeouts.ReadTotalTimeoutConstant;
 		*readTimeoutInterval = (int) serialTimeouts.ReadIntervalTimeout;
 		*writeTimeout = (int) serialTimeouts.WriteTotalTimeoutConstant;
+		return true;
+	}
+
+	bool setTimeouts(int readTimeout, int readTimeoutInterval, int writeTimeout)
+	{
+		if (!isCreated()) return false;
+
+		ULONG bytesReturned;
+		SERIAL_TIMEOUTS serialTimeouts;
+		if (readTimeout < 0) {
+			// No timeout, but wait indefinitely for at least one byte
+			// When receiving a byte, wait additional readTimeoutInterval ms for another one before returning
+			serialTimeouts.ReadIntervalTimeout = readTimeoutInterval < 1 ? 1 : readTimeoutInterval;
+			//																	^- interval = 0 causes read to block indefinetly because ... windows ...
+			serialTimeouts.ReadTotalTimeoutConstant = MAXULONG32;
+			serialTimeouts.ReadTotalTimeoutMultiplier = 0;
+		} else {
+			// Wait for readTimeout ms, then return no matter what has or has not been received
+			// When receiving a byte, wait only readTimeoutInterval (if not zero) ms for another one then time out early.
+			serialTimeouts.ReadTotalTimeoutConstant = readTimeout < 1 ? 1 : readTimeout;
+			//															     ^- interval = 0 causes read to block indefinetly because ... windows ...
+			serialTimeouts.ReadIntervalTimeout = readTimeoutInterval < 0 ? 0 : readTimeoutInterval;
+			serialTimeouts.ReadTotalTimeoutMultiplier = 0;
+		}
+		serialTimeouts.WriteTotalTimeoutConstant = writeTimeout < 0 ? 0 : writeTimeout;
+		serialTimeouts.WriteTotalTimeoutMultiplier = 0;
+
+		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_SET_TIMEOUTS, &serialTimeouts, sizeof(SERIAL_TIMEOUTS), NULL, 0, &bytesReturned, NULL)) {
+			if (::GetLastError() == ERROR_INVALID_HANDLE || GetLastError() == ERROR_ACCESS_DENIED) {
+				closePort();
+				return false;
+			}
+			printError("error 0x%x in VirtualSerialPort:setTimeouts:DeviceIoControl(IOCTL_APPLINK_SET_TIMEOUTS): %s");
+			return false;
+		}
 		return true;
 	}
 
@@ -285,7 +319,7 @@ public:
 
 		}
 
-		// Wait for completition
+		// Wait for completion
 		if (!GetOverlappedResult(this->comPortHandle, &this->readOverlapped, &receivedBytes, wait)) {
 			if (GetLastError() == ERROR_IO_INCOMPLETE)
 				return -1; // not yet completed
@@ -347,7 +381,7 @@ public:
 
 		}
 
-		// If not, wait for completition
+		// If not, wait for completion
 		if (!GetOverlappedResult(this->comPortHandle, &this->writeOverlapped, &writtenBytes, wait)) {
 			if (GetLastError() == ERROR_IO_INCOMPLETE)
 				return -1; // not yet completed
@@ -372,13 +406,13 @@ public:
 
 		ULONG bytesReturned;
 
-		BUFFER_SIZES bufferSizes;
-		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_BUFFER_SIZES, NULL, 0, &bufferSizes, sizeof(BUFFER_SIZES), &bytesReturned, NULL)) {
+		BufferSize bufferSizes;
+		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_GET_BUFFER_SIZE, NULL, 0, &bufferSizes, sizeof(BufferSize), &bytesReturned, NULL)) {
 			if (GetLastError() == ERROR_INVALID_HANDLE) {
 				closePort();
 				return false;
 			}
-			printError("error 0x%x in VirtualSerialPort:getPortState:DeviceIoControl(IOCTL_APPLINK_GET_BUFFER_SIZES): %s");
+			printError("error 0x%x in VirtualSerialPort:getBufferSizes:DeviceIoControl(IOCTL_APPLINK_GET_BUFFER_SIZE): %s");
 			return false;
 		}
 
@@ -393,16 +427,16 @@ public:
 
 		ULONG bytesReturned;
 
-		BUFFER_SIZES bufferSizes;
+		BufferSize bufferSizes;
 		bufferSizes.TransmitSize = txBufferSize;
 		bufferSizes.ReceiveSize = rxBufferSize;
 
-		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_SET_BUFFER_SIZES, &bufferSizes, sizeof(BUFFER_SIZES), NULL, 0, &bytesReturned, NULL)) {
+		if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_SET_BUFFER_SIZE, &bufferSizes, sizeof(BufferSize), NULL, 0, &bytesReturned, NULL)) {
 			if (GetLastError() == ERROR_INVALID_HANDLE) {
 				closePort();
 				return false;
 			}
-			printError("error 0x%x in VirtualSerialPort:getPortState:DeviceIoControl(IOCTL_APPLINK_SET_BUFFER_SIZES): %s");
+			printError("error 0x%x in VirtualSerialPort:setBufferSizes:DeviceIoControl(IOCTL_APPLINK_SET_BUFFER_SIZE): %s");
 			return false;
 		}
 
@@ -430,7 +464,7 @@ public:
 		return true;
 	}
 
-	bool setManualPortState(bool dtr, bool rts) override
+	bool setPortState(bool dtr, bool rts) override
 	{
 		if (!isCreated()) return false;
 
@@ -442,7 +476,7 @@ public:
 				closePort();
 				return false;
 			}
-			printError("error 0x%x in VirtualSerialPort:setManualPortState:DeviceIoControl(IOCTL_APPLINK_GET_COMSTATUS): %s");
+			printError("error 0x%x in VirtualSerialPort:setPortState:DeviceIoControl(IOCTL_APPLINK_GET_COMSTATUS): %s");
 			return false;
 		}
 
@@ -461,14 +495,14 @@ public:
 				closePort();
 				return false;
 			}
-			printError("error 0x%x in VirtualSerialPort:setManualPortState:DeviceIoControl(IOCTL_APPLINK_SET_COMSTATUS): %s");
+			printError("error 0x%x in VirtualSerialPort:setPortState:DeviceIoControl(IOCTL_APPLINK_SET_COMSTATUS): %s");
 			return false;
 		}
 
 		return true;
 	}
 
-	bool waitForEvents(bool& configChange, bool& timeoutChange, bool& comStateChange, bool& dataReceived, bool& dataTransmitted, bool wait)
+	bool waitForEvents(bool& configChange, bool& comStateChange, bool& dataReceived, bool& dataTransmitted, bool wait)
 	{
 		if (!isCreated()) return false;
 
@@ -476,15 +510,23 @@ public:
 		ULONG bytesReturned;
 		DWORD newMask = 0;
 		if (configChange) newMask |= APPLINK_EVENT_CONFIG;
-		if (timeoutChange) newMask |= APPLINK_EVENT_TIMEOUTS;
 		if (comStateChange) newMask |= APPLINK_EVENT_COMSTATE;
 		if (dataReceived) newMask |= APPLINK_EVENT_RXCHAR;
 		if (dataTransmitted) newMask |= APPLINK_EVENT_TXEMPTY;
-		if (newMask != eventMask && this->waitOverlapped.hEvent != INVALID_HANDLE_VALUE) {
-			// Cancel previous wait
-			this->waitOverlapped.hEvent = INVALID_HANDLE_VALUE;
+		if (newMask != eventMask) {
+			eventMask = newMask;
+
+			// set new wait mask
+			if (!::DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_SET_WAIT_MASK, &eventMask, sizeof(ULONG), NULL, 0, &bytesReturned, NULL)) {
+				if (GetLastError() == ERROR_INVALID_HANDLE) {
+					closePort();
+					return false;
+				}
+				printError("error 0x%x in VirtualSerialPort:waitForEvents:DeviceIoControl(IOCTL_APPLINK_SET_WAIT_MASK): %s");
+				return false;
+			}
+
 		}
-		eventMask = newMask;
 
 		// Check if there is already an operation pending
 		if (this->waitOverlapped.hEvent == INVALID_HANDLE_VALUE) {
@@ -492,7 +534,7 @@ public:
 			// If not, initiate new operation
 
 			// if no event was requested, return
-			if (!configChange && !timeoutChange && !comStateChange && !dataReceived && !dataTransmitted) return true;
+			if (!configChange && !comStateChange && !dataReceived && !dataTransmitted) return true;
 
 			// Create overlapped event
 			ZeroMemory(&this->waitOverlapped, sizeof(OVERLAPPED));
@@ -503,7 +545,7 @@ public:
 			}
 
 			// Initiate wait operation
-			if (!DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_WAIT_FOR_CHANGE, &this->eventMask, sizeof(ULONG), &this->eventMaskReturned, sizeof(ULONG), &bytesReturned, &this->waitOverlapped)) {
+			if (!DeviceIoControl(this->comPortHandle, IOCTL_APPLINK_WAIT_ON_MASK, &this->eventMask, sizeof(ULONG), &this->eventMaskReturned, sizeof(ULONG), &bytesReturned, &this->waitOverlapped)) {
 
 				if (GetLastError() == ERROR_INVALID_HANDLE) {
 					closePort();
@@ -521,7 +563,6 @@ public:
 				// Already completed, return results
 				this->waitOverlapped.hEvent = INVALID_HANDLE_VALUE;
 				configChange = eventMaskReturned & APPLINK_EVENT_CONFIG;
-				timeoutChange = eventMaskReturned & APPLINK_EVENT_TIMEOUTS;
 				comStateChange = eventMaskReturned & APPLINK_EVENT_COMSTATE;
 				dataReceived = eventMaskReturned & APPLINK_EVENT_RXCHAR;
 				dataTransmitted = eventMaskReturned & APPLINK_EVENT_TXEMPTY;
@@ -532,12 +573,11 @@ public:
 		}
 
 		configChange = false;
-		timeoutChange = false;
 		comStateChange = false;
 		dataReceived = false;
 		dataTransmitted = false;
 
-		// If not, wait for completition
+		// If not, wait for completion
 		if (!GetOverlappedResult(this->comPortHandle, &this->waitOverlapped, &bytesReturned, wait)) {
 			if (GetLastError() == ERROR_IO_INCOMPLETE)
 				return true; // not yet completed
@@ -554,7 +594,6 @@ public:
 		this->waitOverlapped.hEvent = INVALID_HANDLE_VALUE;
 
 		configChange = eventMaskReturned & APPLINK_EVENT_CONFIG;
-		timeoutChange = eventMaskReturned & APPLINK_EVENT_TIMEOUTS;
 		comStateChange = eventMaskReturned & APPLINK_EVENT_COMSTATE;
 		dataReceived = eventMaskReturned & APPLINK_EVENT_RXCHAR;
 		dataTransmitted = eventMaskReturned & APPLINK_EVENT_TXEMPTY;

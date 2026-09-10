@@ -137,7 +137,7 @@ public class SerialPort {
 	private static native int n_writeDataS(long handle, String data, boolean wait);
 	private static native int n_writeDataB(long handle, byte[] data, boolean wait);
 	private static native boolean n_getPortState(long handle, boolean[] state);
-	private static native boolean n_setManualPortState(long handle, boolean dtrState, boolean rtsState);
+	private static native boolean n_setPortState(long handle, boolean dtrState, boolean rtsState);
 	private static native boolean n_waitForEvents(long handle, boolean[] events);
 	private static native void n_abortWait(long handle);
 	
@@ -351,8 +351,8 @@ public class SerialPort {
 	 * @param rtsState The state of the RTS pin
 	 * @return true if the state was assigned successfully, false otherwise
 	 */
-	public boolean setManualPortState(boolean dtrState, boolean rtsState) {
-		return n_setManualPortState(handle, dtrState, dtrState);
+	public boolean setPortState(boolean dtrState, boolean rtsState) {
+		return n_setPortState(handle, dtrState, dtrState);
 	}
 	
 	/**
@@ -360,11 +360,11 @@ public class SerialPort {
 	 * @param state The state of the pins { DTR, RTS }
 	 * @return true if the state was assigned successfully, false otherwise
 	 */
-	public boolean setManualPortState(boolean[] state) {
+	public boolean setPortState(boolean[] state) {
 		Objects.requireNonNull(state, "state array must not be null");
 		if (state.length != 2)
 			throw new IllegalArgumentException("state array must be of length 3");
-		return setManualPortState(state[0], state[1]);
+		return setPortState(state[0], state[1]);
 	}
 	
 	/**

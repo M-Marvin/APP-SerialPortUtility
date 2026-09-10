@@ -180,7 +180,7 @@ public:
 	 * @param rtsState The state of the RTS pin
 	 * @return true if the state was assigned successfully, false otherwise
 	 */
-	virtual bool setManualPortState(bool dtrState, bool rtsState) = 0;
+	virtual bool setPortState(bool dtrState, bool rtsState) = 0;
 
 	/**
 	 * Waits for the requested events.

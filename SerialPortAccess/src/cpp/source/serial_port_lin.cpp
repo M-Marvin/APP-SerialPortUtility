@@ -507,7 +507,7 @@ public:
 		return true;
 	}
 
-	bool setManualPortState(bool dtr, bool rts) override
+	bool setPortState(bool dtr, bool rts) override
 	{
 		if (!isOpen()) return false;
 
@@ -517,7 +517,7 @@ public:
 				closePort();
 				return false;
 			}
-			printError("error %d in SerialPort:setManualPortState:ioctl(TIOCMGET): %s\n");
+			printError("error %d in SerialPort:setPortState:ioctl(TIOCMGET): %s\n");
 			return false;
 		}
 
@@ -539,7 +539,7 @@ public:
 				closePort();
 				return false;
 			}
-			printError("error %d in SerialPort:setManualPortState:ioctl(TIOCMSET): %s\n");
+			printError("error %d in SerialPort:setPortState:ioctl(TIOCMSET): %s\n");
 			return false;
 		}
 

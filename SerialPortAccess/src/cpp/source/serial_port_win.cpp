@@ -452,7 +452,7 @@ public:
 		return true;
 	}
 
-	bool setManualPortState(bool dtr, bool rts) override
+	bool setPortState(bool dtr, bool rts) override
 	{
 		if (!isOpen()) return false;
 
