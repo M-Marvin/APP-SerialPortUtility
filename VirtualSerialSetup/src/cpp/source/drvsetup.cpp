@@ -13,7 +13,7 @@
 #define ASSTRING(x) STRINGIZE(x)
 
 #include "vcom.hpp"
-#include "VCOM/public.h"
+#include "VCOM/vcomioctl.h"
 #include "VCOM/serial.h"
 #include <windows.h>
 #include <setupapi.h>
