@@ -1,0 +1,61 @@
+import de.m_marvin.metabuild.cpp.script.CppMultiTargetBuildScript;
+import de.m_marvin.metabuild.maven.Maven;
+import de.m_marvin.metabuild.maven.tasks.MavenResolveTask;
+import de.m_marvin.metabuild.maven.types.Repository;
+import de.m_marvin.metabuild.maven.types.Repository.Credentials;
+
+public class Buildfile extends CppMultiTargetBuildScript {
+	
+	@Override
+	public void init() {
+		
+		var target = makeTarget("LinAMD64", "lintest");
+		target.compileCpp.compiler = "lin-amd-64-g++";
+		target.linkCpp.linker = "lin-amd-64-g++";
+		target.compileCpp.options.add("-g");
+		target.compileCpp.options.add("-fno-stack-protector");
+
+		target = makeTarget("WinAMD64", "wintest.exe");
+		target.compileCpp.compiler = "win-amd-64-g++";
+		target.linkCpp.linker = "win-amd-64-g++";
+		target.compileCpp.options.add("-g");
+		//target.compileCpp.options.add("-fno-stack-protector");
+		target.linkCpp.libraries.add("virtualserial_x64");
+		target.linkCpp.options.add("-static-libgcc");
+		target.linkCpp.options.add("-static-libstdc++");
+		
+		super.init();
+		
+	}
+
+	@Override
+	public void repositories(MavenResolveTask dependencies, String config) {
+		
+		dependencies.repository(Maven.mavenLocal());
+		
+		dependencies.repository(new Repository(
+				"GHP [SerialPortAccess]", 
+				"https://maven.pkg.github.com/m-marvin/library-serialportaccess",
+				new Credentials(
+						() -> System.getenv("GITHUB_ACTOR"), 
+						() -> System.getenv("GITHUB_TOKEN")
+				)
+		));
+		
+	}
+
+	@Override
+	public void dependencies(MavenResolveTask dependencies, String config) {
+		
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.4::zip");
+		dependencies.implementation("de.m_marvin.serialutility:serialportaccess-" + config.toLowerCase() + ":2.4:headers:zip");
+		
+		if (config.equals("WinAMD64")) {
+
+			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.1-SNAPSHOT::zip");
+			dependencies.implementation("de.m_marvin.serialutility:virtualserialport-" + config.toLowerCase() + ":1.1-SNAPSHOT:headers:zip");
+			
+		}
+	}
+
+}
