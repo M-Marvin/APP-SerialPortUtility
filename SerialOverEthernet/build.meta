@@ -37,6 +37,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.libraries.add("netsocket_x64");
 		target.linkCpp.options.add("-static-libgcc");
 		target.linkCpp.options.add("-static-libstdc++");
+		target.compileCpp.options.add(debugging ? "-g" : "-O3");
+		if (debugging) target.compileCpp.define("ENBL_DBGPRINT");
 		target.compileCpp.define("BUILD_VERSION", version);
 
 		// Platform linux AMD 64 Client
@@ -48,6 +50,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.libraries.add("pthread");
 		target.compileCpp.options.add("-fno-stack-protector");
 		target.linkCpp.options.add("-Wl,-rpath,$ORIGIN");
+		target.compileCpp.options.add(debugging ? "-g" : "-O3");
+		if (debugging) target.compileCpp.define("ENBL_DBGPRINT");
 		target.compileCpp.define("BUILD_VERSION", version);
 
 		// Platform linux ARM 64 Client
@@ -58,6 +62,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.libraries.add("netsocket_arm64");
 		target.linkCpp.libraries.add("pthread");
 		target.linkCpp.options.add("-Wl,-rpath,$ORIGIN");
+		target.compileCpp.options.add(debugging ? "-g" : "-O3");
+		if (debugging) target.compileCpp.define("ENBL_DBGPRINT");
 		target.compileCpp.define("BUILD_VERSION", version);
 
 		// Platform linux ARM 32 Client
@@ -68,6 +74,8 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.linkCpp.libraries.add("netsocket_arm32");
 		target.linkCpp.libraries.add("pthread");
 		target.linkCpp.options.add("-Wl,-rpath,$ORIGIN");
+		target.compileCpp.options.add(debugging ? "-g" : "-O3");
+		if (debugging) target.compileCpp.define("ENBL_DBGPRINT");
 		target.compileCpp.define("BUILD_VERSION", version);
 		
 		super.init();
@@ -85,11 +93,6 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		copyLibs.group = "platform";
 		copyLibs.dependsOn(target.binaryUnzip);
 		copyLibs.dependencyOf(target.build);
-		
-		if (debugging) {
-			target.compileCpp.define("ENBL_DBGPRINT");
-			target.compileCpp.options.add("-g");
-		}
 
 		return target;
 		

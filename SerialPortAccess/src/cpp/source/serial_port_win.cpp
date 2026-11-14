@@ -1,4 +1,3 @@
-
 #ifdef PLATFORM_WIN
 
 #include "serial_port.hpp"
@@ -112,6 +111,16 @@ public:
 	{
 		if (!isOpen()) return false;
 
+		COMMPROP properties = {0};
+		if (!GetCommProperties(this->comPortHandle, &properties)) {
+			if (GetLastError() == ERROR_INVALID_HANDLE || GetLastError() == ERROR_ACCESS_DENIED) {
+				closePort();
+				return false;
+			}
+			printError("error 0x%x in SerialPort:setConfig:GetCommProperties: %s");
+			return false;
+		}
+
 		if (!GetCommState(this->comPortHandle, &this->comPortState)) {
 			if (GetLastError() == ERROR_INVALID_HANDLE || GetLastError() == ERROR_ACCESS_DENIED) {
 				closePort();
@@ -124,17 +133,17 @@ public:
 		this->comPortState.fBinary = TRUE;
 		this->comPortState.fOutxCtsFlow = (config.flowControl == SerialAccess::SPC_FLOW_RTS_CTS);
 		this->comPortState.fOutxDsrFlow = (config.flowControl == SerialAccess::SPC_FLOW_DSR_DTR);
-		this->comPortState.fDtrControl = DTR_CONTROL_ENABLE;
-		this->comPortState.fDsrSensitivity = TRUE;
-		this->comPortState.fTXContinueOnXoff = (config.flowControl == SerialAccess::SPC_FLOW_NONE);
+		this->comPortState.fDtrControl = (config.flowControl == SerialAccess::SPC_FLOW_DSR_DTR) ? DTR_CONTROL_HANDSHAKE : DTR_CONTROL_DISABLE;
+		this->comPortState.fDsrSensitivity = FALSE;
+		this->comPortState.fTXContinueOnXoff = FALSE;
 		this->comPortState.fOutX = (config.flowControl == SerialAccess::SPC_FLOW_XON_XOFF);
 		this->comPortState.fInX = (config.flowControl == SerialAccess::SPC_FLOW_XON_XOFF);
 		this->comPortState.fErrorChar = 0;
 		this->comPortState.fNull = 0;
-		this->comPortState.fRtsControl = (config.flowControl == SerialAccess::SPC_FLOW_RTS_CTS) ? RTS_CONTROL_HANDSHAKE : RTS_CONTROL_ENABLE;
+		this->comPortState.fRtsControl = (config.flowControl == SerialAccess::SPC_FLOW_RTS_CTS) ? RTS_CONTROL_HANDSHAKE : RTS_CONTROL_DISABLE;
 		this->comPortState.fAbortOnError = FALSE;
-		this->comPortState.XonLim = 2048;
-		this->comPortState.XoffLim = 512;
+		this->comPortState.XonLim = properties.dwCurrentRxQueue / 4;
+		this->comPortState.XoffLim = properties.dwCurrentRxQueue / 4;
 		this->comPortState.ByteSize = config.dataBits;
 		this->comPortState.fParity = (config.parity != SerialAccess::SPC_PARITY_NONE);
 		switch (config.parity) {

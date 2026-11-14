@@ -32,7 +32,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
 		target.compileCpp.includes.add(new File("../VCOM"));
 		target.compileCpp.define("PLATFORM_WIN");
-		if (debugging) target.compileCpp.options.add("-g");
+		target.compileCpp.options.add(debugging ? "-g" : "-O3");
 		target.linkCpp.options.add("-shared");
 		target.linkCpp.options.add("-static-libgcc");
 		target.linkCpp.options.add("-static-libstdc++");

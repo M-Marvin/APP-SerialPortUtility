@@ -14,9 +14,9 @@ import de.m_marvin.metabuild.maven.types.Repository.Credentials;
 
 public class Buildfile extends CppMultiTargetBuildScript {
 
-	boolean debugging = true; // set to true to compile with debug info
+	boolean debugging = false; // set to true to compile with debug info
 	
-	String version = "2.4";
+	String version = "2.4.1";
 	
 	@Override
 	public void init() {
@@ -27,7 +27,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		var target = makeTarget("WinAMD64", "libserialportaccess_x64.dll");
 		target.compileCpp.compiler = target.linkCpp.linker = "win-amd-64-g++";
 		target.compileCpp.define("PLATFORM_WIN");
-		if (debugging) target.compileCpp.options.add("-g");
+		target.compileCpp.options.add(debugging ? "-g" : "-O3");
 		target.linkCpp.options.add("-shared");
 		target.linkCpp.options.add("-static-libgcc");
 		target.linkCpp.options.add("-static-libstdc++");
@@ -36,7 +36,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target = makeTarget("LinAMD64", "libserialportaccess_x64.so");
 		target.linkCpp.linker = target.compileCpp.compiler = "lin-amd-64-g++";
 		target.compileCpp.define("PLATFORM_LIN");
-		if (debugging) target.compileCpp.options.add("-g");
+		target.compileCpp.options.add(debugging ? "-g" : "-O3");
 		target.linkCpp.options.add("-shared");
 		target.compileCpp.options.add("-fPIC");
 		target.compileCpp.options.add("-fno-stack-protector");
@@ -45,7 +45,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target = makeTarget("LinARM64", "libserialportaccess_arm64.so");
 		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-64-g++";
 		target.compileCpp.define("PLATFORM_LIN");
-		if (debugging) target.compileCpp.options.add("-g");
+		target.compileCpp.options.add(debugging ? "-g" : "-O3");
 		target.linkCpp.options.add("-shared");
 		target.compileCpp.options.add("-fPIC");
 		
@@ -53,7 +53,7 @@ public class Buildfile extends CppMultiTargetBuildScript {
 		target = makeTarget("LinARM32", "libserialportaccess_arm32.so");
 		target.linkCpp.linker = target.compileCpp.compiler = "lin-arm-32-g++";
 		target.compileCpp.define("PLATFORM_LIN");
-		if (debugging) target.compileCpp.options.add("-g");
+		target.compileCpp.options.add(debugging ? "-g" : "-O3");
 		target.linkCpp.options.add("-shared");
 		target.compileCpp.options.add("-fPIC");
 		
